@@ -1,6 +1,7 @@
 package com.haylent.mobwizardry;
 
 import com.haylent.mobwizardry.config.PresetManager;
+import com.haylent.mobwizardry.event.MobWizardryEvents;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
@@ -17,6 +18,7 @@ public class MobWizardryMod
     public MobWizardryMod()
     {
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(new MobWizardryEvents());
     }
 
     @SubscribeEvent
