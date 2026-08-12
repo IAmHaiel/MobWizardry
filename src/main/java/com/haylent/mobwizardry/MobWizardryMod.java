@@ -1,5 +1,6 @@
 package com.haylent.mobwizardry;
 
+import com.haylent.mobwizardry.config.PresetManager;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerStartingEvent;
@@ -22,5 +23,6 @@ public class MobWizardryMod
     public void onServerStarting(ServerStartingEvent event)
     {
         LOGGER.info("MobWizardry mod loaded on server");
+        PresetManager.reload();
     }
 }

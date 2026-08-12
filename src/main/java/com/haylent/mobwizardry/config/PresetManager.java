@@ -1,0 +1,181 @@
+package com.haylent.mobwizardry.config;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
+import com.haylent.mobwizardry.MobWizardryMod;
+import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
+import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
+import com.mojang.logging.LogUtils;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.fml.loading.FMLPaths;
+import org.slf4j.Logger;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+public class PresetManager
+{
+    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    private static final Map<String, PresetDefinition> PRESETS = new LinkedHashMap<>();
+
+    public static Map<String, PresetDefinition> getPresets()
+    {
+        return PRESETS;
+    }
+
+    public static PresetDefinition getPreset(String name)
+    {
+        return PRESETS.get(name);
+    }
+
+    public static void reload()
+    {
+        PRESETS.clear();
+        Path configPath = FMLPaths.CONFIGDIR.get().resolve(MobWizardryMod.MODID).resolve("presets.json");
+        Path configDir = configPath.getParent();
+
+        try
+        {
+            Files.createDirectories(configDir);
+
+            if (!Files.exists(configPath))
+            {
+                Files.writeString(configPath, defaultPresetsJson());
+                LOGGER.warn("[MobWizardry] No presets.json found - wrote default config to {}", configPath);
+            }
+
+            try (Reader reader = Files.newBufferedReader(configPath))
+            {
+                Map<String, PresetDefinition> parsed = GSON.fromJson(reader, new com.google.gson.reflect.TypeToken<Map<String, PresetDefinition>>() {}.getType());
+                if (parsed == null)
+                {
+                    LOGGER.error("[MobWizardry] presets.json is empty or invalid - no presets loaded");
+                    return;
+                }
+
+                for (Map.Entry<String, PresetDefinition> entry : parsed.entrySet())
+                {
+                    validatePreset(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+        catch (JsonSyntaxException e)
+        {
+            LOGGER.error("[MobWizardry] Failed to parse presets.json - no presets loaded", e);
+        }
+        catch (IOException e)
+        {
+            LOGGER.error("[MobWizardry] Could not read presets.json - no presets loaded", e);
+        }
+    }
+
+    private static void validatePreset(String name, PresetDefinition preset)
+    {
+        if (preset.requiredTag == null || preset.requiredTag.isBlank())
+        {
+            LOGGER.error("[MobWizardry] Preset '{}' has no requiredTag - preset will not activate. Add a tag like \"wizard\".", name);
+            return;
+        }
+
+        preset.targetMobs.removeIf(mobId -> {
+            if (mobId == null || mobId.isBlank())
+            {
+                LOGGER.error("[MobWizardry] Preset '{}' has a blank targetMobs entry - removed", name);
+                return true;
+            }
+            ResourceLocation rl = ResourceLocation.tryParse(mobId);
+            if (rl == null || !net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.containsKey(rl))
+            {
+                LOGGER.error("[MobWizardry] Preset '{}' references unknown mob type '{}' - removed", name, mobId);
+                return true;
+            }
+            return false;
+        });
+
+        if (preset.targetMobs.isEmpty())
+        {
+            LOGGER.error("[MobWizardry] Preset '{}' has no valid targetMobs - preset will not activate.", name);
+            return;
+        }
+
+        validateSpellList(name, "attack", preset.spells.attack, preset.castInterval);
+        validateSpellList(name, "defense", preset.spells.defense, preset.castInterval);
+        validateSpellList(name, "movement", preset.spells.movement, preset.castInterval);
+        validateSpellList(name, "support", preset.spells.support, preset.castInterval);
+
+        PRESETS.put(name, preset);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, mobs={})", name, preset.requiredTag, preset.targetMobs);
+    }
+
+    private static void validateSpellList(String presetName, String category, java.util.List<PresetDefinition.SpellEntry> entries, int castInterval)
+    {
+        entries.removeIf(entry -> {
+            if (entry.id == null || entry.id.isBlank())
+            {
+                LOGGER.error("[MobWizardry] Preset '{}' {} spell has a blank id - removed", presetName, category);
+                return true;
+            }
+            ResourceLocation rl = ResourceLocation.tryParse(entry.id);
+            if (rl == null)
+            {
+                LOGGER.error("[MobWizardry] Preset '{}' {} spell '{}' is not a valid resource location - removed", presetName, category, entry.id);
+                return true;
+            }
+            AbstractSpell spell = SpellRegistry.getSpell(rl);
+            if (spell == null || spell == SpellRegistry.none())
+            {
+                LOGGER.error("[MobWizardry] Preset '{}' {} spell '{}' not found in Iron's Spellbooks registry - removed", presetName, category, entry.id);
+                return true;
+            }
+            if (entry.level < 1 || entry.level > spell.getMaxLevel())
+            {
+                LOGGER.warn("[MobWizardry] Preset '{}' {} spell '{}' level {} is out of range 1-{} - clamped", presetName, category, entry.id, entry.level, spell.getMaxLevel());
+                entry.level = Math.max(1, Math.min(spell.getMaxLevel(), entry.level));
+            }
+            int cooldownTicks = spell.getSpellCooldown();
+            if (cooldownTicks > castInterval)
+            {
+                LOGGER.warn("[MobWizardry] Preset '{}' {} spell '{}' has an intrinsic cooldown of {} ticks, longer than castInterval {} - spell will be cast less often than intended", presetName, category, entry.id, cooldownTicks, castInterval);
+            }
+            return false;
+        });
+    }
+
+    private static String defaultPresetsJson()
+    {
+        return """
+                {
+                  "wizard": {
+                    "targetMobs": ["minecraft:zombie"],
+                    "requiredTag": "wizard",
+                    "speed": 1.15,
+                    "castInterval": 60,
+                    "equipment": {
+                      "mainhand": "irons_spellbooks:wizards_staff"
+                    },
+                    "spells": {
+                      "attack": [
+                        { "id": "traveloptics:halberd_horizon", "level": 4 }
+                      ],
+                      "defense": [
+                        { "id": "irons_spellbooks:slow", "level": 3 }
+                      ],
+                      "movement": [
+                        { "id": "irons_spellbooks:blood_step", "level": 2 }
+                      ],
+                      "support": []
+                    }
+                  }
+                }
+                """;
+    }
+}
