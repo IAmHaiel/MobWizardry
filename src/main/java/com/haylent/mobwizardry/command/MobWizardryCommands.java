@@ -164,15 +164,42 @@ public class MobWizardryCommands
         }
         for (Map.Entry<String, PresetDefinition> entry : presets.entrySet())
         {
-            PresetDefinition p = entry.getValue();
-            ctx.getSource().sendSuccess(() -> Component.literal("Preset '" + entry.getKey() + "' tag=" + p.requiredTag
-                    + " mobs=" + p.targetMobs
-                    + " attack=" + spellIds(p.spells.attack)
-                    + " defense=" + spellIds(p.spells.defense)
-                    + " movement=" + spellIds(p.spells.movement)
-                    + " support=" + spellIds(p.spells.support)), false);
+            ctx.getSource().sendSuccess(() -> Component.literal(formatPreset(entry.getKey(), entry.getValue())), false);
         }
         return presets.size();
+    }
+
+    private static String formatPreset(String name, PresetDefinition p)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[").append(name).append("]");
+        sb.append("\n  Tag: ").append(p.requiredTag);
+        sb.append("\n  Mobs: ").append(p.targetMobs);
+        sb.append("\n  Speed: ").append(p.speed).append(" | Cast interval: ").append(p.castInterval).append(" | Mana: ").append(p.mana);
+        if (!p.equipment.isEmpty())
+        {
+            sb.append("\n  Equipment: ").append(p.equipment);
+        }
+        if (!p.attributes.isEmpty())
+        {
+            sb.append("\n  Attributes: ").append(p.attributes);
+        }
+        sb.append("\n  Attack:   ").append(formatSpellList(p.spells.attack));
+        sb.append("\n  Defense:  ").append(formatSpellList(p.spells.defense));
+        sb.append("\n  Movement: ").append(formatSpellList(p.spells.movement));
+        sb.append("\n  Support:  ").append(formatSpellList(p.spells.support));
+        return sb.toString();
+    }
+
+    private static String formatSpellList(List<PresetDefinition.SpellEntry> entries)
+    {
+        if (entries.isEmpty())
+        {
+            return "(none)";
+        }
+        return entries.stream()
+                .map(e -> e.id + " (lvl " + e.level + ")")
+                .collect(java.util.stream.Collectors.joining(", "));
     }
 
     private static List<String> spellIds(List<PresetDefinition.SpellEntry> entries)
