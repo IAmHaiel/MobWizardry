@@ -165,8 +165,29 @@ dependencies {
 
     // Iron's Spells 'n Spellbooks 1.20.1-3.16.2 (project 855414, file 8364933)
     implementation fg.deobf("curse.maven:irons-spells-n-spellbooks-855414:8364933")
+
+    // Spell addons - dev classpath only (runtimeOnly). Our code never imports addon classes;
+    // spells are referenced by ID string in presets.json and resolved via ISS's SpellRegistry.
     // T.O Magic 'n Extras 6.3.0 1.20.1 (project 1046916, file 7424522)
-    implementation fg.deobf("curse.maven:to-tweaks-irons-spells-1046916:7424522")
+    runtimeOnly fg.deobf("curse.maven:to-tweaks-irons-spells-1046916:7424522")
+    // Cataclysm: Spellbooks 1.2.9 (project 1099461, file 7687059)
+    runtimeOnly fg.deobf("curse.maven:cataclysm-spellbooks-1099461:7687059")
+    // GTBC's Geomancy Plus 2.0.0 (project 1352485, file 7580390)
+    runtimeOnly fg.deobf("curse.maven:gtbcs-geomancy-plus-1352485:7580390")
+    // Hazen 'N Stuff 1.1.2 (project 1231627, file 7501581)
+    runtimeOnly fg.deobf("curse.maven:hazen-n-stuff-1231627:7501581")
+    // Ice and Fire: Spellbooks 2.3.2 (project 977855, file 7413433)
+    runtimeOnly fg.deobf("curse.maven:ice-and-fire-spellbooks-977855:7413433")
+    // Legendary Spellbooks 0.3.2-hotfix (project 1478875, file 8283639)
+    runtimeOnly fg.deobf("curse.maven:legendary-spellbooks-1478875:8283639")
+    // Magic From The East 1.0.0b (project 1224162, file 8382811)
+    runtimeOnly fg.deobf("curse.maven:magic-from-the-east-1224162:8382811")
+    // Somake Spells 1.0.8 (project 1461634, file 8399377)
+    runtimeOnly fg.deobf("curse.maven:somake-spells-irons-spells-addon-1461634:8399377")
+    // Wind's Spellbooks 1.0.3 (project 1519158, file 8486282)
+    runtimeOnly fg.deobf("curse.maven:winds-spellbooks-irons-spells-n-spellbooks-addon-1519158:8486282")
+    // Apprentice's Codex 0.9.6 (project 1450885, file 8512965)
+    runtimeOnly fg.deobf("curse.maven:apprentices-codex-1450885:8512965")
 
     // Transitive runtime deps required by ISS/T.O at runtime (dev classpath only)
     runtimeOnly fg.deobf("curse.maven:geckolib-388172:7025129")          // ISS: geckolib [1.20.1:4.8.2,)
@@ -180,6 +201,13 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:placebo-283644:6274231")           // attributeslib: placebo [8.6.0,)
     runtimeOnly fg.deobf("curse.maven:citadel-331936:7476570")           // alexscaves: citadel [2.6.0,)
     runtimeOnly fg.deobf("curse.maven:lionfish-api-1001614:8095554")     // cataclysm: lionfishapi [3.0,)
+
+    // Addon-owned libraries (dev classpath only) - required by specific addons to boot
+    runtimeOnly fg.deobf("curse.maven:ice-and-fire-dragons-264231:5633453")      // ice_and_fire_spellbooks: iceandfire [2.1.13-1.20.1-beta-4,)
+    runtimeOnly fg.deobf("curse.maven:azurelib-817423:8367230")                  // cataclysm_spellbooks: azurelib [3.0,)
+    runtimeOnly fg.deobf("curse.maven:gtbcs-spelllib-1194714:8574528")           // gtbcs_geomancy_plus: gtbcs_spell_lib [1.3.0-1.20.1,)
+    runtimeOnly fg.deobf("curse.maven:mowzies-mobs-250498:7815705")              // gtbcs_geomancy_plus: mowziesmobs
+    runtimeOnly fg.deobf("curse.maven:legendary-monsters-944035:8444425")        // legendary_spellbooks: legendary_monsters
 
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
