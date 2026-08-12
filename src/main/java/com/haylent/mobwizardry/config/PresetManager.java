@@ -213,14 +213,40 @@ public class PresetManager
                     "mana": 100,
                     "spells": {
                       "attack": [
-                        { "id": "traveloptics:halberd_horizon", "level": 4 }
+                        { "id": "irons_spellbooks:magic_missile", "level": 1 },
+                        { "id": "irons_spellbooks:fireball", "level": 1 }
                       ],
                       "defense": [
-                        { "id": "irons_spellbooks:slow", "level": 3 }
+                        { "id": "irons_spellbooks:shield", "level": 1 }
                       ],
                       "movement": [
-                        { "id": "irons_spellbooks:blood_step", "level": 2 }
+                        { "id": "irons_spellbooks:blood_step", "level": 1 }
                       ],
+                      "support": [
+                        { "id": "irons_spellbooks:heal", "level": 1 }
+                      ]
+                    }
+                  },
+                  "wizard_lite": {
+                    "targetMobs": ["minecraft:skeleton"],
+                    "requiredTag": "wizard_lite",
+                    "speed": 1.1,
+                    "castInterval": 80,
+                    "equipment": {
+                      "mainhand": "irons_spellbooks:blood_staff"
+                    },
+                    "attributes": {
+                      "irons_spellbooks:max_mana": 60,
+                      "irons_spellbooks:mana_regen": 2,
+                      "irons_spellbooks:spell_power": 1.0
+                    },
+                    "mana": 60,
+                    "spells": {
+                      "attack": [
+                        { "id": "irons_spellbooks:magic_arrow", "level": 1 }
+                      ],
+                      "defense": [],
+                      "movement": [],
                       "support": []
                     }
                   }
