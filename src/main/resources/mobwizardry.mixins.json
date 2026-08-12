@@ -2,6 +2,7 @@
   "required": true,
   "package": "com.haylent.mobwizardry.mixin",
   "compatibilityLevel": "JAVA_17",
+  "refmap": "mobwizardry.refmap.json",
   "minVersion": "0.8",
   "mixins": [
     "MobMagicMixin"
