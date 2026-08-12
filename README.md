@@ -3,7 +3,7 @@
 MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — fully config-driven. No new mobs are added: any vanilla or modded mob becomes a spellcaster when it carries a configured tag.
 
 - **Target:** Minecraft Forge 1.20.1 (47.4.10)
-- **Requires:** Iron's Spells 'n Spellbooks 1.20.1-3.16.2, T.O Magic 'n Extras 6.3.0
+- **Download:** `mobwizardry-1.20.1-1.0.1.jar`
 
 ## How it works
 
@@ -21,19 +21,63 @@ MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — full
 
 ## Installation
 
-1. Make sure these are installed on the **server**:
+1. Make sure the **required** mods are installed on the **server**:
+
+   **Required:**
    - Forge 1.20.1 (47.4.10)
    - Iron's Spells 'n Spellbooks 1.20.1-3.16.2
-   - T.O Magic 'n Extras 6.3.0
-   - (and whatever transitive dependencies your install already carries — e.g. the BielGG Spells Addon if you use it for T.O/cataclysm compatibility)
-2. Drop `mobwizardry-1.0.0.jar` into the server's `mods/` folder.
+   - Iron's Spellbooks' own required libraries (installed automatically with it): geckolib, curios, playeranimator, irons_lib
+
+2. Drop `mobwizardry-1.20.1-1.0.1.jar` into the server's `mods/` folder (the same folder all your other mods live in):
+   ```
+   <server>\mods\mobwizardry-1.20.1-1.0.1.jar
+   ```
 3. Start the server. On first launch the mod writes a default config.
 
 This mod is server-side logic; clients do not need it installed.
 
+### Optional but supported addons
+
+The following spell addons are **not required**, but when installed their spells can be used in presets — just reference their spell IDs in the config. If an addon is missing, its spells are skipped automatically (logged and removed at load), no crash. Each addon's own extra dependencies are the player's responsibility.
+
+| Addon | Notes |
+|---|---|
+| T.O Magic 'n Extras | spells, weapons, bosses (its addons also work) |
+| BielGG's Spells Addon | also fixes T.O / Cataclysm compatibility |
+| Cataclysm: Spellbooks | |
+| GTBC's Geomancy Plus | needs Mowzie's Mobs + GTBC's SpellLib |
+| Hazen 'N Stuff | |
+| Ice and Fire: Spellbooks | needs Ice and Fire: Dragons |
+| Legendary Spellbooks | needs Legendary Monsters |
+| Magic From The East | |
+| Somake Spells | |
+| Wind's Spellbooks | |
+| Apprentice's Codex | |
+
 ## Configuration
 
 File: `config/mobwizardry/presets.json`
+
+### Beginner's guide to the settings
+
+Think of the config as a **list of "wizard job applications"**. Each block is one preset — a set of instructions for turning a creature into a wizard. You can have as many presets as you want; each one has a different tag so it never interferes with the others.
+
+Here is a plain-English explanation of every setting:
+
+- **`targetMobs`** — which creatures are *allowed* to become wizards. Write the mob's ID like `minecraft:zombie`. Add as many as you want.
+- **`requiredTag`** — the magic word that *turns the creature on*. A mob only gets its wizard AI while it carries this tag (you apply the tag with the commands below). Each preset needs a unique tag.
+- **`speed`** — how fast the mob moves while casting. `1.0` is normal walking speed; bigger = faster.
+- **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
+- **`equipment`** — what gear the mob wears. The slot name comes first (`mainhand`, `offhand`, `head`, `chest`, `legs`, `feet`), then the item ID. Equipped items never drop.
+- **`attributes`** — the mob's magic stats. Examples: `irons_spellbooks:max_mana` (mana pool size), `irons_spellbooks:mana_regen` (mana per second), `irons_spellbooks:spell_power` (spell damage multiplier).
+- **`mana`** — how much mana the mob starts with.
+- **`spells`** — its spell kit, split into four categories (see below). Each spell is written as `{ "id": "mod:spell_id", "level": 1 }`.
+
+Spell categories: **`attack`** (cast in combat), **`defense`** (cast under pressure), **`movement`** (cast when positioning / out of range), **`support`** (utility).
+
+### Example config (two presets)
+
+This is exactly the default config the mod writes on first launch — copy it and change the values to taste.
 
 ```json
 {
@@ -53,34 +97,59 @@ File: `config/mobwizardry/presets.json`
     "mana": 100,
     "spells": {
       "attack": [
-        { "id": "traveloptics:halberd_horizon", "level": 4 }
+        { "id": "irons_spellbooks:magic_missile", "level": 1 },
+        { "id": "irons_spellbooks:fireball", "level": 1 }
       ],
       "defense": [
-        { "id": "irons_spellbooks:slow", "level": 3 }
+        { "id": "irons_spellbooks:shield", "level": 1 }
       ],
       "movement": [
-        { "id": "irons_spellbooks:blood_step", "level": 2 }
+        { "id": "irons_spellbooks:blood_step", "level": 1 }
       ],
+      "support": [
+        { "id": "irons_spellbooks:heal", "level": 1 }
+      ]
+    }
+  },
+  "wizard_lite": {
+    "targetMobs": ["minecraft:skeleton"],
+    "requiredTag": "wizard_lite",
+    "speed": 1.1,
+    "castInterval": 80,
+    "equipment": {
+      "mainhand": "irons_spellbooks:blood_staff"
+    },
+    "attributes": {
+      "irons_spellbooks:max_mana": 60,
+      "irons_spellbooks:mana_regen": 2,
+      "irons_spellbooks:spell_power": 1.0
+    },
+    "mana": 60,
+    "spells": {
+      "attack": [
+        { "id": "irons_spellbooks:magic_arrow", "level": 1 }
+      ],
+      "defense": [],
+      "movement": [],
       "support": []
     }
   }
 }
 ```
 
-### Fields
+### Using spells from addon mods
 
-| Field | Type | Description |
-|---|---|---|
-| `targetMobs` | `string[]` | Mob type IDs that may gain wizard AI, e.g. `minecraft:zombie`, `recruits:recruit`. |
-| `requiredTag` | `string` | Entity tag that activates the preset. Mobs only get AI while carrying this tag. |
-| `speed` | `number` | Movement speed multiplier used by the wizard goal. |
-| `castInterval` | `int` | Minimum ticks between spell cast attempts (goal cadence; per-spell cooldowns still apply). |
-| `equipment` | `object` | Slot → item ID. Slots: `mainhand`, `offhand`, `head`, `chest`, `legs`, `feet`. Equipped items never drop. |
-| `attributes` | `object` | Attribute ID → base value overrides, e.g. `irons_spellbooks:max_mana`, `mana_regen`, `spell_power`. |
-| `mana` | `number` | Starting mana for the mob's MagicData. |
-| `spells` | `object` | Spell kits per category. Each entry is `{ "id": "<spell id>", "level": <int> }`. |
+Any installed addon's spells can be used just like Iron's Spellbooks spells — the mod looks them up in the same shared spell list at load time. For example, if you have T.O Magic 'n Extras installed:
 
-Spell categories map to casting conditions handled by Iron's Spellbooks: `attack` (in combat), `defense` (under pressure), `movement` (positioning/out of range), `support` (utility).
+```json
+"spells": {
+  "attack": [
+    { "id": "traveloptics:halberd_horizon", "level": 1 }
+  ]
+}
+```
+
+If the addon isn't installed, that spell is logged as "not found in Iron's Spellbooks registry - removed" and simply skipped — **no crash, no error screen**.
 
 ### Validation on load
 
@@ -103,7 +172,7 @@ Requires permission level 2.
 | `/mobwizardry tag <preset> <targets>` | Adds the preset's required tag to existing entities and fully initializes matching mobs. |
 | `/mobwizardry untag <preset> <targets>` | Removes the tag — the wizard AI deactivates on the next tick. |
 | `/mobwizardry reload` | Re-reads and re-validates `presets.json` without restarting. |
-| `/mobwizardry list` | Lists loaded presets with their spell kits. |
+| `/mobwizardry list` | Lists loaded presets in a readable format. |
 
 ### Examples
 
@@ -131,4 +200,4 @@ Requires permission level 2.
 ## Notes
 
 - `CastSource.MOB` in Iron's Spellbooks does not consume mana or enforce its player cooldown system, so the goal's `castInterval` is the effective cast cadence; per-spell cooldowns are still respected as the source of truth.
-- The `wizard` preset in the default config is an example — copy it and change `requiredTag`, `targetMobs` and spell IDs to taste.
+- The `wizard` and `wizard_lite` presets in the default config are examples — copy them and change `requiredTag`, `targetMobs` and spell IDs to taste.
