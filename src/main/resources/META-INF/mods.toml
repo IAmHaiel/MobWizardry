@@ -75,11 +75,81 @@ description='''${mod_description}'''
     versionRange="[1.20.1-3.16.2,)"
     ordering="AFTER"
     side="SERVER"
-# T.O Magic 'n Extras 6.3.0 - required on the server
+# T.O Magic 'n Extras 6.3.0 - optional; spells usable in presets when installed
 [[dependencies.${mod_id}]]
     modId="traveloptics"
-    mandatory=true
+    mandatory=false
     versionRange="[6.3.0,)"
+    ordering="AFTER"
+    side="SERVER"
+# BielGG's Spells Addon 1.3-hotfix - optional
+[[dependencies.${mod_id}]]
+    modId="bielgg_spells"
+    mandatory=false
+    versionRange="[1.3-hotfix,)"
+    ordering="AFTER"
+    side="SERVER"
+# Cataclysm: Spellbooks 1.2.9 - optional
+[[dependencies.${mod_id}]]
+    modId="cataclysm_spellbooks"
+    mandatory=false
+    versionRange="[1.2.9,)"
+    ordering="AFTER"
+    side="SERVER"
+# GTBC's Geomancy Plus 2.0.0 - optional
+[[dependencies.${mod_id}]]
+    modId="gtbcs_geomancy_plus"
+    mandatory=false
+    versionRange="[2.0.0,)"
+    ordering="AFTER"
+    side="SERVER"
+# Hazen 'N Stuff watered-down-edition-1.1.2 - optional
+[[dependencies.${mod_id}]]
+    modId="hazennstuff"
+    mandatory=false
+    versionRange="[1.1.2,)"
+    ordering="AFTER"
+    side="SERVER"
+# Ice and Fire: Spellbooks 2.3.2 - optional
+[[dependencies.${mod_id}]]
+    modId="ice_and_fire_spellbooks"
+    mandatory=false
+    versionRange="[2.3.2,)"
+    ordering="AFTER"
+    side="SERVER"
+# Legendary Spellbooks 0.3.2-hotfix - optional
+[[dependencies.${mod_id}]]
+    modId="legendary_spellbooks"
+    mandatory=false
+    versionRange="[0.3.2-hotfix,)"
+    ordering="AFTER"
+    side="SERVER"
+# Magic From The East 1.0.0b - optional
+[[dependencies.${mod_id}]]
+    modId="iss_magicfromtheeast"
+    mandatory=false
+    versionRange="[1.0.0b,)"
+    ordering="AFTER"
+    side="SERVER"
+# Somake Spells 1.0.8 - optional
+[[dependencies.${mod_id}]]
+    modId="somakespells"
+    mandatory=false
+    versionRange="[1.0.8,)"
+    ordering="AFTER"
+    side="SERVER"
+# Wind's Spellbooks 1.0.3 - optional
+[[dependencies.${mod_id}]]
+    modId="wind_spellbooks"
+    mandatory=false
+    versionRange="[1.0.3,)"
+    ordering="AFTER"
+    side="SERVER"
+# Apprentice's Codex 0.9.6 - optional
+[[dependencies.${mod_id}]]
+    modId="apprenticecodex"
+    mandatory=false
+    versionRange="[0.9.6,)"
     ordering="AFTER"
     side="SERVER"
 
