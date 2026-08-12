@@ -7,14 +7,12 @@ import com.haylent.mobwizardry.MobWizardryMod;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import com.mojang.logging.LogUtils;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -112,8 +110,47 @@ public class PresetManager
         validateSpellList(name, "movement", preset.spells.movement, preset.castInterval);
         validateSpellList(name, "support", preset.spells.support, preset.castInterval);
 
+        validateEquipment(name, preset);
+        validateAttributes(name, preset);
+
         PRESETS.put(name, preset);
         LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, mobs={})", name, preset.requiredTag, preset.targetMobs);
+    }
+
+    private static void validateEquipment(String presetName, PresetDefinition preset)
+    {
+        preset.equipment.entrySet().removeIf(entry -> {
+            if (entry.getValue() == null || entry.getValue().isBlank())
+            {
+                LOGGER.error("[MobWizardry] Preset '{}' equipment slot '{}' has a blank item id - removed", presetName, entry.getKey());
+                return true;
+            }
+            ResourceLocation rl = ResourceLocation.tryParse(entry.getValue());
+            if (rl == null || !net.minecraftforge.registries.ForgeRegistries.ITEMS.containsKey(rl))
+            {
+                LOGGER.error("[MobWizardry] Preset '{}' equipment slot '{}' references unknown item '{}' - removed", presetName, entry.getKey(), entry.getValue());
+                return true;
+            }
+            return false;
+        });
+    }
+
+    private static void validateAttributes(String presetName, PresetDefinition preset)
+    {
+        preset.attributes.entrySet().removeIf(entry -> {
+            if (entry.getKey() == null || entry.getKey().isBlank())
+            {
+                LOGGER.error("[MobWizardry] Preset '{}' has a blank attribute id - removed", presetName);
+                return true;
+            }
+            ResourceLocation rl = ResourceLocation.tryParse(entry.getKey());
+            if (rl == null || !net.minecraftforge.registries.ForgeRegistries.ATTRIBUTES.containsKey(rl))
+            {
+                LOGGER.error("[MobWizardry] Preset '{}' references unknown attribute '{}' - removed", presetName, entry.getKey());
+                return true;
+            }
+            return false;
+        });
     }
 
     private static void validateSpellList(String presetName, String category, java.util.List<PresetDefinition.SpellEntry> entries, int castInterval)
@@ -160,8 +197,14 @@ public class PresetManager
                     "speed": 1.15,
                     "castInterval": 60,
                     "equipment": {
-                      "mainhand": "irons_spellbooks:wizards_staff"
+                      "mainhand": "irons_spellbooks:blood_staff"
                     },
+                    "attributes": {
+                      "irons_spellbooks:max_mana": 100,
+                      "irons_spellbooks:mana_regen": 3,
+                      "irons_spellbooks:spell_power": 1.5
+                    },
+                    "mana": 100,
                     "spells": {
                       "attack": [
                         { "id": "traveloptics:halberd_horizon", "level": 4 }

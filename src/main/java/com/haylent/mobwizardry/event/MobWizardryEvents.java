@@ -1,6 +1,7 @@
 package com.haylent.mobwizardry.event;
 
 import com.haylent.mobwizardry.ai.WizardAiGoal;
+import com.haylent.mobwizardry.ai.WizardMobInit;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.mojang.logging.LogUtils;
@@ -33,6 +34,11 @@ public class MobWizardryEvents
             {
                 continue;
             }
+            if (!mob.getTags().contains(preset.requiredTag))
+            {
+                continue;
+            }
+            WizardMobInit.apply(mob, preset);
             WizardAiGoal.tryApply(mob, preset);
         }
     }
