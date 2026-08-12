@@ -40,19 +40,19 @@ This mod is server-side logic; clients do not need it installed.
 
 The following spell addons are **not required**, but when installed their spells can be used in presets — just reference their spell IDs in the config. If an addon is missing, its spells are skipped automatically (logged and removed at load), no crash. Each addon's own extra dependencies are the player's responsibility.
 
-| Addon | Notes |
-|---|---|
-| T.O Magic 'n Extras | spells, weapons, bosses (its addons also work) |
-| BielGG's Spells Addon | also fixes T.O / Cataclysm compatibility |
-| Cataclysm: Spellbooks | |
-| GTBC's Geomancy Plus | needs Mowzie's Mobs + GTBC's SpellLib |
-| Hazen 'N Stuff | |
-| Ice and Fire: Spellbooks | needs Ice and Fire: Dragons |
-| Legendary Spellbooks | needs Legendary Monsters |
-| Magic From The East | |
-| Somake Spells | |
-| Wind's Spellbooks | |
-| Apprentice's Codex | |
+| Addon | Tested version | Notes |
+|---|---|---|
+| T.O Magic 'n Extras | 6.3.0 | spells, weapons, bosses (its addons also work) |
+| BielGG's Spells Addon | 1.3-hotfix | also fixes T.O / Cataclysm compatibility |
+| Cataclysm: Spellbooks | 1.2.9 | |
+| GTBC's Geomancy Plus | 2.0.0 | needs Mowzie's Mobs + GTBC's SpellLib |
+| Hazen 'N Stuff | 1.1.2 (watered-down-edition) | |
+| Ice and Fire: Spellbooks | 2.3.2 | needs Ice and Fire: Dragons |
+| Legendary Spellbooks | 0.3.2-hotfix | needs Legendary Monsters |
+| Magic From The East | 1.0.0b | |
+| Somake Spells | 1.0.8 | |
+| Wind's Spellbooks | 1.0.3 | |
+| Apprentice's Codex | 0.9.6 | |
 
 ## Configuration
 
