@@ -92,8 +92,21 @@ public class PresetManager
         validateEquipment(name, preset);
         validateAttributes(name, preset);
 
+        Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
+        if (maxManaAttr != null && maxManaAttr > 0 && preset.mana > maxManaAttr)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has starting mana ({}) higher than its max_mana attribute ({}) - starting mana will be capped at max_mana", name, preset.mana, maxManaAttr);
+        }
+
+        String manaInfo = preset.mana > 0
+                ? "starting mana=" + preset.mana
+                : "starting mana=full (mana omitted)";
+        if (maxManaAttr != null)
+        {
+            manaInfo += ", max_mana=" + maxManaAttr;
+        }
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={})", name, preset.requiredTag);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, {})", name, preset.requiredTag, manaInfo);
     }
 
     private static void validateEquipment(String presetName, PresetDefinition preset)

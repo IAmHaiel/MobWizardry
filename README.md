@@ -68,7 +68,7 @@ Here is a plain-English explanation of every setting:
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
 - **`equipment`** — what gear the mob wears. The slot name comes first (`mainhand`, `offhand`, `head`, `chest`, `legs`, `feet`), then the item ID. Equipped items never drop.
 - **`attributes`** — the mob's magic stats. Examples: `irons_spellbooks:max_mana` (mana pool size), `irons_spellbooks:mana_regen` (mana per second), `irons_spellbooks:spell_power` (spell damage multiplier).
-- **`mana`** — how much mana the mob starts with.
+- **`mana`** — how much mana the mob **starts with** when spawned or tagged (see "Mana explained" below).
 - **`spells`** — its spell kit, split into four categories (see below). Each spell is written as `{ "id": "mod:spell_id", "level": 1 }`.
 
 Spell categories:
@@ -76,6 +76,20 @@ Spell categories:
 - **`defense`** — cast only while the caster is actually **being attacked** (recently hurt). Tip: any spell works here — put `irons_spellbooks:shield` for a classic barrier, or put an offensive spell like `irons_spellbooks:fireball` to make the caster retaliate when it gets hit.
 - **`movement`** — cast when the target is **far away / out of spell range** to close the gap (e.g. `irons_spellbooks:blood_step`, `irons_spellbooks:teleport`).
 - **`support`** — self-aid spells, cast when the caster is hurt, has very low mana, or is below half health. Good options: `irons_spellbooks:heal`, `irons_spellbooks:greater_heal` (health), `irons_spellbooks:fortify` (armor), `irons_spellbooks:charge` (speed), `irons_spellbooks:heartstop`. Note: there is no "mana regen" spell in Iron's Spells 'n Spellbooks — mana recovery is the `irons_spellbooks:mana_regen` attribute, so give a support caster that attribute as well.
+
+### Mana explained
+
+Two settings control mana, and they mean different things:
+
+- **`mana`** = **starting / current mana** — how full the caster's mana bar is when it spawns or gets tagged. `100` starts the caster with 100 mana.
+- **`irons_spellbooks:max_mana`** (an attribute under `attributes`) = **the mana pool's size** — the cap that mana regeneration fills toward.
+
+Rules:
+- If `mana` is **omitted** (or `0`), the caster starts with a **full pool** (its `max_mana` value), so it never spawns empty.
+- If `mana` is **higher than** `max_mana`, it is **capped** to `max_mana` at spawn and a warning is printed to the log.
+- `mana` only sets the *starting* amount; regeneration is governed by the `irons_spellbooks:mana_regen` attribute.
+
+Example: a caster with `"max_mana": 100` and `"mana": 30` spawns with 30/100 mana and regenerates back up to 100 over time.
 
 ### Example config (two presets)
 

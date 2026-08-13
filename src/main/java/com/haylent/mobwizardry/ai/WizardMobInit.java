@@ -83,12 +83,16 @@ public class WizardMobInit
 
     private static void applyMana(PathfinderMob mob, PresetDefinition preset)
     {
-        if (preset.mana <= 0)
-        {
-            return;
-        }
         MagicData magicData = MagicData.getPlayerMagicData((LivingEntity) mob);
-        magicData.setMana(preset.mana);
+        float maxMana = (float) mob.getAttributeValue(io.redspace.ironsspellbooks.api.registry.AttributeRegistry.MAX_MANA.get());
+        if (preset.mana > 0)
+        {
+            magicData.setMana(Math.min(preset.mana, maxMana));
+        }
+        else
+        {
+            magicData.setMana(Math.max(0.0f, maxMana));
+        }
     }
 
     public static EquipmentSlot parseSlot(String name)
