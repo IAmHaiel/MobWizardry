@@ -68,7 +68,6 @@ Here is a plain-English explanation of every setting:
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
 - **`equipment`** — what gear the mob wears. The slot name comes first (`mainhand`, `offhand`, `head`, `chest`, `legs`, `feet`), then the item ID. Equipped items never drop.
 - **`attributes`** — the mob's magic stats. Examples: `irons_spellbooks:max_mana` (mana pool size), `irons_spellbooks:mana_regen` (mana per second), `irons_spellbooks:spell_power` (spell damage multiplier).
-- **`mana`** — how much mana the mob **starts with** when spawned or tagged (see "Mana explained" below).
 - **`spells`** — its spell kit, split into four categories (see below). Each spell is written as `{ "id": "mod:spell_id", "level": 1 }`.
 
 Spell categories:
@@ -79,17 +78,9 @@ Spell categories:
 
 ### Mana explained
 
-Two settings control mana, and they mean different things:
+**Mobs don't spend mana to cast.** MobWizardry casts with Iron's Spellbooks' `CastSource.MOB`, which bypasses mana costs and cooldowns entirely — a wizard can keep casting regardless of its mana bar, and there is **no `mana` config field** for presets (it was removed).
 
-- **`mana`** = **starting / current mana** — how full the caster's mana bar is when it spawns or gets tagged. `100` starts the caster with 100 mana.
-- **`irons_spellbooks:max_mana`** (an attribute under `attributes`) = **the mana pool's size** — the cap that mana regeneration fills toward.
-
-Rules:
-- If `mana` is **omitted** (or `0`), the caster starts with a **full pool** (its `max_mana` value), so it never spawns empty.
-- If `mana` is **higher than** `max_mana`, it is **capped** to `max_mana` at spawn and a warning is printed to the log.
-- `mana` only sets the *starting* amount; regeneration is governed by the `irons_spellbooks:mana_regen` attribute.
-
-Example: a caster with `"max_mana": 100` and `"mana": 30` spawns with 30/100 mana and regenerates back up to 100 over time.
+The `irons_spellbooks:max_mana` and `irons_spellbooks:mana_regen` attributes are still accepted under `attributes` — they control the mana pool size and regeneration for things that do read mana (e.g. displays, or if you give the mob a spellbook), but they never gate casting.
 
 ### Example config (two presets)
 
@@ -109,7 +100,6 @@ This is exactly the default config the mod writes on first launch — copy it an
       "irons_spellbooks:mana_regen": 3,
       "irons_spellbooks:spell_power": 1.5
     },
-    "mana": 100,
     "spells": {
       "attack": [
         { "id": "irons_spellbooks:magic_missile", "level": 1 },
@@ -138,7 +128,6 @@ This is exactly the default config the mod writes on first launch — copy it an
       "irons_spellbooks:mana_regen": 2,
       "irons_spellbooks:spell_power": 1.0
     },
-    "mana": 60,
     "spells": {
       "attack": [
         { "id": "irons_spellbooks:magic_arrow", "level": 1 }

@@ -73,19 +73,12 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     protected int getSupportWeight()
     {
         float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
-        io.redspace.ironsspellbooks.api.magic.MagicData magicData = io.redspace.ironsspellbooks.api.magic.MagicData.getPlayerMagicData(mob);
-        float maxMana = (float) mob.getAttributeValue(io.redspace.ironsspellbooks.api.registry.AttributeRegistry.MAX_MANA.get());
-        float manaFrac = maxMana > 0 ? magicData.getMana() / maxMana : 1.0f;
         boolean hurt = recentlyAttacked();
-        if (!hurt && manaFrac >= 0.3f && hpRatio >= 0.5f)
+        if (!hurt && hpRatio >= 0.5f)
         {
             return -1000;
         }
         int weight = -15 + (int) (300.0f * (1.0f - hpRatio));
-        if (manaFrac < 0.3f)
-        {
-            weight += 150;
-        }
         if (hurt)
         {
             weight += 60;

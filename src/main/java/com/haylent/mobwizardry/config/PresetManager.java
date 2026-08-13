@@ -84,29 +84,18 @@ public class PresetManager
             return;
         }
 
-        validateSpellList(name, "attack", preset.spells.attack, preset.castInterval, preset.mana);
-        validateSpellList(name, "defense", preset.spells.defense, preset.castInterval, preset.mana);
-        validateSpellList(name, "movement", preset.spells.movement, preset.castInterval, preset.mana);
-        validateSpellList(name, "support", preset.spells.support, preset.castInterval, preset.mana);
+        validateSpellList(name, "attack", preset.spells.attack, preset.castInterval);
+        validateSpellList(name, "defense", preset.spells.defense, preset.castInterval);
+        validateSpellList(name, "movement", preset.spells.movement, preset.castInterval);
+        validateSpellList(name, "support", preset.spells.support, preset.castInterval);
 
         validateEquipment(name, preset);
         validateAttributes(name, preset);
 
         Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
-        if (maxManaAttr != null && maxManaAttr > 0 && preset.mana > maxManaAttr)
-        {
-            LOGGER.warn("[MobWizardry] Preset '{}' has starting mana ({}) higher than its max_mana attribute ({}) - starting mana will be capped at max_mana", name, preset.mana, maxManaAttr);
-        }
-
-        String manaInfo = preset.mana > 0
-                ? "starting mana=" + preset.mana
-                : "starting mana=full (mana omitted)";
-        if (maxManaAttr != null)
-        {
-            manaInfo += ", max_mana=" + maxManaAttr;
-        }
+        String manaInfo = maxManaAttr != null ? ", max_mana=" + maxManaAttr : "";
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, {})", name, preset.requiredTag, manaInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{})", name, preset.requiredTag, manaInfo);
     }
 
     private static void validateEquipment(String presetName, PresetDefinition preset)
@@ -145,7 +134,7 @@ public class PresetManager
         });
     }
 
-    private static void validateSpellList(String presetName, String category, java.util.List<PresetDefinition.SpellEntry> entries, int castInterval, float presetMana)
+    private static void validateSpellList(String presetName, String category, java.util.List<PresetDefinition.SpellEntry> entries, int castInterval)
     {
         entries.removeIf(entry -> {
             if (entry.id == null || entry.id.isBlank())
@@ -171,16 +160,11 @@ public class PresetManager
                 entry.level = Math.max(1, Math.min(spell.getMaxLevel(), entry.level));
             }
             int cooldownTicks = spell.getSpellCooldown();
-            int manaCost = spell.getManaCost(entry.level);
             if (cooldownTicks > castInterval)
             {
                 LOGGER.warn("[MobWizardry] Preset '{}' {} spell '{}' has an intrinsic cooldown of {} ticks, longer than castInterval {} - spell will be cast less often than intended", presetName, category, entry.id, cooldownTicks, castInterval);
             }
-            if (presetMana > 0 && manaCost > presetMana)
-            {
-                LOGGER.warn("[MobWizardry] Preset '{}' {} spell '{}' costs {} mana at level {}, but preset mana is {} - mob may not have enough mana to cast", presetName, category, entry.id, manaCost, entry.level, presetMana);
-            }
-            LOGGER.info("[MobWizardry] Preset '{}' {} spell '{}' (level {}) cooldown={}t mana={}", presetName, category, entry.id, entry.level, cooldownTicks, manaCost);
+            LOGGER.info("[MobWizardry] Preset '{}' {} spell '{}' (level {}) cooldown={}t", presetName, category, entry.id, entry.level, cooldownTicks);
             return false;
         });
     }
@@ -201,7 +185,6 @@ public class PresetManager
                       "irons_spellbooks:mana_regen": 3,
                       "irons_spellbooks:spell_power": 1.5
                     },
-                    "mana": 100,
                     "spells": {
                       "attack": [
                         { "id": "irons_spellbooks:magic_missile", "level": 1 },
@@ -230,7 +213,6 @@ public class PresetManager
                       "irons_spellbooks:mana_regen": 2,
                       "irons_spellbooks:spell_power": 1.0
                     },
-                    "mana": 60,
                     "spells": {
                       "attack": [
                         { "id": "irons_spellbooks:magic_arrow", "level": 1 }

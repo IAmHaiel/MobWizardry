@@ -447,8 +447,6 @@ public class MobWizardryCommands
         root.append(Component.literal(String.valueOf(p.speed)).withStyle(ChatFormatting.WHITE));
         root.append(Component.literal(" | Cast interval: ").withStyle(ChatFormatting.GRAY));
         root.append(Component.literal(String.valueOf(p.castInterval)).withStyle(ChatFormatting.WHITE));
-        root.append(Component.literal(" | Mana: ").withStyle(ChatFormatting.GRAY));
-        root.append(Component.literal(String.valueOf(p.mana)).withStyle(ChatFormatting.WHITE));
         if (!p.equipment.isEmpty())
         {
             root.append(Component.literal("\n  Equipment: ").withStyle(ChatFormatting.GRAY));

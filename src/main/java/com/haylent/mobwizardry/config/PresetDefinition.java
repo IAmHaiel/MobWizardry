@@ -12,7 +12,6 @@ public class PresetDefinition
     public int castInterval = 60;
     public Map<String, String> equipment = new HashMap<>();
     public Map<String, Double> attributes = new HashMap<>();
-    public float mana = 0.0f;
     public Spells spells = new Spells();
 
     public static class Spells

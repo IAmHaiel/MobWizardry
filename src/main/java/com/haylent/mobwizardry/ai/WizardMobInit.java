@@ -83,16 +83,10 @@ public class WizardMobInit
 
     private static void applyMana(PathfinderMob mob, PresetDefinition preset)
     {
+        // Mob casting is free (CastSource.MOB bypasses mana costs), so just keep the mana bar full.
         MagicData magicData = MagicData.getPlayerMagicData((LivingEntity) mob);
         float maxMana = (float) mob.getAttributeValue(io.redspace.ironsspellbooks.api.registry.AttributeRegistry.MAX_MANA.get());
-        if (preset.mana > 0)
-        {
-            magicData.setMana(Math.min(preset.mana, maxMana));
-        }
-        else
-        {
-            magicData.setMana(Math.max(0.0f, maxMana));
-        }
+        magicData.setMana(Math.max(0.0f, maxMana));
     }
 
     public static EquipmentSlot parseSlot(String name)
