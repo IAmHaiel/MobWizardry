@@ -5,11 +5,9 @@ import com.haylent.mobwizardry.ai.WizardMobInit;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.mojang.logging.LogUtils;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
 public class MobWizardryEvents
@@ -30,10 +28,6 @@ public class MobWizardryEvents
 
         for (PresetDefinition preset : PresetManager.getPresets().values())
         {
-            if (!matchesTargetMob(mob, preset))
-            {
-                continue;
-            }
             if (!mob.getTags().contains(preset.requiredTag))
             {
                 continue;
@@ -41,15 +35,5 @@ public class MobWizardryEvents
             WizardMobInit.apply(mob, preset);
             WizardAiGoal.tryApply(mob, preset);
         }
-    }
-
-    private boolean matchesTargetMob(PathfinderMob mob, PresetDefinition preset)
-    {
-        ResourceLocation mobId = ForgeRegistries.ENTITY_TYPES.getKey(mob.getType());
-        if (mobId == null)
-        {
-            return false;
-        }
-        return preset.targetMobs.contains(mobId.toString());
     }
 }

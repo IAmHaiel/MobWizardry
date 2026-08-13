@@ -91,7 +91,7 @@ public class WizardMobInit
         magicData.setMana(preset.mana);
     }
 
-    private static EquipmentSlot parseSlot(String name)
+    public static EquipmentSlot parseSlot(String name)
     {
         return switch (name.toLowerCase())
         {

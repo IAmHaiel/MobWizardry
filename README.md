@@ -8,12 +8,11 @@ MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — full
 ## How it works
 
 1. Each preset in `config/mobwizardry/presets.json` defines:
-   - which mob types it applies to (`targetMobs`)
    - the entity tag that activates it (`requiredTag`)
    - movement speed and cast cadence
    - equipment, attribute overrides and starting mana
    - attack / defense / movement / support spell kits
-2. When a matching mob joins the world carrying the required tag, MobWizardry:
+2. When a mob joins the world carrying the required tag, MobWizardry:
    - equips the configured gear and sets attributes/mana,
    - attaches a real Iron's Spellbooks `WizardAttackGoal` (wrapped behind a live tag check),
    - lets the mob cast its kit under the appropriate conditions.
@@ -64,8 +63,7 @@ Think of the config as a **list of "wizard job applications"**. Each block is on
 
 Here is a plain-English explanation of every setting:
 
-- **`targetMobs`** — which creatures are *allowed* to become wizards. Write the mob's ID like `minecraft:zombie`. Add as many as you want.
-- **`requiredTag`** — the magic word that *turns the creature on*. A mob only gets its wizard AI while it carries this tag (you apply the tag with the commands below). Each preset needs a unique tag.
+- **`requiredTag`** — the magic word that *turns the creature on*. A mob only gets its wizard AI while it carries this tag (you apply the tag with the commands below). Each preset needs a unique tag. The mob type is chosen at summon time — the preset itself is not limited to any creature type.
 - **`speed`** — how fast the mob moves while casting. `1.0` is normal walking speed; bigger = faster.
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
 - **`equipment`** — what gear the mob wears. The slot name comes first (`mainhand`, `offhand`, `head`, `chest`, `legs`, `feet`), then the item ID. Equipped items never drop.
@@ -82,7 +80,6 @@ This is exactly the default config the mod writes on first launch — copy it an
 ```json
 {
   "wizard": {
-    "targetMobs": ["minecraft:zombie"],
     "requiredTag": "wizard",
     "speed": 1.15,
     "castInterval": 60,
@@ -112,7 +109,6 @@ This is exactly the default config the mod writes on first launch — copy it an
     }
   },
   "wizard_lite": {
-    "targetMobs": ["minecraft:skeleton"],
     "requiredTag": "wizard_lite",
     "speed": 1.1,
     "castInterval": 80,
@@ -155,7 +151,7 @@ If the addon isn't installed, that spell is logged as "not found in Iron's Spell
 
 At server start (and on `/mobwizardry reload`) every entry is validated against the real registries:
 
-- unknown mob types, spell IDs, item IDs or attribute IDs are logged and removed,
+- unknown spell IDs, item IDs or attribute IDs are logged and removed,
 - spell levels are clamped to the spell's max level,
 - a warning is logged when a spell's intrinsic cooldown exceeds `castInterval`,
 - a warning is logged when a spell's mana cost exceeds the preset `mana`.
@@ -168,11 +164,11 @@ Requires permission level 2.
 
 | Command | Description |
 |---|---|
-| `/mobwizardry summon <preset> <mobType> [pos]` | Spawns a mob of `<mobType>` with the preset applied (tag, equipment, mana, wizard AI) immediately. |
+| `/mobwizardry summon <preset> <mobType> [pos]` | Spawns a mob of `<mobType>` with the preset applied (tag, equipment, mana, wizard AI) immediately. The mob type is not restricted by the preset. |
 | `/mobwizardry tag <preset> <targets>` | Adds the preset's required tag to existing entities and fully initializes matching mobs. |
 | `/mobwizardry untag <preset> <targets>` | Removes the tag — the wizard AI deactivates on the next tick. |
 | `/mobwizardry reload` | Re-reads and re-validates `presets.json` without restarting. |
-| `/mobwizardry list` | Lists loaded presets in a readable format. |
+| `/mobwizardry list [page]` | Lists loaded presets in a readable, colored format — 5 per page, with clickable previous/next arrows. |
 
 ### Examples
 
@@ -183,6 +179,7 @@ Requires permission level 2.
 /mobwizardry untag wizard @e[type=minecraft:zombie]
 /mobwizardry reload
 /mobwizardry list
+/mobwizardry list 2
 ```
 
 ## Testing your preset in-game
@@ -200,4 +197,4 @@ Requires permission level 2.
 ## Notes
 
 - `CastSource.MOB` in Iron's Spellbooks does not consume mana or enforce its player cooldown system, so the goal's `castInterval` is the effective cast cadence; per-spell cooldowns are still respected as the source of truth.
-- The `wizard` and `wizard_lite` presets in the default config are examples — copy them and change `requiredTag`, `targetMobs` and spell IDs to taste.
+- The `wizard` and `wizard_lite` presets in the default config are examples — copy them and change `requiredTag` and spell IDs to taste.

@@ -7,7 +7,6 @@ import java.util.Map;
 
 public class PresetDefinition
 {
-    public List<String> targetMobs = new ArrayList<>();
     public String requiredTag = "";
     public double speed = 1.0;
     public int castInterval = 60;

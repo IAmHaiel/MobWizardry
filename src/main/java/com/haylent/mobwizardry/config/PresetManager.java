@@ -84,27 +84,6 @@ public class PresetManager
             return;
         }
 
-        preset.targetMobs.removeIf(mobId -> {
-            if (mobId == null || mobId.isBlank())
-            {
-                LOGGER.error("[MobWizardry] Preset '{}' has a blank targetMobs entry - removed", name);
-                return true;
-            }
-            ResourceLocation rl = ResourceLocation.tryParse(mobId);
-            if (rl == null || !net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.containsKey(rl))
-            {
-                LOGGER.error("[MobWizardry] Preset '{}' references unknown mob type '{}' - removed", name, mobId);
-                return true;
-            }
-            return false;
-        });
-
-        if (preset.targetMobs.isEmpty())
-        {
-            LOGGER.error("[MobWizardry] Preset '{}' has no valid targetMobs - preset will not activate.", name);
-            return;
-        }
-
         validateSpellList(name, "attack", preset.spells.attack, preset.castInterval, preset.mana);
         validateSpellList(name, "defense", preset.spells.defense, preset.castInterval, preset.mana);
         validateSpellList(name, "movement", preset.spells.movement, preset.castInterval, preset.mana);
@@ -114,7 +93,7 @@ public class PresetManager
         validateAttributes(name, preset);
 
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, mobs={})", name, preset.requiredTag, preset.targetMobs);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={})", name, preset.requiredTag);
     }
 
     private static void validateEquipment(String presetName, PresetDefinition preset)
@@ -198,7 +177,6 @@ public class PresetManager
         return """
                 {
                   "wizard": {
-                    "targetMobs": ["minecraft:zombie"],
                     "requiredTag": "wizard",
                     "speed": 1.15,
                     "castInterval": 60,
@@ -228,7 +206,6 @@ public class PresetManager
                     }
                   },
                   "wizard_lite": {
-                    "targetMobs": ["minecraft:skeleton"],
                     "requiredTag": "wizard_lite",
                     "speed": 1.1,
                     "castInterval": 80,
