@@ -32,7 +32,7 @@ public class WizardAiGoal extends Goal
     {
         this.mob = mob;
         this.preset = preset;
-        this.inner = new WizardAttackGoal((IMagicEntity) mob, preset.speed, preset.castInterval, preset.castInterval * 2)
+        this.inner = new MobWizardryAttackGoal((IMagicEntity) mob, preset.speed, preset.castInterval, preset.castInterval * 2)
                 .setSpells(
                         resolveSpells(preset.spells.attack),
                         resolveSpells(preset.spells.defense),
