@@ -40,6 +40,35 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         return weight + 30;
     }
 
+    @Override
+    protected int getMovementWeight()
+    {
+        if (target == null)
+        {
+            return 0;
+        }
+        double distSqr = mob.distanceToSqr(target.getX(), target.getY(), target.getZ());
+        double range = Math.sqrt(spellcastingRangeSqr);
+        double distance = Math.sqrt(distSqr);
+        int weight = 0;
+        if (distance > range)
+        {
+            weight += 200 + (int) (100.0 * Math.min((distance - range) / range, 2.0));
+        }
+        else if (distance > range * 0.75)
+        {
+            weight += (int) (80.0 * (distance - range * 0.75) / (range * 0.25));
+        }
+        if (!hasLineOfSight)
+        {
+            weight += 80;
+        }
+        double distRatio = net.minecraft.util.Mth.clamp(distSqr / spellcastingRangeSqr, 0.0, 1.0);
+        float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
+        weight += (int) (400.0f * (1.0f - hpRatio) * (1.0f - hpRatio) * (float) (1.0 - distRatio) * (float) (1.0 - distRatio));
+        return weight;
+    }
+
     private boolean recentlyAttacked()
     {
         return mob.hurtTime > 0
