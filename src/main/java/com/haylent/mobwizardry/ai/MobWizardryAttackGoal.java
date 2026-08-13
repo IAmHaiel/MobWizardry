@@ -2,11 +2,16 @@ package com.haylent.mobwizardry.ai;
 
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.entity.mobs.goals.WizardAttackGoal;
+import net.minecraft.util.Mth;
 
 /**
  * Extends Iron's Spellbooks' {@link WizardAttackGoal} to fix the AI's category selection
- * weights for tagged mobs. Defense spells only fire while the caster has actually been
- * attacked recently, instead of whenever its health is low.
+ * weights for tagged mobs:
+ * <ul>
+ *   <li>defense only fires while the caster was recently attacked (not just at low health);</li>
+ *   <li>movement fires when the target is far / out of spell range;</li>
+ *   <li>support fires when hurt, below half health, or low on mana.</li>
+ * </ul>
  */
 public class MobWizardryAttackGoal extends WizardAttackGoal
 {
@@ -63,7 +68,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         {
             weight += 80;
         }
-        double distRatio = net.minecraft.util.Mth.clamp(distSqr / spellcastingRangeSqr, 0.0, 1.0);
+        double distRatio = Mth.clamp(distSqr / spellcastingRangeSqr, 0.0, 1.0);
         float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
         weight += (int) (400.0f * (1.0f - hpRatio) * (1.0f - hpRatio) * (float) (1.0 - distRatio) * (float) (1.0 - distRatio));
         return weight;
@@ -93,3 +98,4 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
                 && mob.tickCount - mob.getLastHurtByMobTimestamp() <= DEFENSE_WINDOW_TICKS);
     }
 }
+

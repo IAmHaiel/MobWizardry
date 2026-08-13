@@ -3,14 +3,22 @@
 MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — fully config-driven. No new mobs are added: any vanilla or modded mob becomes a spellcaster when it carries a configured tag.
 
 - **Target:** Minecraft Forge 1.20.1 (47.4.10)
-- **Download:** `mobwizardry-1.20.1-1.0.1.jar`
+- **Download:** `mobwizardry-1.20.1-1.0.2.jar`
+
+## What's new in 1.0.2
+
+- **Smarter AI behavior:** defense spells now only fire while the caster is actually being attacked; movement spells fire when the target is far / out of spell range; support spells fire when the caster is hurt or below half health. The wizard AI also runs at a higher goal priority, so tagged mobs cast spells instead of falling back to vanilla melee.
+- **New admin commands:** `/mobwizardry wizardify <preset> [radius] [pos]` and `/mobwizardry unwizardify <preset> [radius] [pos]` turn whole groups of mobs into wizards (or back) at once.
+- **Command improvements:** tab-completion for presets/mobs/pages, colored paginated `/mobwizardry list`, safer `summon` (validates the mob can cast, warns on mismatched equipment, never spawns inside a block).
+- **Config simplification:** presets no longer define `targetMobs` (the mob is chosen per command) and no longer need a `mana` field — mobs cast for free.
+- **Cleaner config load:** effective values are logged per preset, and bad entries are removed with clear messages.
 
 ## How it works
 
 1. Each preset in `config/mobwizardry/presets.json` defines:
    - the entity tag that activates it (`requiredTag`)
    - movement speed and cast cadence
-   - equipment, attribute overrides and starting mana
+   - equipment, attribute overrides and a full mana pool
    - attack / defense / movement / support spell kits
 2. When a mob joins the world carrying the required tag, MobWizardry:
    - equips the configured gear and sets attributes/mana,
@@ -27,9 +35,9 @@ MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — full
    - Iron's Spells 'n Spellbooks 1.20.1-3.16.2
    - Iron's Spellbooks' own required libraries (installed automatically with it): geckolib, curios, playeranimator, irons_lib
 
-2. Drop `mobwizardry-1.20.1-1.0.1.jar` into the server's `mods/` folder (the same folder all your other mods live in):
+2. Drop `mobwizardry-1.20.1-1.0.2.jar` into the server's `mods/` folder (the same folder all your other mods live in):
    ```
-   <server>\mods\mobwizardry-1.20.1-1.0.1.jar
+   <server>\mods\mobwizardry-1.20.1-1.0.2.jar
    ```
 3. Start the server. On first launch the mod writes a default config.
 
@@ -74,13 +82,13 @@ Spell categories:
 - **`attack`** — cast in combat against the target.
 - **`defense`** — cast only while the caster is actually **being attacked** (recently hurt). Tip: any spell works here — put `irons_spellbooks:shield` for a classic barrier, or put an offensive spell like `irons_spellbooks:fireball` to make the caster retaliate when it gets hit.
 - **`movement`** — cast when the target is **far away / out of spell range** to close the gap (e.g. `irons_spellbooks:blood_step`, `irons_spellbooks:teleport`).
-- **`support`** — self-aid spells, cast when the caster is hurt, has very low mana, or is below half health. Good options: `irons_spellbooks:heal`, `irons_spellbooks:greater_heal` (health), `irons_spellbooks:fortify` (armor), `irons_spellbooks:charge` (speed), `irons_spellbooks:heartstop`. Note: there is no "mana regen" spell in Iron's Spells 'n Spellbooks — mana recovery is the `irons_spellbooks:mana_regen` attribute, so give a support caster that attribute as well.
+- **`support`** — self-aid spells, cast when the caster is hurt or below half health. Good options: `irons_spellbooks:heal`, `irons_spellbooks:greater_heal` (health), `irons_spellbooks:fortify` (armor), `irons_spellbooks:charge` (speed), `irons_spellbooks:heartstop`. Note: there is no "mana regen" spell in Iron's Spells 'n Spellbooks — mana recovery is the `irons_spellbooks:mana_regen` attribute, so give a support caster that attribute as well.
 
 ### Mana explained
 
 **Mobs don't spend mana to cast.** MobWizardry casts with Iron's Spellbooks' `CastSource.MOB`, which bypasses mana costs and cooldowns entirely — a wizard can keep casting regardless of its mana bar, and there is **no `mana` config field** for presets (it was removed).
 
-The `irons_spellbooks:max_mana` and `irons_spellbooks:mana_regen` attributes are still accepted under `attributes` — they control the mana pool size and regeneration for things that do read mana (e.g. displays, or if you give the mob a spellbook), but they never gate casting.
+The `irons_spellbooks:max_mana` and `irons_spellbooks:mana_regen` attributes are still accepted under `attributes` — they control the mana pool size and regeneration for anything that does read mana, but they never gate casting.
 
 ### Example config (two presets)
 
@@ -160,8 +168,7 @@ At server start (and on `/mobwizardry reload`) every entry is validated against 
 
 - unknown spell IDs, item IDs or attribute IDs are logged and removed,
 - spell levels are clamped to the spell's max level,
-- a warning is logged when a spell's intrinsic cooldown exceeds `castInterval`,
-- a warning is logged when a spell's mana cost exceeds the preset `mana`.
+- a warning is logged when a spell's intrinsic cooldown exceeds `castInterval`.
 
 Invalid presets fail loudly in the log instead of silently doing nothing.
 
@@ -171,10 +178,10 @@ Requires permission level 2.
 
 | Command | Description |
 |---|---|
-| `/mobwizardry summon <preset> <mobType> [pos]` | Spawns a mob of `<mobType>` with the preset applied (tag, equipment, mana, wizard AI) immediately. The mob type is not restricted by the preset. |
+| `/mobwizardry summon <preset> <mobType> [pos]` | Spawns a mob of `<mobType>` with the preset applied (tag, equipment, attributes, wizard AI) immediately. The mob type is not restricted by the preset. |
 | `/mobwizardry tag <preset> <targets>` | Adds the preset's required tag to existing entities and fully initializes matching mobs. |
 | `/mobwizardry untag <preset> <targets>` | Removes the tag — the wizard AI deactivates on the next tick. |
-| `/mobwizardry wizardify <preset> [radius] [pos]` | Turns every mob within `radius` (1–64, default 16) of you (or of `pos`) into wizards — tag, equipment, mana and wizard AI. Non-mob entities in range are skipped and reported. |
+| `/mobwizardry wizardify <preset> [radius] [pos]` | Turns every mob within `radius` (1–64, default 16) of you (or of `pos`) into wizards — tag, equipment, attributes and wizard AI. Non-mob entities in range are skipped and reported. |
 | `/mobwizardry unwizardify <preset> [radius] [pos]` | Removes the tag from all wizards in range — their AI deactivates on the next tick. |
 | `/mobwizardry reload` | Re-reads and re-validates `presets.json` without restarting. |
 | `/mobwizardry list [page]` | Lists loaded presets in a readable, colored format — 5 per page, with clickable previous/next arrows. |
@@ -201,8 +208,9 @@ Requires permission level 2.
 3. Spawn one: `/mobwizardry summon <preset> minecraft:zombie`
 4. Observe the mob:
    - **attack** spells cast while it has a target in range,
-   - **defense** spells cast under pressure,
-   - **movement** spells cast when repositioning / out of range,
+   - **defense** spells cast while it is being attacked,
+   - **movement** spells cast when the target is far / out of range,
+   - **support** spells cast when it is hurt or below half health,
    - cooldowns match the spell's own configured values.
 5. Tweak `presets.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 

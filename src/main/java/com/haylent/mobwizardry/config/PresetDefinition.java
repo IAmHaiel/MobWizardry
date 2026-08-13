@@ -1,5 +1,7 @@
 package com.haylent.mobwizardry.config;
 
+import net.minecraft.world.entity.EquipmentSlot;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +15,20 @@ public class PresetDefinition
     public Map<String, String> equipment = new HashMap<>();
     public Map<String, Double> attributes = new HashMap<>();
     public Spells spells = new Spells();
+
+    public static EquipmentSlot parseSlot(String name)
+    {
+        return switch (name.toLowerCase())
+        {
+            case "mainhand", "main_hand", "hand" -> EquipmentSlot.MAINHAND;
+            case "offhand", "off_hand" -> EquipmentSlot.OFFHAND;
+            case "head", "helmet" -> EquipmentSlot.HEAD;
+            case "chest", "chestplate" -> EquipmentSlot.CHEST;
+            case "legs", "leggings" -> EquipmentSlot.LEGS;
+            case "feet", "boots" -> EquipmentSlot.FEET;
+            default -> null;
+        };
+    }
 
     public static class Spells
     {

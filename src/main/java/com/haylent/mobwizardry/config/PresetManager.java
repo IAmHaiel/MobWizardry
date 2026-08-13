@@ -27,7 +27,7 @@ public class PresetManager
 
     public static Map<String, PresetDefinition> getPresets()
     {
-        return PRESETS;
+        return java.util.Collections.unmodifiableMap(PRESETS);
     }
 
     public static PresetDefinition getPreset(String name)

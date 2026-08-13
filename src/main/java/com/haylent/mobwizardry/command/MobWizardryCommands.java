@@ -123,8 +123,7 @@ public class MobWizardryCommands
 
     private static CompletableFuture<Suggestions> suggestPages(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder)
     {
-        int size = PresetManager.getPresets().size();
-        int maxPage = Math.max(1, (size + PRESETS_PER_PAGE - 1) / PRESETS_PER_PAGE);
+        int maxPage = maxPage(PresetManager.getPresets().size());
         for (int i = 1; i <= maxPage; i++)
         {
             builder.suggest(String.valueOf(i));
@@ -132,13 +131,24 @@ public class MobWizardryCommands
         return builder.buildFuture();
     }
 
-    private static int summon(CommandContext<CommandSourceStack> ctx, String presetName, String mobTypeId, Vec3 pos) throws CommandSyntaxException
+    private static int maxPage(int presetCount)
+    {
+        return Math.max(1, (presetCount + PRESETS_PER_PAGE - 1) / PRESETS_PER_PAGE);
+    }
+
+    private static PresetDefinition requirePreset(CommandContext<CommandSourceStack> ctx, String presetName) throws CommandSyntaxException
     {
         PresetDefinition preset = PresetManager.getPreset(presetName);
         if (preset == null)
         {
             throw UNKNOWN_PRESET.create();
         }
+        return preset;
+    }
+
+    private static int summon(CommandContext<CommandSourceStack> ctx, String presetName, String mobTypeId, Vec3 pos) throws CommandSyntaxException
+    {
+        PresetDefinition preset = requirePreset(ctx, presetName);
         ResourceLocation rl = ResourceLocation.tryParse(mobTypeId);
         if (rl == null || !ForgeRegistries.ENTITY_TYPES.containsKey(rl))
         {
@@ -164,8 +174,7 @@ public class MobWizardryCommands
         mob.addTag(preset.requiredTag);
         level.addFreshEntity(mob);
 
-        WizardMobInit.apply(mob, preset);
-        WizardAiGoal.tryApply(mob, preset);
+        WizardAiGoal.attach(mob, preset);
 
         final boolean finalMoved = moved;
         final Vec3 finalSafePos = safePos;
@@ -178,7 +187,7 @@ public class MobWizardryCommands
     {
         for (Map.Entry<String, String> entry : preset.equipment.entrySet())
         {
-            EquipmentSlot slot = WizardMobInit.parseSlot(entry.getKey());
+            EquipmentSlot slot = PresetDefinition.parseSlot(entry.getKey());
             if (slot == null)
             {
                 continue;
@@ -257,11 +266,7 @@ public class MobWizardryCommands
 
     private static int tag(CommandContext<CommandSourceStack> ctx, String presetName, Collection<? extends Entity> entities) throws CommandSyntaxException
     {
-        PresetDefinition preset = PresetManager.getPreset(presetName);
-        if (preset == null)
-        {
-            throw UNKNOWN_PRESET.create();
-        }
+        PresetDefinition preset = requirePreset(ctx, presetName);
         int applied = 0;
         int mobs = 0;
         for (Entity entity : entities)
@@ -285,11 +290,7 @@ public class MobWizardryCommands
 
     private static int untag(CommandContext<CommandSourceStack> ctx, String presetName, Collection<? extends Entity> entities) throws CommandSyntaxException
     {
-        PresetDefinition preset = PresetManager.getPreset(presetName);
-        if (preset == null)
-        {
-            throw UNKNOWN_PRESET.create();
-        }
+        PresetDefinition preset = requirePreset(ctx, presetName);
         int removed = 0;
         for (Entity entity : entities)
         {
@@ -305,11 +306,7 @@ public class MobWizardryCommands
 
     private static int wizardify(CommandContext<CommandSourceStack> ctx, String presetName, int radius, Vec3 center) throws CommandSyntaxException
     {
-        PresetDefinition preset = PresetManager.getPreset(presetName);
-        if (preset == null)
-        {
-            throw UNKNOWN_PRESET.create();
-        }
+        PresetDefinition preset = requirePreset(ctx, presetName);
         ServerLevel level = ctx.getSource().getLevel();
         double radiusSqr = (double) radius * radius;
         int wizardified = 0;
@@ -329,12 +326,11 @@ public class MobWizardryCommands
             if (mob.getTags().contains(preset.requiredTag))
             {
                 already++;
-                WizardMobInit.apply(mob, preset);
+                WizardAiGoal.attach(mob, preset);
                 continue;
             }
             mob.addTag(preset.requiredTag);
-            WizardMobInit.apply(mob, preset);
-            WizardAiGoal.tryApply(mob, preset);
+            WizardAiGoal.attach(mob, preset);
             wizardified++;
         }
         final int wf = wizardified;
@@ -348,11 +344,7 @@ public class MobWizardryCommands
 
     private static int unwizardify(CommandContext<CommandSourceStack> ctx, String presetName, int radius, Vec3 center) throws CommandSyntaxException
     {
-        PresetDefinition preset = PresetManager.getPreset(presetName);
-        if (preset == null)
-        {
-            throw UNKNOWN_PRESET.create();
-        }
+        PresetDefinition preset = requirePreset(ctx, presetName);
         ServerLevel level = ctx.getSource().getLevel();
         double radiusSqr = (double) radius * radius;
         int removed = 0;
@@ -390,7 +382,7 @@ public class MobWizardryCommands
             ctx.getSource().sendSuccess(() -> Component.literal("No MobWizardry presets loaded."), false);
             return 0;
         }
-        int maxPage = Math.max(1, (presets.size() + PRESETS_PER_PAGE - 1) / PRESETS_PER_PAGE);
+        int maxPage = maxPage(presets.size());
         int currentPage = Math.min(Math.max(1, page), maxPage);
         List<Map.Entry<String, PresetDefinition>> all = new ArrayList<>(presets.entrySet());
         int from = (currentPage - 1) * PRESETS_PER_PAGE;

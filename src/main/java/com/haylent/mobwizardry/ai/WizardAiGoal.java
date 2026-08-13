@@ -116,11 +116,6 @@ public class WizardAiGoal extends Goal
 
     public String getPresetName()
     {
-        return presetName();
-    }
-
-    private String presetName()
-    {
         return preset.requiredTag;
     }
 
@@ -169,6 +164,16 @@ public class WizardAiGoal extends Goal
     public boolean isInterruptable()
     {
         return inner.isInterruptable();
+    }
+
+    /**
+     * Turns a mob into a wizard for the given preset: applies equipment/attributes/mana and
+     * attaches the wizard goal. Idempotent - safe to call repeatedly (the goal is only added once).
+     */
+    public static void attach(PathfinderMob mob, PresetDefinition preset)
+    {
+        WizardMobInit.apply(mob, preset);
+        tryApply(mob, preset);
     }
 
     /**
