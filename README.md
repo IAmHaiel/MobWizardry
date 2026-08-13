@@ -71,7 +71,11 @@ Here is a plain-English explanation of every setting:
 - **`mana`** — how much mana the mob starts with.
 - **`spells`** — its spell kit, split into four categories (see below). Each spell is written as `{ "id": "mod:spell_id", "level": 1 }`.
 
-Spell categories: **`attack`** (cast in combat), **`defense`** (cast under pressure), **`movement`** (cast when positioning / out of range), **`support`** (utility).
+Spell categories:
+- **`attack`** — cast in combat against the target.
+- **`defense`** — cast only while the caster is actually **being attacked** (recently hurt). Tip: any spell works here — put `irons_spellbooks:shield` for a classic barrier, or put an offensive spell like `irons_spellbooks:fireball` to make the caster retaliate when it gets hit.
+- **`movement`** — cast when the target is **far away / out of spell range** to close the gap (e.g. `irons_spellbooks:blood_step`, `irons_spellbooks:teleport`).
+- **`support`** — self-aid spells, cast when the caster is hurt, has very low mana, or is below half health. Good options: `irons_spellbooks:heal`, `irons_spellbooks:greater_heal` (health), `irons_spellbooks:fortify` (armor), `irons_spellbooks:charge` (speed), `irons_spellbooks:heartstop`. Note: there is no "mana regen" spell in Iron's Spells 'n Spellbooks — mana recovery is the `irons_spellbooks:mana_regen` attribute, so give a support caster that attribute as well.
 
 ### Example config (two presets)
 
