@@ -1,4 +1,4 @@
-# MobWizardry
+# MobWizardry - Mobs using Magics!
 
 MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — fully config-driven. No new mobs are added: any vanilla or modded mob becomes a spellcaster when it carries a configured tag.
 
