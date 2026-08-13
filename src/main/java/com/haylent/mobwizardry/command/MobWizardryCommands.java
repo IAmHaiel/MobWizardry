@@ -31,6 +31,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.item.Equipable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
@@ -76,6 +77,24 @@ public class MobWizardryCommands
                                 .suggests(MobWizardryCommands::suggestPresets)
                                 .then(Commands.argument("targets", EntityArgument.entities())
                                         .executes(ctx -> untag(ctx, StringArgumentType.getString(ctx, "preset"), EntityArgument.getEntities(ctx, "targets"))))))
+                .then(Commands.literal("wizardify")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.argument("preset", StringArgumentType.word())
+                                .suggests(MobWizardryCommands::suggestPresets)
+                                .executes(ctx -> wizardify(ctx, StringArgumentType.getString(ctx, "preset"), 16, ctx.getSource().getPosition()))
+                                .then(Commands.argument("radius", IntegerArgumentType.integer(1, 64))
+                                        .executes(ctx -> wizardify(ctx, StringArgumentType.getString(ctx, "preset"), IntegerArgumentType.getInteger(ctx, "radius"), ctx.getSource().getPosition()))
+                                        .then(Commands.argument("pos", Vec3Argument.vec3())
+                                                .executes(ctx -> wizardify(ctx, StringArgumentType.getString(ctx, "preset"), IntegerArgumentType.getInteger(ctx, "radius"), Vec3Argument.getVec3(ctx, "pos")))))))
+                .then(Commands.literal("unwizardify")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.argument("preset", StringArgumentType.word())
+                                .suggests(MobWizardryCommands::suggestPresets)
+                                .executes(ctx -> unwizardify(ctx, StringArgumentType.getString(ctx, "preset"), 16, ctx.getSource().getPosition()))
+                                .then(Commands.argument("radius", IntegerArgumentType.integer(1, 64))
+                                        .executes(ctx -> unwizardify(ctx, StringArgumentType.getString(ctx, "preset"), IntegerArgumentType.getInteger(ctx, "radius"), ctx.getSource().getPosition()))
+                                        .then(Commands.argument("pos", Vec3Argument.vec3())
+                                                .executes(ctx -> unwizardify(ctx, StringArgumentType.getString(ctx, "preset"), IntegerArgumentType.getInteger(ctx, "radius"), Vec3Argument.getVec3(ctx, "pos")))))))
                 .then(Commands.literal("reload")
                         .requires(src -> src.hasPermission(2))
                         .executes(MobWizardryCommands::reload))
@@ -121,11 +140,11 @@ public class MobWizardryCommands
             throw UNKNOWN_PRESET.create();
         }
         ResourceLocation rl = ResourceLocation.tryParse(mobTypeId);
-        EntityType<?> type = rl == null ? null : ForgeRegistries.ENTITY_TYPES.getValue(rl);
-        if (type == null)
+        if (rl == null || !ForgeRegistries.ENTITY_TYPES.containsKey(rl))
         {
             throw UNKNOWN_MOB.create();
         }
+        EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(rl);
 
         ServerLevel level = ctx.getSource().getLevel();
         Entity entity = type.create(level);
@@ -148,8 +167,9 @@ public class MobWizardryCommands
         WizardMobInit.apply(mob, preset);
         WizardAiGoal.tryApply(mob, preset);
 
-        final Vec3 finalPos = safePos;
-        ctx.getSource().sendSuccess(() -> Component.literal("Summoned " + mobTypeId + " with preset '" + presetName + "' (tag: " + preset.requiredTag + ")" + (moved ? " at safe position " + finalPos : " at " + finalPos)), true);
+        final boolean finalMoved = moved;
+        final Vec3 finalSafePos = safePos;
+        ctx.getSource().sendSuccess(() -> Component.literal("Summoned " + mobTypeId + " with preset '" + presetName + "' (tag: " + preset.requiredTag + ")" + (finalMoved ? " at safe position " + finalSafePos : " at " + finalSafePos)), true);
         LOGGER.info("[MobWizardry] /mobwizardry summon {} {} at {} by {}", presetName, mobTypeId, safePos, ctx.getSource().getTextName());
         return 1;
     }
@@ -173,8 +193,9 @@ public class MobWizardryCommands
             {
                 continue;
             }
-            EquipmentSlot natural = item.getEquipmentSlot(new ItemStack(item));
-            if (natural != slot)
+            Equipable equipable = Equipable.get(new ItemStack(item));
+            EquipmentSlot natural = equipable == null ? null : equipable.getEquipmentSlot();
+            if (natural != null && natural != slot)
             {
                 String message = "Preset '" + preset.requiredTag + "' equips " + entry.getValue() + " in " + slot.getName() + ", but the item naturally belongs in " + natural.getName() + " - it may not render or behave as expected";
                 LOGGER.warn("[MobWizardry] {}", message);
@@ -186,13 +207,20 @@ public class MobWizardryCommands
     private static Vec3 findSafeSpawn(ServerLevel level, Vec3 pos)
     {
         BlockPos.MutableBlockPos bp = new BlockPos.MutableBlockPos();
-        if (isSpawnableAt(level, bp.set(pos.x, pos.y, pos.z)))
+        if (isSpawnableAt(level, bp.set(pos.x, pos.y, pos.z)) && pos.y >= topSolidY(level, pos.x, pos.z))
         {
             return pos;
         }
-        for (int i = 1; i <= 64; i++)
+        Vec3 surfacePos = new Vec3(Math.floor(pos.x) + 0.5, topSolidY(level, pos.x, pos.z) + 1, Math.floor(pos.z) + 0.5);
+        if (isSpawnableAt(level, bp.set(surfacePos.x, surfacePos.y, surfacePos.z)))
         {
-            bp.set(pos.x, pos.y + i, pos.z);
+            return surfacePos;
+        }
+        int maxY = level.getMaxBuildHeight() - 1;
+        int startY = Math.max(level.getMinBuildHeight() + 1, (int) Math.floor(pos.y) + 1);
+        for (int y = startY; y <= maxY; y++)
+        {
+            bp.set(pos.x, y, pos.z);
             if (isSpawnableAt(level, bp))
             {
                 return new Vec3(bp.getX() + 0.5, bp.getY(), bp.getZ() + 0.5);
@@ -201,8 +229,27 @@ public class MobWizardryCommands
         return pos;
     }
 
+    private static int topSolidY(ServerLevel level, double x, double z)
+    {
+        BlockPos.MutableBlockPos bp = new BlockPos.MutableBlockPos();
+        for (int y = level.getMaxBuildHeight() - 1; y >= level.getMinBuildHeight(); y--)
+        {
+            bp.set(x, y, z);
+            BlockState state = level.getBlockState(bp);
+            if (!state.getCollisionShape(level, bp).isEmpty() || !state.getFluidState().isEmpty())
+            {
+                return y;
+            }
+        }
+        return level.getMinBuildHeight() - 1;
+    }
+
     private static boolean isSpawnableAt(ServerLevel level, BlockPos pos)
     {
+        if (pos.getY() < level.getMinBuildHeight() + 1 || pos.getY() > level.getMaxBuildHeight() - 1)
+        {
+            return false;
+        }
         BlockState at = level.getBlockState(pos);
         BlockState above = level.getBlockState(pos.above());
         return !at.isSuffocating(level, pos) && !above.isSuffocating(level, pos.above());
@@ -254,6 +301,77 @@ public class MobWizardryCommands
         final int count = removed;
         ctx.getSource().sendSuccess(() -> Component.literal("Removed tag '" + preset.requiredTag + "' from " + count + " entity(ies)"), true);
         return count;
+    }
+
+    private static int wizardify(CommandContext<CommandSourceStack> ctx, String presetName, int radius, Vec3 center) throws CommandSyntaxException
+    {
+        PresetDefinition preset = PresetManager.getPreset(presetName);
+        if (preset == null)
+        {
+            throw UNKNOWN_PRESET.create();
+        }
+        ServerLevel level = ctx.getSource().getLevel();
+        double radiusSqr = (double) radius * radius;
+        int wizardified = 0;
+        int already = 0;
+        int skipped = 0;
+        for (Entity entity : level.getAllEntities())
+        {
+            if (entity.distanceToSqr(center) > radiusSqr)
+            {
+                continue;
+            }
+            if (!(entity instanceof PathfinderMob mob))
+            {
+                skipped++;
+                continue;
+            }
+            if (mob.getTags().contains(preset.requiredTag))
+            {
+                already++;
+                WizardMobInit.apply(mob, preset);
+                continue;
+            }
+            mob.addTag(preset.requiredTag);
+            WizardMobInit.apply(mob, preset);
+            WizardAiGoal.tryApply(mob, preset);
+            wizardified++;
+        }
+        final int wf = wizardified;
+        final int alr = already;
+        final int skp = skipped;
+        final int r = radius;
+        ctx.getSource().sendSuccess(() -> Component.literal("Wizardified " + wf + " mob(s) with preset '" + presetName + "' within " + r + " blocks" + (alr > 0 ? " (" + alr + " already wizards)" : "") + (skp > 0 ? " (" + skp + " non-mob entity/entities skipped)" : "")), true);
+        LOGGER.info("[MobWizardry] /mobwizardry wizardify {} radius {} at {} by {} -> {} wizardified, {} already, {} skipped", presetName, radius, center, ctx.getSource().getTextName(), wizardified, already, skipped);
+        return wizardified;
+    }
+
+    private static int unwizardify(CommandContext<CommandSourceStack> ctx, String presetName, int radius, Vec3 center) throws CommandSyntaxException
+    {
+        PresetDefinition preset = PresetManager.getPreset(presetName);
+        if (preset == null)
+        {
+            throw UNKNOWN_PRESET.create();
+        }
+        ServerLevel level = ctx.getSource().getLevel();
+        double radiusSqr = (double) radius * radius;
+        int removed = 0;
+        for (Entity entity : level.getAllEntities())
+        {
+            if (entity.distanceToSqr(center) > radiusSqr)
+            {
+                continue;
+            }
+            if (entity.removeTag(preset.requiredTag))
+            {
+                removed++;
+            }
+        }
+        final int count = removed;
+        final int r = radius;
+        ctx.getSource().sendSuccess(() -> Component.literal("De-wizardified " + count + " mob(s) - removed tag '" + presetName + "' within " + r + " blocks"), true);
+        LOGGER.info("[MobWizardry] /mobwizardry unwizardify {} radius {} at {} by {} -> {} removed", presetName, radius, center, ctx.getSource().getTextName(), removed);
+        return removed;
     }
 
     private static int reload(CommandContext<CommandSourceStack> ctx)

@@ -167,6 +167,8 @@ Requires permission level 2.
 | `/mobwizardry summon <preset> <mobType> [pos]` | Spawns a mob of `<mobType>` with the preset applied (tag, equipment, mana, wizard AI) immediately. The mob type is not restricted by the preset. |
 | `/mobwizardry tag <preset> <targets>` | Adds the preset's required tag to existing entities and fully initializes matching mobs. |
 | `/mobwizardry untag <preset> <targets>` | Removes the tag — the wizard AI deactivates on the next tick. |
+| `/mobwizardry wizardify <preset> [radius] [pos]` | Turns every mob within `radius` (1–64, default 16) of you (or of `pos`) into wizards — tag, equipment, mana and wizard AI. Non-mob entities in range are skipped and reported. |
+| `/mobwizardry unwizardify <preset> [radius] [pos]` | Removes the tag from all wizards in range — their AI deactivates on the next tick. |
 | `/mobwizardry reload` | Re-reads and re-validates `presets.json` without restarting. |
 | `/mobwizardry list [page]` | Lists loaded presets in a readable, colored format — 5 per page, with clickable previous/next arrows. |
 
@@ -177,6 +179,9 @@ Requires permission level 2.
 /mobwizardry summon wizard minecraft:zombie 100 64 100
 /mobwizardry tag wizard @e[type=minecraft:zombie]
 /mobwizardry untag wizard @e[type=minecraft:zombie]
+/mobwizardry wizardify wizard 10
+/mobwizardry wizardify wizard 20 100 64 100
+/mobwizardry unwizardify wizard 10
 /mobwizardry reload
 /mobwizardry list
 /mobwizardry list 2
