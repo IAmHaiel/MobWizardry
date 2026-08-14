@@ -8,13 +8,16 @@ import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PresetManager
@@ -26,7 +29,7 @@ public class PresetManager
 
     public static Map<String, PresetDefinition> getPresets()
     {
-        return java.util.Collections.unmodifiableMap(PRESETS);
+        return Collections.unmodifiableMap(PRESETS);
     }
 
     public static PresetDefinition getPreset(String name)
@@ -140,7 +143,7 @@ public class PresetManager
                 return true;
             }
             ResourceLocation rl = ResourceLocation.tryParse(entry.getValue());
-            if (rl == null || !net.minecraftforge.registries.ForgeRegistries.ITEMS.containsKey(rl))
+            if (rl == null || !ForgeRegistries.ITEMS.containsKey(rl))
             {
                 LOGGER.error("[MobWizardry] Preset '{}' equipment slot '{}' references unknown item '{}' - removed", presetName, entry.getKey(), entry.getValue());
                 return true;
@@ -158,7 +161,7 @@ public class PresetManager
                 return true;
             }
             ResourceLocation rl = ResourceLocation.tryParse(entry.getKey());
-            if (rl == null || !net.minecraftforge.registries.ForgeRegistries.ATTRIBUTES.containsKey(rl))
+            if (rl == null || !ForgeRegistries.ATTRIBUTES.containsKey(rl))
             {
                 LOGGER.error("[MobWizardry] Preset '{}' references unknown attribute '{}' - removed", presetName, entry.getKey());
                 return true;
@@ -167,7 +170,7 @@ public class PresetManager
         });
     }
 
-    private static void validateSpellList(String presetName, String category, java.util.List<PresetDefinition.SpellEntry> entries, int castInterval)
+    private static void validateSpellList(String presetName, String category, List<PresetDefinition.SpellEntry> entries, int castInterval)
     {
         entries.removeIf(entry -> {
             if (entry.id == null || entry.id.isBlank())
