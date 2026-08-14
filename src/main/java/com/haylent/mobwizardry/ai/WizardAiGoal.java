@@ -17,8 +17,8 @@ import java.util.List;
 
 /**
  * Wraps an Iron's Spellbooks {@link WizardAttackGoal} behind a dynamic tag check. The inner goal only
- * activates while the mob still carries the preset's required tag, allowing tags to be added/removed
- * freely at runtime via admin commands.
+ * activates while the mob still carries the preset's required tag, so a wizardified mob stops acting
+ * as a wizard the moment its tag is removed.
  */
 public class WizardAiGoal extends Goal
 {
@@ -142,11 +142,6 @@ public class WizardAiGoal extends Goal
         return all;
     }
 
-    public String getPresetName()
-    {
-        return preset.requiredTag;
-    }
-
     @Override
     public boolean canUse()
     {
@@ -205,8 +200,8 @@ public class WizardAiGoal extends Goal
     }
 
     /**
-     * Applies wizard AI to a mob if it matches a loaded preset and carries the preset's tag.
-     * Safe to call from both {@code EntityJoinLevelEvent} and the admin tag command.
+     * Applies wizard AI to a mob if it carries the preset's tag and doesn't already have a wizard goal.
+     * Safe to call from {@code EntityJoinLevelEvent} (new tagged mobs) and the wizardify/summon commands.
      */
     public static boolean tryApply(PathfinderMob mob, PresetDefinition preset)
     {
