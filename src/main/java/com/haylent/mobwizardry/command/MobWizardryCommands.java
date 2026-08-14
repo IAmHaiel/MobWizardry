@@ -16,7 +16,6 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.core.BlockPos;
@@ -43,7 +42,6 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -68,18 +66,6 @@ public class MobWizardryCommands
                                         .executes(ctx -> summon(ctx, StringArgumentType.getString(ctx, "preset"), ResourceLocationArgument.getId(ctx, "mobType").toString(), ctx.getSource().getPosition()))
                                         .then(Commands.argument("pos", Vec3Argument.vec3())
                                                 .executes(ctx -> summon(ctx, StringArgumentType.getString(ctx, "preset"), ResourceLocationArgument.getId(ctx, "mobType").toString(), Vec3Argument.getVec3(ctx, "pos")))))))
-                .then(Commands.literal("tag")
-                        .requires(src -> src.hasPermission(2))
-                        .then(Commands.argument("preset", StringArgumentType.word())
-                                .suggests(MobWizardryCommands::suggestPresets)
-                                .then(Commands.argument("targets", EntityArgument.entities())
-                                        .executes(ctx -> tag(ctx, StringArgumentType.getString(ctx, "preset"), EntityArgument.getEntities(ctx, "targets"))))))
-                .then(Commands.literal("untag")
-                        .requires(src -> src.hasPermission(2))
-                        .then(Commands.argument("preset", StringArgumentType.word())
-                                .suggests(MobWizardryCommands::suggestPresets)
-                                .then(Commands.argument("targets", EntityArgument.entities())
-                                        .executes(ctx -> untag(ctx, StringArgumentType.getString(ctx, "preset"), EntityArgument.getEntities(ctx, "targets"))))))
                 .then(Commands.literal("wizardify")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("preset", StringArgumentType.word())
@@ -106,6 +92,8 @@ public class MobWizardryCommands
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .suggests(MobWizardryCommands::suggestPages)
                                 .executes(ctx -> list(ctx, IntegerArgumentType.getInteger(ctx, "page")))))
+                .then(Commands.literal("help")
+                        .executes(MobWizardryCommands::help))
         );
     }
 
@@ -267,50 +255,6 @@ public class MobWizardryCommands
         return !at.isSuffocating(level, pos) && !above.isSuffocating(level, pos.above());
     }
 
-    private static int tag(CommandContext<CommandSourceStack> ctx, String presetName, Collection<? extends Entity> entities) throws CommandSyntaxException
-    {
-        PresetDefinition preset = requirePreset(ctx, presetName);
-        int applied = 0;
-        int mobs = 0;
-        for (Entity entity : entities)
-        {
-            entity.addTag(preset.requiredTag);
-            if (entity instanceof PathfinderMob mob)
-            {
-                mobs++;
-                WizardMobInit.apply(mob, preset);
-                if (WizardAiGoal.tryApply(mob, preset))
-                {
-                    applied++;
-                }
-            }
-        }
-        final int tagged = mobs;
-        final int appliedFinal = applied;
-        ctx.getSource().sendSuccess(() -> Component.literal("Tagged " + tagged + " entity(ies) with '" + preset.requiredTag + "', applied wizard AI to " + appliedFinal), true);
-        return applied;
-    }
-
-    private static int untag(CommandContext<CommandSourceStack> ctx, String presetName, Collection<? extends Entity> entities) throws CommandSyntaxException
-    {
-        PresetDefinition preset = requirePreset(ctx, presetName);
-        int removed = 0;
-        for (Entity entity : entities)
-        {
-            if (entity.removeTag(preset.requiredTag))
-            {
-                removed++;
-                if (entity instanceof PathfinderMob mob)
-                {
-                    WizardMobInit.stripWizardEquipment(mob, preset);
-                }
-            }
-        }
-        final int count = removed;
-        ctx.getSource().sendSuccess(() -> Component.literal("Removed tag '" + preset.requiredTag + "' from " + count + " entity(ies)"), true);
-        return count;
-    }
-
     private static int wizardify(CommandContext<CommandSourceStack> ctx, String presetName, int radius, Vec3 center) throws CommandSyntaxException
     {
         PresetDefinition preset = requirePreset(ctx, presetName);
@@ -389,6 +333,26 @@ public class MobWizardryCommands
     {
         level.sendParticles(ParticleTypes.LARGE_SMOKE, pos.x, pos.y + 1.0, pos.z, 120, 0.6, 0.5, 0.6, 0.15);
         level.playSound(null, pos.x, pos.y + 1.0, pos.z, SoundEvents.TNT_PRIMED, SoundSource.PLAYERS, 1.0F, 1.0F);
+    }
+
+    private static int help(CommandContext<CommandSourceStack> ctx)
+    {
+        MutableComponent header = Component.literal("=== MobWizardry commands ===").withStyle(ChatFormatting.AQUA);
+        ctx.getSource().sendSuccess(() -> header, false);
+        helpLine(ctx, "help", "Show this help.");
+        helpLine(ctx, "summon <preset> <mobType> [pos]", "Summon a new mob as a wizard using a preset's equipment, attributes and spells.");
+        helpLine(ctx, "wizardify <preset> [radius] [pos]", "Turn nearby mobs into wizards - adds the preset tag and applies equipment and wizard AI.");
+        helpLine(ctx, "unwizardify <preset> [radius] [pos]", "Remove wizard status from nearby mobs - removes the preset tag and strips wizard equipment.");
+        helpLine(ctx, "reload", "Reload presets.json from the config folder.");
+        helpLine(ctx, "list [page]", "List all loaded presets and their spell setups.");
+        return 1;
+    }
+
+    private static void helpLine(CommandContext<CommandSourceStack> ctx, String command, String description)
+    {
+        MutableComponent line = Component.literal("/mobwizardry " + command).withStyle(ChatFormatting.GOLD);
+        line.append(Component.literal(" - " + description).withStyle(ChatFormatting.GRAY));
+        ctx.getSource().sendSuccess(() -> line, false);
     }
 
     private static int reload(CommandContext<CommandSourceStack> ctx)
