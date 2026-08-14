@@ -83,6 +83,8 @@ public class PresetManager
             return;
         }
 
+        validateWizardType(name, preset);
+
         validateSpellList(name, "attack", preset.spells.attack, preset.castInterval);
         validateSpellList(name, "defense", preset.spells.defense, preset.castInterval);
         validateSpellList(name, "movement", preset.spells.movement, preset.castInterval);
@@ -112,7 +114,21 @@ public class PresetManager
         String movementInfo = (preset.movementStartDistance > 0 || preset.movementFarDistance > 0)
                 ? ", movement=" + (preset.movementStartDistance > 0 ? preset.movementStartDistance : "range*0.75") + "-" + (preset.movementFarDistance > 0 ? preset.movementFarDistance : "range") : "";
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{}{}{}{}{})", name, preset.requiredTag, castInfo, movementInfo, manaInfo, emergencyInfo, escapeInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, castInfo, movementInfo, manaInfo, emergencyInfo, escapeInfo);
+    }
+
+    private static void validateWizardType(String name, PresetDefinition preset)
+    {
+        String type = preset.wizardType == null ? "" : preset.wizardType.trim().toLowerCase();
+        if (!"ranged".equals(type) && !"close".equals(type))
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has invalid wizard_type '{}' - falling back to 'ranged'", name, preset.wizardType);
+            preset.wizardType = "ranged";
+        }
+        else
+        {
+            preset.wizardType = type;
+        }
     }
 
     private static void validateEquipment(String presetName, PresetDefinition preset)
