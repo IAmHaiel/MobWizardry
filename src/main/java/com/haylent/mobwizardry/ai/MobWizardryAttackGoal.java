@@ -16,8 +16,8 @@ import java.util.List;
  *   <li>movement fires when the target is far / out of spell range;</li>
  *   <li>support fires when hurt or below half health, but is chance-gated and cooldown-limited
  *       so a critical caster can't heal-spam and become unkillable;</li>
- *   <li>in critical health, a support cast always picks an {@code emergency}-flagged heal spell
- *       instead of randomly wasting it on a buff;</li>
+ *   <li>in critical health, an {@code emergency}-flagged heal is guaranteed (checked before the
+ *       weighted category pick, so attack/movement spells can't crowd it out);</li>
  *   <li>escape and critical support casts share one survival cooldown: a heal can't land inside
  *       an escape's window and a heal itself blocks a follow-up escape for the same duration.</li>
  * </ul>
@@ -65,6 +65,12 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         {
             mobwizardry$lastSurvivalActionTick = mob.tickCount;
             return mobwizardry$escapeSpells.get(mob.getRandom().nextInt(mobwizardry$escapeSpells.size()));
+        }
+        if (isCritical() && survivalCooldownReady() && !mobwizardry$emergencyHealSpells.isEmpty())
+        {
+            mobwizardry$lastSurvivalActionTick = mob.tickCount;
+            mobwizardry$lastSupportCastTick = mob.tickCount;
+            return mobwizardry$emergencyHealSpells.get(mob.getRandom().nextInt(mobwizardry$emergencyHealSpells.size()));
         }
         AbstractSpell spell = super.getNextSpellType();
         if (lastSpellCategory == supportSpells)
