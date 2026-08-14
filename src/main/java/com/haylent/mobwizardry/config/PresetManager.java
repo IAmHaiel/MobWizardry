@@ -94,8 +94,10 @@ public class PresetManager
 
         Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
         String manaInfo = maxManaAttr != null ? ", max_mana=" + maxManaAttr : "";
+        long emergencyHeals = preset.spells.support.stream().filter(e -> e.emergency).count();
+        String emergencyInfo = emergencyHeals > 0 ? ", emergencyHeals=" + emergencyHeals : "";
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{})", name, preset.requiredTag, manaInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{}{})", name, preset.requiredTag, manaInfo, emergencyInfo);
     }
 
     private static void validateEquipment(String presetName, PresetDefinition preset)
@@ -164,7 +166,12 @@ public class PresetManager
             {
                 LOGGER.warn("[MobWizardry] Preset '{}' {} spell '{}' has an intrinsic cooldown of {} ticks, longer than castInterval {} - spell will be cast less often than intended", presetName, category, entry.id, cooldownTicks, castInterval);
             }
-            LOGGER.info("[MobWizardry] Preset '{}' {} spell '{}' (level {}) cooldown={}t", presetName, category, entry.id, entry.level, cooldownTicks);
+            if (entry.emergency && !"support".equals(category))
+            {
+                LOGGER.warn("[MobWizardry] Preset '{}' {} spell '{}' has emergency=true, but that flag only applies to support spells - ignored", presetName, category, entry.id);
+                entry.emergency = false;
+            }
+            LOGGER.info("[MobWizardry] Preset '{}' {} spell '{}' (level {}) cooldown={}t{}", presetName, category, entry.id, entry.level, cooldownTicks, entry.emergency ? " emergency" : "");
             return false;
         });
     }
@@ -201,7 +208,7 @@ public class PresetManager
                         { "id": "irons_spellbooks:blood_step", "level": 1 }
                       ],
                       "support": [
-                        { "id": "irons_spellbooks:heal", "level": 1 }
+                        { "id": "irons_spellbooks:heal", "level": 1, "emergency": true }
                       ]
                     }
                   },

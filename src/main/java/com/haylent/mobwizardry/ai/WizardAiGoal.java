@@ -32,13 +32,15 @@ public class WizardAiGoal extends Goal
     {
         this.mob = mob;
         this.preset = preset;
-        this.inner = new MobWizardryAttackGoal((IMagicEntity) mob, preset.speed, preset.castInterval, preset.castInterval * 2)
-                .setSpells(
+        MobWizardryAttackGoal goal = new MobWizardryAttackGoal((IMagicEntity) mob, preset.speed, preset.castInterval, preset.castInterval * 2);
+        goal.setSpells(
                         resolveSpells(preset.spells.attack),
                         resolveSpells(preset.spells.defense),
                         resolveSpells(preset.spells.movement),
                         resolveSpells(preset.spells.support))
                 .setSpellQuality(minQuality(), maxQuality());
+        goal.setEmergencyHealSpells(resolveEmergencySpells(preset.spells.support));
+        this.inner = goal;
         setFlags(inner.getFlags());
     }
 
@@ -47,6 +49,29 @@ public class WizardAiGoal extends Goal
         List<AbstractSpell> spells = new ArrayList<>();
         for (PresetDefinition.SpellEntry entry : entries)
         {
+            ResourceLocation rl = ResourceLocation.tryParse(entry.id);
+            if (rl == null)
+            {
+                continue;
+            }
+            AbstractSpell spell = SpellRegistry.getSpell(rl);
+            if (spell != null && spell != SpellRegistry.none())
+            {
+                spells.add(spell);
+            }
+        }
+        return spells;
+    }
+
+    private static List<AbstractSpell> resolveEmergencySpells(List<PresetDefinition.SpellEntry> entries)
+    {
+        List<AbstractSpell> spells = new ArrayList<>();
+        for (PresetDefinition.SpellEntry entry : entries)
+        {
+            if (!entry.emergency)
+            {
+                continue;
+            }
             ResourceLocation rl = ResourceLocation.tryParse(entry.id);
             if (rl == null)
             {

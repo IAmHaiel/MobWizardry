@@ -5,6 +5,9 @@ import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.entity.mobs.goals.WizardAttackGoal;
 import net.minecraft.util.Mth;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Extends Iron's Spellbooks' {@link WizardAttackGoal} to fix the AI's category selection
  * weights for tagged mobs:
@@ -12,18 +15,27 @@ import net.minecraft.util.Mth;
  *   <li>defense only fires while the caster was recently attacked (not just at low health);</li>
  *   <li>movement fires when the target is far / out of spell range;</li>
  *   <li>support fires when hurt or below half health, but is chance-gated and cooldown-limited
- *       so a critical caster can't heal-spam and become unkillable.</li>
+ *       so a critical caster can't heal-spam and become unkillable;</li>
+ *   <li>in critical health, a support cast always picks an {@code emergency}-flagged heal spell
+ *       instead of randomly wasting it on a buff.</li>
  * </ul>
  */
 public class MobWizardryAttackGoal extends WizardAttackGoal
 {
     private static final int DEFENSE_WINDOW_TICKS = 100;
     private static final int SUPPORT_COOLDOWN_TICKS = 140;
+    private static final float CRITICAL_HP = 0.3f;
     private int mobwizardry$lastSupportCastTick = -100000;
+    private List<AbstractSpell> mobwizardry$emergencyHealSpells = new ArrayList<>();
 
     public MobWizardryAttackGoal(IMagicEntity entity, double speed, int minInterval, int maxInterval)
     {
         super(entity, speed, minInterval, maxInterval);
+    }
+
+    public void setEmergencyHealSpells(List<AbstractSpell> emergencyHealSpells)
+    {
+        this.mobwizardry$emergencyHealSpells = emergencyHealSpells != null ? emergencyHealSpells : new ArrayList<>();
     }
 
     @Override
@@ -33,8 +45,17 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         if (lastSpellCategory == supportSpells)
         {
             mobwizardry$lastSupportCastTick = mob.tickCount;
+            if (isCritical() && !mobwizardry$emergencyHealSpells.isEmpty() && !mobwizardry$emergencyHealSpells.contains(spell))
+            {
+                spell = mobwizardry$emergencyHealSpells.get(mob.getRandom().nextInt(mobwizardry$emergencyHealSpells.size()));
+            }
         }
         return spell;
+    }
+
+    private boolean isCritical()
+    {
+        return mob.getMaxHealth() > 0 && mob.getHealth() / mob.getMaxHealth() < CRITICAL_HP;
     }
 
     @Override

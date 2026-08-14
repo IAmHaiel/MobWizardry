@@ -42,5 +42,6 @@ public class PresetDefinition
     {
         public String id = "";
         public int level = 1;
+        public boolean emergency = false;
     }
 }
