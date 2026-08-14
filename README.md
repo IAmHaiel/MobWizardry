@@ -8,9 +8,9 @@ MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — full
 
 1. Each preset in `config/mobwizardry/presets.json` defines:
    - the entity tag that activates it (`requiredTag`)
-   - movement speed and cast cadence
+   - the wizard type (`wizardType`: `ranged` or `close`), movement speed and cast cadence
    - equipment, attribute overrides and a full mana pool
-   - attack / defense / movement / support spell kits
+   - attack / defense / movement / support / escape spell kits
 2. When a mob joins the world carrying the required tag, MobWizardry:
    - equips the configured gear and sets attributes/mana,
    - attaches a real Iron's Spellbooks `WizardAttackGoal` (wrapped behind a live tag check),
@@ -63,6 +63,7 @@ Think of the config as a **list of "wizard job applications"**. Each block is on
 Here is a plain-English explanation of every setting:
 
 - **`requiredTag`** — the magic word that *turns the creature on*. A mob only gets its wizard AI while it carries this tag (you apply the tag with the commands below). Each preset needs a unique tag. The mob type is chosen at summon time — the preset itself is not limited to any creature type.
+- **`wizardType`** — how the wizard fights. `ranged` (default) keeps distance and casts from afar; `close` charges in, casts point-blank, melees when adjacent, and buffs while engaging. See below.
 - **`speed`** — how fast the mob moves while casting. `1.0` is normal walking speed; bigger = faster.
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
 - **`equipment`** — what gear the mob wears. A slot name maps to an item ID; the mob puts the item on and it never drops. All six equipment slots are supported:
@@ -95,6 +96,48 @@ Spell categories:
 - **`support`** — self-aid spells, cast when the caster is hurt or below half health. Good options: `irons_spellbooks:heal`, `irons_spellbooks:greater_heal` (health), `irons_spellbooks:fortify` (armor), `irons_spellbooks:charge` (speed), `irons_spellbooks:heartstop`. Note: there is no "mana regen" spell in Iron's Spells 'n Spellbooks — mana recovery is the `irons_spellbooks:mana_regen` attribute, so give a support caster that attribute as well. Balance: support casts are **chance-gated** (up to ~55% per cast attempt, scaling with missing health) and **cooldown-limited** (at most once every 7 seconds), so a dying caster can't heal-spam itself to immortality. Smart healing: mark a support spell `"emergency": true` (e.g. on `heal`/`greater_heal`) and, when the caster drops below 30% health, support casts will always pick one of those emergency heals instead of randomly wasting the cast on a buff like `fortify`.
 - **`escape`** — repositioning spells cast only when the caster is **critically low** (below 30% health) **and** has recently been attacked, to retreat from danger (e.g. `irons_spellbooks:teleport`). Escape shares a 100-tick survival cooldown with emergency heals: after an escape, a heal can't land inside the same window, and a critical heal likewise blocks a follow-up escape — so the two can't chain together. It is chance-gated (~35% per eligible cast attempt) so a wizard doesn't teleport-spam, and it is checked before the weighted category pick, so it always wins over attack/movement while its conditions hold.
 
+### Wizard types
+
+The `wizardType` field chooses how the wizard fights:
+
+- **`ranged`** (default) — keeps distance and casts from afar. Uses the escape kit to retreat
+  when critically low and recently attacked (shares a 100-tick survival cooldown with
+  emergency heals). This is the classic behavior.
+- **`close`** — charges in and stays engaged. It always advances toward the target while
+  circling (never backs away), casts its attack kit point-blank, melees when it's in arm's
+  reach (~50% per cast window), and casts its support buffs (`fortify`, `charge`, attack
+  damage) while engaging even at full health. It **ignores the `escape` kit** — it doubles
+  down instead of running. Buffs and melee stay chance-gated and cooldown-limited, so a close
+  wizard can't spam them.
+
+Example close preset:
+```json
+{
+  "wizard_close": {
+    "requiredTag": "wizard_close",
+    "wizardType": "close",
+    "speed": 1.2,
+    "castInterval": 50,
+    "equipment": {
+      "mainhand": "irons_spellbooks:blood_staff"
+    },
+    "attributes": {
+      "irons_spellbooks:max_mana": 80
+    },
+    "spells": {
+      "attack": [
+        { "id": "irons_spellbooks:magic_missile", "level": 1 }
+      ],
+      "support": [
+        { "id": "irons_spellbooks:heal", "level": 1, "emergency": true },
+        { "id": "irons_spellbooks:fortify", "level": 1 }
+      ],
+      "escape": []
+    }
+  }
+}
+```
+
 ### Mana explained
 
 **Mobs don't spend mana to cast.** MobWizardry casts with Iron's Spellbooks' `CastSource.MOB`, which bypasses mana costs and cooldowns entirely — a wizard can keep casting regardless of its mana bar, and there is **no `mana` config field** for presets (it was removed).
@@ -109,6 +152,7 @@ This is exactly the default config the mod writes on first launch — copy it an
 {
   "wizard": {
     "requiredTag": "wizard",
+    "wizardType": "ranged",
     "speed": 1.15,
     "castInterval": 60,
     "equipment": {
@@ -144,6 +188,7 @@ This is exactly the default config the mod writes on first launch — copy it an
   },
   "wizard_lite": {
     "requiredTag": "wizard_lite",
+    "wizardType": "ranged",
     "speed": 1.1,
     "castInterval": 80,
     "equipment": {
@@ -165,6 +210,42 @@ This is exactly the default config the mod writes on first launch — copy it an
       "defense": [],
       "movement": [],
       "support": []
+    }
+  },
+  "wizard_close": {
+    "requiredTag": "wizard_close",
+    "wizardType": "close",
+    "speed": 1.2,
+    "castInterval": 50,
+    "equipment": {
+      "mainhand": "irons_spellbooks:blood_staff",
+      "head": "minecraft:iron_helmet",
+      "chest": "minecraft:iron_chestplate",
+      "legs": "minecraft:iron_leggings",
+      "feet": "minecraft:iron_boots"
+    },
+    "attributes": {
+      "irons_spellbooks:max_mana": 80,
+      "irons_spellbooks:mana_regen": 3,
+      "irons_spellbooks:spell_power": 1.5
+    },
+    "spells": {
+      "attack": [
+        { "id": "irons_spellbooks:magic_missile", "level": 1 },
+        { "id": "irons_spellbooks:fireball", "level": 1 }
+      ],
+      "defense": [
+        { "id": "irons_spellbooks:shield", "level": 1 }
+      ],
+      "movement": [
+        { "id": "irons_spellbooks:blood_step", "level": 1 }
+      ],
+      "support": [
+        { "id": "irons_spellbooks:heal", "level": 1, "emergency": true },
+        { "id": "irons_spellbooks:fortify", "level": 1 },
+        { "id": "irons_spellbooks:charge", "level": 1 }
+      ],
+      "escape": []
     }
   }
 }
@@ -230,8 +311,9 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - **attack** spells cast while it has a target in range,
    - **defense** spells cast while it is being attacked,
    - **movement** spells cast when the target is far / out of range,
-   - **support** spells cast when it is hurt or below half health,
-   - **escape** spells cast when it is critically low and recently attacked,
+   - **support** spells cast when it is hurt or below half health (or, for `close` wizards, while engaging),
+   - **escape** spells cast when it is critically low and recently attacked (`ranged` only),
+   - a **`close`** wizard advances, casts point-blank, melees when adjacent, and never retreats,
    - cooldowns match the spell's own configured values.
 5. Tweak `presets.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 

@@ -207,6 +207,7 @@ public class PresetManager
                 {
                   "wizard": {
                     "requiredTag": "wizard",
+                    "wizardType": "ranged",
                     "speed": 1.15,
                     "castInterval": 60,
                     "equipment": {
@@ -242,6 +243,7 @@ public class PresetManager
                   },
                   "wizard_lite": {
                     "requiredTag": "wizard_lite",
+                    "wizardType": "ranged",
                     "speed": 1.1,
                     "castInterval": 80,
                     "equipment": {
@@ -263,6 +265,42 @@ public class PresetManager
                       "defense": [],
                       "movement": [],
                       "support": []
+                    }
+                  },
+                  "wizard_close": {
+                    "requiredTag": "wizard_close",
+                    "wizardType": "close",
+                    "speed": 1.2,
+                    "castInterval": 50,
+                    "equipment": {
+                      "mainhand": "irons_spellbooks:blood_staff",
+                      "head": "minecraft:iron_helmet",
+                      "chest": "minecraft:iron_chestplate",
+                      "legs": "minecraft:iron_leggings",
+                      "feet": "minecraft:iron_boots"
+                    },
+                    "attributes": {
+                      "irons_spellbooks:max_mana": 80,
+                      "irons_spellbooks:mana_regen": 3,
+                      "irons_spellbooks:spell_power": 1.5
+                    },
+                    "spells": {
+                      "attack": [
+                        { "id": "irons_spellbooks:magic_missile", "level": 1 },
+                        { "id": "irons_spellbooks:fireball", "level": 1 }
+                      ],
+                      "defense": [
+                        { "id": "irons_spellbooks:shield", "level": 1 }
+                      ],
+                      "movement": [
+                        { "id": "irons_spellbooks:blood_step", "level": 1 }
+                      ],
+                      "support": [
+                        { "id": "irons_spellbooks:heal", "level": 1, "emergency": true },
+                        { "id": "irons_spellbooks:fortify", "level": 1 },
+                        { "id": "irons_spellbooks:charge", "level": 1 }
+                      ],
+                      "escape": []
                     }
                   }
                 }
