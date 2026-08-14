@@ -20,6 +20,7 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -27,6 +28,8 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -332,6 +335,7 @@ public class MobWizardryCommands
             mob.addTag(preset.requiredTag);
             WizardAiGoal.attach(mob, preset);
             wizardified++;
+            playWizardifyEffect(level, mob.position());
         }
         final int wf = wizardified;
         final int alr = already;
@@ -357,6 +361,7 @@ public class MobWizardryCommands
             if (entity.removeTag(preset.requiredTag))
             {
                 removed++;
+                playUnwizardifyEffect(level, entity.position());
             }
         }
         final int count = removed;
@@ -364,6 +369,18 @@ public class MobWizardryCommands
         ctx.getSource().sendSuccess(() -> Component.literal("De-wizardified " + count + " mob(s) - removed tag '" + presetName + "' within " + r + " blocks"), true);
         LOGGER.info("[MobWizardry] /mobwizardry unwizardify {} radius {} at {} by {} -> {} removed", presetName, radius, center, ctx.getSource().getTextName(), removed);
         return removed;
+    }
+
+    private static void playWizardifyEffect(ServerLevel level, Vec3 pos)
+    {
+        level.sendParticles(ParticleTypes.DRAGON_BREATH, pos.x, pos.y + 1.0, pos.z, 250, 0.8, 0.6, 0.8, 0.4);
+        level.playSound(null, pos.x, pos.y + 1.0, pos.z, SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.PLAYERS, 1.0F, 1.0F);
+    }
+
+    private static void playUnwizardifyEffect(ServerLevel level, Vec3 pos)
+    {
+        level.sendParticles(ParticleTypes.LARGE_SMOKE, pos.x, pos.y + 1.0, pos.z, 120, 0.6, 0.5, 0.6, 0.15);
+        level.playSound(null, pos.x, pos.y + 1.0, pos.z, SoundEvents.TNT_PRIMED, SoundSource.PLAYERS, 1.0F, 1.0F);
     }
 
     private static int reload(CommandContext<CommandSourceStack> ctx)
