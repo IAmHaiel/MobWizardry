@@ -74,7 +74,26 @@ Here is a plain-English explanation of every setting:
 - **`requiredTag`** — the magic word that *turns the creature on*. A mob only gets its wizard AI while it carries this tag (you apply the tag with the commands below). Each preset needs a unique tag. The mob type is chosen at summon time — the preset itself is not limited to any creature type.
 - **`speed`** — how fast the mob moves while casting. `1.0` is normal walking speed; bigger = faster.
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
-- **`equipment`** — what gear the mob wears. The slot name comes first (`mainhand`, `offhand`, `head`, `chest`, `legs`, `feet`), then the item ID. Equipped items never drop.
+- **`equipment`** — what gear the mob wears. A slot name maps to an item ID; the mob puts the item on and it never drops. All six equipment slots are supported:
+  - `mainhand` — the weapon/staff hand (e.g. `irons_spellbooks:blood_staff`)
+  - `offhand` — the other hand (e.g. a shield)
+  - `head` / `helmet` — e.g. `minecraft:diamond_helmet`
+  - `chest` / `chestplate` — e.g. `minecraft:diamond_chestplate`
+  - `legs` / `leggings` — e.g. `minecraft:diamond_leggings`
+  - `feet` / `boots` — e.g. `minecraft:diamond_boots`
+
+  Example — a fully-geared wizard:
+  ```json
+  "equipment": {
+    "mainhand": "irons_spellbooks:blood_staff",
+    "offhand": "minecraft:shield",
+    "head": "minecraft:diamond_helmet",
+    "chest": "minecraft:diamond_chestplate",
+    "legs": "minecraft:diamond_leggings",
+    "feet": "minecraft:diamond_boots"
+  }
+  ```
+  (Slot synonyms: `hand`/`main_hand` = mainhand, `off_hand` = offhand, `chestplate` = chest, `leggings` = legs, `helmet` = head, `boots` = feet.)
 - **`attributes`** — the mob's magic stats. Examples: `irons_spellbooks:max_mana` (mana pool size), `irons_spellbooks:mana_regen` (mana per second), `irons_spellbooks:spell_power` (spell damage multiplier).
 - **`spells`** — its spell kit, split into four categories (see below). Each spell is written as `{ "id": "mod:spell_id", "level": 1 }`.
 
@@ -101,7 +120,11 @@ This is exactly the default config the mod writes on first launch — copy it an
     "speed": 1.15,
     "castInterval": 60,
     "equipment": {
-      "mainhand": "irons_spellbooks:blood_staff"
+      "mainhand": "irons_spellbooks:blood_staff",
+      "head": "irons_spellbooks:wandering_magician_helmet",
+      "chest": "irons_spellbooks:wandering_magician_chestplate",
+      "legs": "irons_spellbooks:wandering_magician_leggings",
+      "feet": "irons_spellbooks:wandering_magician_boots"
     },
     "attributes": {
       "irons_spellbooks:max_mana": 100,
@@ -129,7 +152,11 @@ This is exactly the default config the mod writes on first launch — copy it an
     "speed": 1.1,
     "castInterval": 80,
     "equipment": {
-      "mainhand": "irons_spellbooks:blood_staff"
+      "mainhand": "irons_spellbooks:blood_staff",
+      "head": "irons_spellbooks:wandering_magician_helmet",
+      "chest": "irons_spellbooks:wandering_magician_chestplate",
+      "legs": "irons_spellbooks:wandering_magician_leggings",
+      "feet": "irons_spellbooks:wandering_magician_boots"
     },
     "attributes": {
       "irons_spellbooks:max_mana": 60,

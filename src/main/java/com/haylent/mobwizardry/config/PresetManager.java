@@ -178,7 +178,11 @@ public class PresetManager
                     "speed": 1.15,
                     "castInterval": 60,
                     "equipment": {
-                      "mainhand": "irons_spellbooks:blood_staff"
+                      "mainhand": "irons_spellbooks:blood_staff",
+                      "head": "irons_spellbooks:wandering_magician_helmet",
+                      "chest": "irons_spellbooks:wandering_magician_chestplate",
+                      "legs": "irons_spellbooks:wandering_magician_leggings",
+                      "feet": "irons_spellbooks:wandering_magician_boots"
                     },
                     "attributes": {
                       "irons_spellbooks:max_mana": 100,
@@ -206,7 +210,11 @@ public class PresetManager
                     "speed": 1.1,
                     "castInterval": 80,
                     "equipment": {
-                      "mainhand": "irons_spellbooks:blood_staff"
+                      "mainhand": "irons_spellbooks:blood_staff",
+                      "head": "irons_spellbooks:wandering_magician_helmet",
+                      "chest": "irons_spellbooks:wandering_magician_chestplate",
+                      "legs": "irons_spellbooks:wandering_magician_leggings",
+                      "feet": "irons_spellbooks:wandering_magician_boots"
                     },
                     "attributes": {
                       "irons_spellbooks:max_mana": 60,
