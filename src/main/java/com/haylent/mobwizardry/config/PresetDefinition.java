@@ -1,5 +1,8 @@
 package com.haylent.mobwizardry.config;
 
+import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
+import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 
 import java.util.ArrayList;
@@ -33,6 +36,11 @@ public class PresetDefinition
         };
     }
 
+    public int effectiveCastIntervalMax()
+    {
+        return castIntervalMax > castInterval ? castIntervalMax : castInterval * 2;
+    }
+
     public static class Spells
     {
         public List<SpellEntry> attack = new ArrayList<>();
@@ -47,5 +55,23 @@ public class PresetDefinition
         public String id = "";
         public int level = 1;
         public boolean emergency = false;
+
+        /**
+         * Resolves this entry's spell from the registry, or null if the id is invalid/unknown.
+         */
+        public AbstractSpell resolveSpell()
+        {
+            ResourceLocation rl = ResourceLocation.tryParse(id);
+            if (rl == null)
+            {
+                return null;
+            }
+            AbstractSpell spell = SpellRegistry.getSpell(rl);
+            if (spell == null || spell == SpellRegistry.none())
+            {
+                return null;
+            }
+            return spell;
+        }
     }
 }

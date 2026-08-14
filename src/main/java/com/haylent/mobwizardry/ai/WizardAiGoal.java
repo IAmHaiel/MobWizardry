@@ -2,11 +2,9 @@ package com.haylent.mobwizardry.ai;
 
 import com.haylent.mobwizardry.config.PresetDefinition;
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
-import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.entity.mobs.goals.WizardAttackGoal;
 import com.mojang.logging.LogUtils;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
@@ -32,114 +30,59 @@ public class WizardAiGoal extends Goal
     {
         this.mob = mob;
         this.preset = preset;
-        int castIntervalMax = preset.castIntervalMax > preset.castInterval ? preset.castIntervalMax : preset.castInterval * 2;
-        MobWizardryAttackGoal goal = new MobWizardryAttackGoal((IMagicEntity) mob, preset.speed, preset.castInterval, castIntervalMax);
-        goal.setSpells(
-                        resolveSpells(preset.spells.attack),
-                        resolveSpells(preset.spells.defense),
-                        resolveSpells(preset.spells.movement),
-                        resolveSpells(preset.spells.support))
-                .setSpellQuality(minQuality(), maxQuality());
-        goal.setEmergencyHealSpells(resolveEmergencySpells(preset.spells.support));
-        goal.setEscapeSpells(resolveSpells(preset.spells.escape));
+        float[] qualityRange = {1.0f, 0.0f};
+        List<AbstractSpell> emergencyHeals = new ArrayList<>();
+        List<AbstractSpell> attack = resolveSpells(preset.spells.attack, null, qualityRange);
+        List<AbstractSpell> defense = resolveSpells(preset.spells.defense, null, qualityRange);
+        List<AbstractSpell> movement = resolveSpells(preset.spells.movement, null, qualityRange);
+        List<AbstractSpell> support = resolveSpells(preset.spells.support, emergencyHeals, qualityRange);
+        List<AbstractSpell> escape = resolveSpells(preset.spells.escape, null, null);
+
+        MobWizardryAttackGoal goal = new MobWizardryAttackGoal((IMagicEntity) mob, preset.speed, preset.castInterval, preset.effectiveCastIntervalMax());
+        goal.setSpells(attack, defense, movement, support)
+                .setSpellQuality(Math.max(0.0f, qualityRange[0]), Math.min(1.0f, qualityRange[1]));
+        goal.setEmergencyHealSpells(emergencyHeals);
+        goal.setEscapeSpells(escape);
         goal.setMovementDistances(preset.movementStartDistance, preset.movementFarDistance);
         this.inner = goal;
         setFlags(inner.getFlags());
     }
 
-    private static List<AbstractSpell> resolveSpells(List<PresetDefinition.SpellEntry> entries)
+    /**
+     * Resolves every entry once, collecting the resolved spells (optionally into an
+     * emergency-heal list) and tracking the min/max spell quality for the goal.
+     */
+    private static List<AbstractSpell> resolveSpells(List<PresetDefinition.SpellEntry> entries,
+                                                     List<AbstractSpell> emergencyOut,
+                                                     float[] qualityRange)
     {
         List<AbstractSpell> spells = new ArrayList<>();
         for (PresetDefinition.SpellEntry entry : entries)
         {
-            ResourceLocation rl = ResourceLocation.tryParse(entry.id);
-            if (rl == null)
+            AbstractSpell spell = entry.resolveSpell();
+            if (spell == null)
             {
                 continue;
             }
-            AbstractSpell spell = SpellRegistry.getSpell(rl);
-            if (spell != null && spell != SpellRegistry.none())
+            spells.add(spell);
+            if (entry.emergency && emergencyOut != null)
             {
-                spells.add(spell);
+                emergencyOut.add(spell);
+            }
+            if (qualityRange != null)
+            {
+                float q = spell.getMaxLevel() <= 0 ? 0.5f : (float) Math.max(1, entry.level) / spell.getMaxLevel();
+                if (q < qualityRange[0])
+                {
+                    qualityRange[0] = q;
+                }
+                if (q > qualityRange[1])
+                {
+                    qualityRange[1] = q;
+                }
             }
         }
         return spells;
-    }
-
-    private static List<AbstractSpell> resolveEmergencySpells(List<PresetDefinition.SpellEntry> entries)
-    {
-        List<AbstractSpell> spells = new ArrayList<>();
-        for (PresetDefinition.SpellEntry entry : entries)
-        {
-            if (!entry.emergency)
-            {
-                continue;
-            }
-            ResourceLocation rl = ResourceLocation.tryParse(entry.id);
-            if (rl == null)
-            {
-                continue;
-            }
-            AbstractSpell spell = SpellRegistry.getSpell(rl);
-            if (spell != null && spell != SpellRegistry.none())
-            {
-                spells.add(spell);
-            }
-        }
-        return spells;
-    }
-
-    private float minQuality()
-    {
-        float quality = 1.0f;
-        for (PresetDefinition.SpellEntry entry : allSpellEntries())
-        {
-            float q = quality(entry);
-            if (q < quality)
-            {
-                quality = q;
-            }
-        }
-        return Math.max(0.0f, quality);
-    }
-
-    private float maxQuality()
-    {
-        float quality = 0.0f;
-        for (PresetDefinition.SpellEntry entry : allSpellEntries())
-        {
-            float q = quality(entry);
-            if (q > quality)
-            {
-                quality = q;
-            }
-        }
-        return Math.min(1.0f, quality);
-    }
-
-    private float quality(PresetDefinition.SpellEntry entry)
-    {
-        ResourceLocation rl = ResourceLocation.tryParse(entry.id);
-        if (rl == null)
-        {
-            return 0.5f;
-        }
-        AbstractSpell spell = SpellRegistry.getSpell(rl);
-        if (spell == null || spell == SpellRegistry.none() || spell.getMaxLevel() <= 0)
-        {
-            return 0.5f;
-        }
-        return (float) Math.max(1, entry.level) / spell.getMaxLevel();
-    }
-
-    private List<PresetDefinition.SpellEntry> allSpellEntries()
-    {
-        List<PresetDefinition.SpellEntry> all = new ArrayList<>();
-        all.addAll(preset.spells.attack);
-        all.addAll(preset.spells.defense);
-        all.addAll(preset.spells.movement);
-        all.addAll(preset.spells.support);
-        return all;
     }
 
     @Override

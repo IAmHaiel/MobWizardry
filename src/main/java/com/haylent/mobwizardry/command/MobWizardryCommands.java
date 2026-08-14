@@ -18,13 +18,9 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ResourceLocationArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -36,20 +32,16 @@ import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.item.Equipable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 public class MobWizardryCommands
 {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final int PRESETS_PER_PAGE = 5;
     private static final SimpleCommandExceptionType UNKNOWN_PRESET = new SimpleCommandExceptionType(Component.literal("Unknown MobWizardry preset. Use /mobwizardry list to see available presets."));
     private static final SimpleCommandExceptionType UNKNOWN_MOB = new SimpleCommandExceptionType(Component.literal("Unknown mob type."));
     private static final SimpleCommandExceptionType NOT_A_MOB = new SimpleCommandExceptionType(Component.literal("That entity type cannot cast spells or use equipment - it must be a PathfinderMob (zombie, skeleton, etc.)."));
@@ -114,17 +106,12 @@ public class MobWizardryCommands
 
     private static CompletableFuture<Suggestions> suggestPages(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder)
     {
-        int maxPage = maxPage(PresetManager.getPresets().size());
+        int maxPage = MobWizardryCommandOutput.maxPage(PresetManager.getPresets().size());
         for (int i = 1; i <= maxPage; i++)
         {
             builder.suggest(String.valueOf(i));
         }
         return builder.buildFuture();
-    }
-
-    private static int maxPage(int presetCount)
-    {
-        return Math.max(1, (presetCount + PRESETS_PER_PAGE - 1) / PRESETS_PER_PAGE);
     }
 
     private static PresetDefinition requirePreset(CommandContext<CommandSourceStack> ctx, String presetName) throws CommandSyntaxException
@@ -158,7 +145,7 @@ public class MobWizardryCommands
             throw NOT_A_MOB.create();
         }
 
-        Vec3 safePos = findSafeSpawn(level, pos);
+        Vec3 safePos = WizardMobInit.findSafeSpawn(level, pos);
         boolean moved = !safePos.equals(pos);
         mob.moveTo(safePos.x, safePos.y, safePos.z, ctx.getSource().getRotation().y, 0);
         warnOnEquipmentMismatch(ctx, preset, mob);
@@ -202,57 +189,6 @@ public class MobWizardryCommands
                 ctx.getSource().sendSuccess(() -> Component.literal(message).withStyle(ChatFormatting.YELLOW), false);
             }
         }
-    }
-
-    private static Vec3 findSafeSpawn(ServerLevel level, Vec3 pos)
-    {
-        BlockPos.MutableBlockPos bp = new BlockPos.MutableBlockPos();
-        if (isSpawnableAt(level, bp.set(pos.x, pos.y, pos.z)) && pos.y >= topSolidY(level, pos.x, pos.z))
-        {
-            return pos;
-        }
-        Vec3 surfacePos = new Vec3(Math.floor(pos.x) + 0.5, topSolidY(level, pos.x, pos.z) + 1, Math.floor(pos.z) + 0.5);
-        if (isSpawnableAt(level, bp.set(surfacePos.x, surfacePos.y, surfacePos.z)))
-        {
-            return surfacePos;
-        }
-        int maxY = level.getMaxBuildHeight() - 1;
-        int startY = Math.max(level.getMinBuildHeight() + 1, (int) Math.floor(pos.y) + 1);
-        for (int y = startY; y <= maxY; y++)
-        {
-            bp.set(pos.x, y, pos.z);
-            if (isSpawnableAt(level, bp))
-            {
-                return new Vec3(bp.getX() + 0.5, bp.getY(), bp.getZ() + 0.5);
-            }
-        }
-        return pos;
-    }
-
-    private static int topSolidY(ServerLevel level, double x, double z)
-    {
-        BlockPos.MutableBlockPos bp = new BlockPos.MutableBlockPos();
-        for (int y = level.getMaxBuildHeight() - 1; y >= level.getMinBuildHeight(); y--)
-        {
-            bp.set(x, y, z);
-            BlockState state = level.getBlockState(bp);
-            if (!state.getCollisionShape(level, bp).isEmpty() || !state.getFluidState().isEmpty())
-            {
-                return y;
-            }
-        }
-        return level.getMinBuildHeight() - 1;
-    }
-
-    private static boolean isSpawnableAt(ServerLevel level, BlockPos pos)
-    {
-        if (pos.getY() < level.getMinBuildHeight() + 1 || pos.getY() > level.getMaxBuildHeight() - 1)
-        {
-            return false;
-        }
-        BlockState at = level.getBlockState(pos);
-        BlockState above = level.getBlockState(pos.above());
-        return !at.isSuffocating(level, pos) && !above.isSuffocating(level, pos.above());
     }
 
     private static int wizardify(CommandContext<CommandSourceStack> ctx, String presetName, int radius, Vec3 center) throws CommandSyntaxException
@@ -339,20 +275,13 @@ public class MobWizardryCommands
     {
         MutableComponent header = Component.literal("=== MobWizardry commands ===").withStyle(ChatFormatting.AQUA);
         ctx.getSource().sendSuccess(() -> header, false);
-        helpLine(ctx, "help", "Show this help.");
-        helpLine(ctx, "summon <preset> <mobType> [pos]", "Summon a new mob as a wizard using a preset's equipment, attributes and spells.");
-        helpLine(ctx, "wizardify <preset> [radius] [pos]", "Turn nearby mobs into wizards - adds the preset tag and applies equipment and wizard AI.");
-        helpLine(ctx, "unwizardify <preset> [radius] [pos]", "Remove wizard status from nearby mobs - removes the preset tag and strips wizard equipment.");
-        helpLine(ctx, "reload", "Reload presets.json from the config folder.");
-        helpLine(ctx, "list [page]", "List all loaded presets and their spell setups.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "help", "Show this help.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "summon <preset> <mobType> [pos]", "Summon a new mob as a wizard using a preset's equipment, attributes and spells.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "wizardify <preset> [radius] [pos]", "Turn nearby mobs into wizards - adds the preset tag and applies equipment and wizard AI.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "unwizardify <preset> [radius] [pos]", "Remove wizard status from nearby mobs - removes the preset tag and strips wizard equipment.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "reload", "Reload presets.json from the config folder.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "list [page]", "List all loaded presets and their spell setups.");
         return 1;
-    }
-
-    private static void helpLine(CommandContext<CommandSourceStack> ctx, String command, String description)
-    {
-        MutableComponent line = Component.literal("/mobwizardry " + command).withStyle(ChatFormatting.GOLD);
-        line.append(Component.literal(" - " + description).withStyle(ChatFormatting.GRAY));
-        ctx.getSource().sendSuccess(() -> line, false);
     }
 
     private static int reload(CommandContext<CommandSourceStack> ctx)
@@ -365,107 +294,7 @@ public class MobWizardryCommands
 
     private static int list(CommandContext<CommandSourceStack> ctx, int page)
     {
-        Map<String, PresetDefinition> presets = PresetManager.getPresets();
-        if (presets.isEmpty())
-        {
-            ctx.getSource().sendSuccess(() -> Component.literal("No MobWizardry presets loaded."), false);
-            return 0;
-        }
-        int maxPage = maxPage(presets.size());
-        int currentPage = Math.min(Math.max(1, page), maxPage);
-        List<Map.Entry<String, PresetDefinition>> all = new ArrayList<>(presets.entrySet());
-        int from = (currentPage - 1) * PRESETS_PER_PAGE;
-        int to = Math.min(from + PRESETS_PER_PAGE, all.size());
-
-        MutableComponent header = Component.literal("=== MobWizardry presets (").withStyle(ChatFormatting.AQUA)
-                .append(Component.literal(String.valueOf(currentPage)).withStyle(ChatFormatting.YELLOW))
-                .append(Component.literal("/").withStyle(ChatFormatting.AQUA))
-                .append(Component.literal(String.valueOf(maxPage)).withStyle(ChatFormatting.YELLOW))
-                .append(Component.literal(") ===").withStyle(ChatFormatting.AQUA));
-        ctx.getSource().sendSuccess(() -> header, false);
-
-        for (int i = from; i < to; i++)
-        {
-            final Map.Entry<String, PresetDefinition> entry = all.get(i);
-            ctx.getSource().sendSuccess(() -> formatPreset(entry.getKey(), entry.getValue()), false);
-        }
-
-        ctx.getSource().sendSuccess(() -> pageNav(currentPage, maxPage), false);
-        return presets.size();
-    }
-
-    private static Component pageNav(int currentPage, int maxPage)
-    {
-        MutableComponent nav = Component.literal("[<]").withStyle(style -> {
-            Style s = style.withColor(ChatFormatting.GRAY);
-            if (currentPage > 1)
-            {
-                s = s.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/mobwizardry list " + (currentPage - 1)))
-                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("Previous page")));
-            }
-            return s;
-        });
-        nav.append(Component.literal(" " + currentPage + " / " + maxPage + " ").withStyle(ChatFormatting.YELLOW));
-        nav.append(Component.literal("[>]").withStyle(style -> {
-            Style s = style.withColor(ChatFormatting.GRAY);
-            if (currentPage < maxPage)
-            {
-                s = s.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/mobwizardry list " + (currentPage + 1)))
-                        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("Next page")));
-            }
-            return s;
-        }));
-        return nav;
-    }
-
-    private static Component formatPreset(String name, PresetDefinition p)
-    {
-        MutableComponent root = Component.literal("");
-        root.append(Component.literal("[" + name + "]").withStyle(ChatFormatting.GOLD));
-        root.append(Component.literal("\n  Tag: ").withStyle(ChatFormatting.GRAY));
-        root.append(Component.literal(p.requiredTag).withStyle(ChatFormatting.WHITE));
-        root.append(Component.literal("\n  Speed: ").withStyle(ChatFormatting.GRAY));
-        root.append(Component.literal(String.valueOf(p.speed)).withStyle(ChatFormatting.WHITE));
-        root.append(Component.literal(" | Cast interval: ").withStyle(ChatFormatting.GRAY));
-        root.append(Component.literal(String.valueOf(p.castInterval)).withStyle(ChatFormatting.WHITE));
-        if (!p.equipment.isEmpty())
-        {
-            root.append(Component.literal("\n  Equipment: ").withStyle(ChatFormatting.GRAY));
-            root.append(Component.literal(p.equipment.toString()).withStyle(ChatFormatting.WHITE));
-        }
-        if (!p.attributes.isEmpty())
-        {
-            root.append(Component.literal("\n  Attributes: ").withStyle(ChatFormatting.GRAY));
-            root.append(Component.literal(p.attributes.toString()).withStyle(ChatFormatting.WHITE));
-        }
-        root.append(Component.literal("\n  Attack:   ").withStyle(ChatFormatting.GRAY));
-        root.append(formatSpellList(p.spells.attack));
-        root.append(Component.literal("\n  Defense:  ").withStyle(ChatFormatting.GRAY));
-        root.append(formatSpellList(p.spells.defense));
-        root.append(Component.literal("\n  Movement: ").withStyle(ChatFormatting.GRAY));
-        root.append(formatSpellList(p.spells.movement));
-        root.append(Component.literal("\n  Support:  ").withStyle(ChatFormatting.GRAY));
-        root.append(formatSpellList(p.spells.support));
-        return root;
-    }
-
-    private static Component formatSpellList(List<PresetDefinition.SpellEntry> entries)
-    {
-        if (entries.isEmpty())
-        {
-            return Component.literal("(none)").withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC);
-        }
-        MutableComponent component = Component.literal("");
-        for (int i = 0; i < entries.size(); i++)
-        {
-            PresetDefinition.SpellEntry entry = entries.get(i);
-            component.append(Component.literal(entry.id).withStyle(ChatFormatting.WHITE));
-            component.append(Component.literal(" (lvl " + entry.level + ")").withStyle(ChatFormatting.GRAY));
-            if (i < entries.size() - 1)
-            {
-                component.append(Component.literal(", ").withStyle(ChatFormatting.GRAY));
-            }
-        }
-        return component;
+        MobWizardryCommandOutput.sendPresetsPage(ctx.getSource(), PresetManager.getPresets(), page);
+        return PresetManager.getPresets().size();
     }
 }

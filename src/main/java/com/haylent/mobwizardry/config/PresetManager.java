@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.haylent.mobwizardry.MobWizardryMod;
-import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
@@ -94,14 +93,14 @@ public class PresetManager
         validateAttributes(name, preset);
 
         int castMin = preset.castInterval;
-        int castMax = preset.castIntervalMax > castMin ? preset.castIntervalMax : castMin * 2;
+        int castMax = preset.effectiveCastIntervalMax();
         if (preset.castIntervalMax > 0 && preset.castIntervalMax < castMin)
         {
             LOGGER.warn("[MobWizardry] Preset '{}' has castIntervalMax ({}) smaller than castInterval ({}) - using castInterval*2 ({})", name, preset.castIntervalMax, castMin, castMax);
         }
         if (preset.movementStartDistance > 0 && preset.movementFarDistance > 0 && preset.movementStartDistance >= preset.movementFarDistance)
         {
-            LOGGER.warn("[MobWizardry] Preset '{}' has movementStartDistance ({}) >= movementFarDistance ({}) - using defaults (15/20)", name, preset.movementStartDistance, preset.movementFarDistance);
+            LOGGER.warn("[MobWizardry] Preset '{}' has movementStartDistance ({}) >= movementFarDistance ({}) - ignoring both, movement triggers will be derived from the spell range", name, preset.movementStartDistance, preset.movementFarDistance);
         }
         Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
         String castInfo = ", castRange=" + castMin + "-" + castMax + "t";
@@ -111,7 +110,7 @@ public class PresetManager
         int escapeCount = preset.spells.escape.size();
         String escapeInfo = escapeCount > 0 ? ", escape=" + escapeCount : "";
         String movementInfo = (preset.movementStartDistance > 0 || preset.movementFarDistance > 0)
-                ? ", movement=" + (preset.movementStartDistance > 0 ? preset.movementStartDistance : 15) + "-" + (preset.movementFarDistance > 0 ? preset.movementFarDistance : 20) : "";
+                ? ", movement=" + (preset.movementStartDistance > 0 ? preset.movementStartDistance : "range*0.75") + "-" + (preset.movementFarDistance > 0 ? preset.movementFarDistance : "range") : "";
         PRESETS.put(name, preset);
         LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{}{}{}{}{})", name, preset.requiredTag, castInfo, movementInfo, manaInfo, emergencyInfo, escapeInfo);
     }
@@ -160,14 +159,8 @@ public class PresetManager
                 LOGGER.error("[MobWizardry] Preset '{}' {} spell has a blank id - removed", presetName, category);
                 return true;
             }
-            ResourceLocation rl = ResourceLocation.tryParse(entry.id);
-            if (rl == null)
-            {
-                LOGGER.error("[MobWizardry] Preset '{}' {} spell '{}' is not a valid resource location - removed", presetName, category, entry.id);
-                return true;
-            }
-            AbstractSpell spell = SpellRegistry.getSpell(rl);
-            if (spell == null || spell == SpellRegistry.none())
+            AbstractSpell spell = entry.resolveSpell();
+            if (spell == null)
             {
                 LOGGER.error("[MobWizardry] Preset '{}' {} spell '{}' not found in Iron's Spellbooks registry - removed", presetName, category, entry.id);
                 return true;
