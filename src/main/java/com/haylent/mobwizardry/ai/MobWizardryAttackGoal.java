@@ -1,6 +1,7 @@
 package com.haylent.mobwizardry.ai;
 
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
+import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.entity.mobs.goals.WizardAttackGoal;
 import net.minecraft.util.Mth;
 
@@ -10,16 +11,30 @@ import net.minecraft.util.Mth;
  * <ul>
  *   <li>defense only fires while the caster was recently attacked (not just at low health);</li>
  *   <li>movement fires when the target is far / out of spell range;</li>
- *   <li>support fires when hurt, below half health, or low on mana.</li>
+ *   <li>support fires when hurt or below half health, but is chance-gated and cooldown-limited
+ *       so a critical caster can't heal-spam and become unkillable.</li>
  * </ul>
  */
 public class MobWizardryAttackGoal extends WizardAttackGoal
 {
     private static final int DEFENSE_WINDOW_TICKS = 100;
+    private static final int SUPPORT_COOLDOWN_TICKS = 140;
+    private int mobwizardry$lastSupportCastTick = -100000;
 
     public MobWizardryAttackGoal(IMagicEntity entity, double speed, int minInterval, int maxInterval)
     {
         super(entity, speed, minInterval, maxInterval);
+    }
+
+    @Override
+    protected AbstractSpell getNextSpellType()
+    {
+        AbstractSpell spell = super.getNextSpellType();
+        if (lastSpellCategory == supportSpells)
+        {
+            mobwizardry$lastSupportCastTick = mob.tickCount;
+        }
+        return spell;
     }
 
     @Override
@@ -83,7 +98,16 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         {
             return -1000;
         }
-        int weight = -15 + (int) (300.0f * (1.0f - hpRatio));
+        if (mob.tickCount - mobwizardry$lastSupportCastTick < SUPPORT_COOLDOWN_TICKS)
+        {
+            return -1000;
+        }
+        float chance = Mth.clamp(0.15f + (0.55f - hpRatio) * 0.9f, 0.0f, 0.55f);
+        if (mob.getRandom().nextFloat() >= chance)
+        {
+            return -1000;
+        }
+        int weight = -15 + (int) Math.min(120, 300.0f * (1.0f - hpRatio));
         if (hurt)
         {
             weight += 60;
