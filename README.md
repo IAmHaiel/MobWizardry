@@ -4,14 +4,6 @@ MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — full
 
 - **Target:** Minecraft Forge 1.20.1 (47.4.10)
 
-## What's new in 1.0.2
-
-- **Smarter AI behavior:** defense spells now only fire while the caster is actually being attacked; movement spells fire when the target is far / out of spell range; support spells fire when the caster is hurt or below half health. The wizard AI also runs at a higher goal priority, so tagged mobs cast spells instead of falling back to vanilla melee.
-- **New admin commands:** `/mobwizardry wizardify <preset> [radius] [pos]` and `/mobwizardry unwizardify <preset> [radius] [pos]` turn whole groups of mobs into wizards (or back) at once.
-- **Command improvements:** tab-completion for presets/mobs/pages, colored paginated `/mobwizardry list`, safer `summon` (validates the mob can cast, warns on mismatched equipment, never spawns inside a block).
-- **Config simplification:** presets no longer define `targetMobs` (the mob is chosen per command) and no longer need a `mana` field — mobs cast for free.
-- **Cleaner config load:** effective values are logged per preset, and bad entries are removed with clear messages.
-
 ## How it works
 
 1. Each preset in `config/mobwizardry/presets.json` defines:
