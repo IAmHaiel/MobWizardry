@@ -88,6 +88,7 @@ public class PresetManager
         validateSpellList(name, "defense", preset.spells.defense, preset.castInterval);
         validateSpellList(name, "movement", preset.spells.movement, preset.castInterval);
         validateSpellList(name, "support", preset.spells.support, preset.castInterval);
+        validateSpellList(name, "escape", preset.spells.escape, preset.castInterval);
 
         validateEquipment(name, preset);
         validateAttributes(name, preset);
@@ -103,8 +104,10 @@ public class PresetManager
         String manaInfo = maxManaAttr != null ? ", max_mana=" + maxManaAttr : "";
         long emergencyHeals = preset.spells.support.stream().filter(e -> e.emergency).count();
         String emergencyInfo = emergencyHeals > 0 ? ", emergencyHeals=" + emergencyHeals : "";
+        int escapeCount = preset.spells.escape.size();
+        String escapeInfo = escapeCount > 0 ? ", escape=" + escapeCount : "";
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{}{}{})", name, preset.requiredTag, castInfo, manaInfo, emergencyInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{}{}{}{})", name, preset.requiredTag, castInfo, manaInfo, emergencyInfo, escapeInfo);
     }
 
     private static void validateEquipment(String presetName, PresetDefinition preset)

@@ -37,6 +37,7 @@ public class PresetDefinition
         public List<SpellEntry> defense = new ArrayList<>();
         public List<SpellEntry> movement = new ArrayList<>();
         public List<SpellEntry> support = new ArrayList<>();
+        public List<SpellEntry> escape = new ArrayList<>();
     }
 
     public static class SpellEntry

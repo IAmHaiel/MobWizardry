@@ -24,9 +24,14 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
 {
     private static final int DEFENSE_WINDOW_TICKS = 100;
     private static final int SUPPORT_COOLDOWN_TICKS = 140;
+    private static final int SURVIVAL_COOLDOWN_TICKS = 100;
     private static final float CRITICAL_HP = 0.3f;
+    private static final float ESCAPE_HP = 0.5f;
+    private static final float ESCAPE_CHANCE = 0.35f;
     private int mobwizardry$lastSupportCastTick = -100000;
+    private int mobwizardry$lastSurvivalActionTick = -100000;
     private List<AbstractSpell> mobwizardry$emergencyHealSpells = new ArrayList<>();
+    private List<AbstractSpell> mobwizardry$escapeSpells = new ArrayList<>();
 
     public MobWizardryAttackGoal(IMagicEntity entity, double speed, int minInterval, int maxInterval)
     {
@@ -38,19 +43,56 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         this.mobwizardry$emergencyHealSpells = emergencyHealSpells != null ? emergencyHealSpells : new ArrayList<>();
     }
 
+    public void setEscapeSpells(List<AbstractSpell> escapeSpells)
+    {
+        this.mobwizardry$escapeSpells = escapeSpells != null ? escapeSpells : new ArrayList<>();
+    }
+
     @Override
     protected AbstractSpell getNextSpellType()
     {
+        if (shouldEscape())
+        {
+            mobwizardry$lastSurvivalActionTick = mob.tickCount;
+            return mobwizardry$escapeSpells.get(mob.getRandom().nextInt(mobwizardry$escapeSpells.size()));
+        }
         AbstractSpell spell = super.getNextSpellType();
         if (lastSpellCategory == supportSpells)
         {
             mobwizardry$lastSupportCastTick = mob.tickCount;
-            if (isCritical() && !mobwizardry$emergencyHealSpells.isEmpty() && !mobwizardry$emergencyHealSpells.contains(spell))
+            if (isCritical()
+                    && survivalCooldownReady()
+                    && !mobwizardry$emergencyHealSpells.isEmpty()
+                    && !mobwizardry$emergencyHealSpells.contains(spell))
             {
+                mobwizardry$lastSurvivalActionTick = mob.tickCount;
                 spell = mobwizardry$emergencyHealSpells.get(mob.getRandom().nextInt(mobwizardry$emergencyHealSpells.size()));
             }
         }
         return spell;
+    }
+
+    private boolean shouldEscape()
+    {
+        if (mobwizardry$escapeSpells.isEmpty() || !survivalCooldownReady())
+        {
+            return false;
+        }
+        if (!recentlyAttacked())
+        {
+            return false;
+        }
+        float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
+        if (hpRatio >= ESCAPE_HP)
+        {
+            return false;
+        }
+        return mob.getRandom().nextFloat() < ESCAPE_CHANCE;
+    }
+
+    private boolean survivalCooldownReady()
+    {
+        return mob.tickCount - mobwizardry$lastSurvivalActionTick >= SURVIVAL_COOLDOWN_TICKS;
     }
 
     private boolean isCritical()
