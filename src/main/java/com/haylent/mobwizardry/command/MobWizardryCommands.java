@@ -300,6 +300,10 @@ public class MobWizardryCommands
             if (entity.removeTag(preset.requiredTag))
             {
                 removed++;
+                if (entity instanceof PathfinderMob mob)
+                {
+                    WizardMobInit.stripWizardEquipment(mob, preset);
+                }
             }
         }
         final int count = removed;
@@ -362,6 +366,10 @@ public class MobWizardryCommands
             {
                 removed++;
                 playUnwizardifyEffect(level, entity.position());
+                if (entity instanceof PathfinderMob mob)
+                {
+                    WizardMobInit.stripWizardEquipment(mob, preset);
+                }
             }
         }
         final int count = removed;

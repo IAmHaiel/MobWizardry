@@ -30,6 +30,23 @@ public class WizardMobInit
         applyMana(mob, preset);
     }
 
+    /**
+     * Removes the equipment that the preset's {@code equipment} block put on the mob.
+     * Called when a mob is de-wizardified (tag removed) so the wizard gear disappears.
+     */
+    public static void stripWizardEquipment(PathfinderMob mob, PresetDefinition preset)
+    {
+        for (String slotName : preset.equipment.keySet())
+        {
+            EquipmentSlot slot = PresetDefinition.parseSlot(slotName);
+            if (slot != null)
+            {
+                mob.setItemSlot(slot, ItemStack.EMPTY);
+                mob.setDropChance(slot, 0.0f);
+            }
+        }
+    }
+
     private static void applyEquipment(PathfinderMob mob, PresetDefinition preset)
     {
         for (Map.Entry<String, String> entry : preset.equipment.entrySet())
