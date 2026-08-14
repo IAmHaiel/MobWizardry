@@ -17,7 +17,9 @@ import java.util.List;
  *   <li>support fires when hurt or below half health, but is chance-gated and cooldown-limited
  *       so a critical caster can't heal-spam and become unkillable;</li>
  *   <li>in critical health, a support cast always picks an {@code emergency}-flagged heal spell
- *       instead of randomly wasting it on a buff.</li>
+ *       instead of randomly wasting it on a buff;</li>
+ *   <li>escape and critical support casts share one survival cooldown: a heal can't land inside
+ *       an escape's window and a heal itself blocks a follow-up escape for the same duration.</li>
  * </ul>
  */
 public class MobWizardryAttackGoal extends WizardAttackGoal
@@ -68,13 +70,14 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         if (lastSpellCategory == supportSpells)
         {
             mobwizardry$lastSupportCastTick = mob.tickCount;
-            if (isCritical()
-                    && survivalCooldownReady()
-                    && !mobwizardry$emergencyHealSpells.isEmpty()
-                    && !mobwizardry$emergencyHealSpells.contains(spell))
+            if (isCritical())
             {
                 mobwizardry$lastSurvivalActionTick = mob.tickCount;
-                spell = mobwizardry$emergencyHealSpells.get(mob.getRandom().nextInt(mobwizardry$emergencyHealSpells.size()));
+                if (!mobwizardry$emergencyHealSpells.isEmpty()
+                        && !mobwizardry$emergencyHealSpells.contains(spell))
+                {
+                    spell = mobwizardry$emergencyHealSpells.get(mob.getRandom().nextInt(mobwizardry$emergencyHealSpells.size()));
+                }
             }
         }
         return spell;
@@ -165,6 +168,10 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     @Override
     protected int getSupportWeight()
     {
+        if (isCritical() && !survivalCooldownReady())
+        {
+            return -1000;
+        }
         float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
         boolean hurt = recentlyAttacked();
         if (!hurt && hpRatio >= 0.5f)
