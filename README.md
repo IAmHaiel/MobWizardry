@@ -3,7 +3,6 @@
 MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — fully config-driven. No new mobs are added: any vanilla or modded mob becomes a spellcaster when it carries a configured tag.
 
 - **Target:** Minecraft Forge 1.20.1 (47.4.10)
-- **Download:** `mobwizardry-1.20.1-1.0.2.jar`
 
 ## What's new in 1.0.2
 
