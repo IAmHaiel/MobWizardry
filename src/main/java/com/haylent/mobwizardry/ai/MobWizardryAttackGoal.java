@@ -88,11 +88,6 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
             if (isCritical())
             {
                 mobwizardry$lastSurvivalActionTick = mob.tickCount;
-                if (!mobwizardry$emergencyHealSpells.isEmpty()
-                        && !mobwizardry$emergencyHealSpells.contains(spell))
-                {
-                    spell = mobwizardry$emergencyHealSpells.get(mob.getRandom().nextInt(mobwizardry$emergencyHealSpells.size()));
-                }
             }
         }
         return spell;
