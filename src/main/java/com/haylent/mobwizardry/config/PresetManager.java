@@ -92,12 +92,19 @@ public class PresetManager
         validateEquipment(name, preset);
         validateAttributes(name, preset);
 
+        int castMin = preset.castInterval;
+        int castMax = preset.castIntervalMax > castMin ? preset.castIntervalMax : castMin * 2;
+        if (preset.castIntervalMax > 0 && preset.castIntervalMax < castMin)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has castIntervalMax ({}) smaller than castInterval ({}) - using castInterval*2 ({})", name, preset.castIntervalMax, castMin, castMax);
+        }
         Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
+        String castInfo = ", castRange=" + castMin + "-" + castMax + "t";
         String manaInfo = maxManaAttr != null ? ", max_mana=" + maxManaAttr : "";
         long emergencyHeals = preset.spells.support.stream().filter(e -> e.emergency).count();
         String emergencyInfo = emergencyHeals > 0 ? ", emergencyHeals=" + emergencyHeals : "";
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{}{})", name, preset.requiredTag, manaInfo, emergencyInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{}{}{})", name, preset.requiredTag, castInfo, manaInfo, emergencyInfo);
     }
 
     private static void validateEquipment(String presetName, PresetDefinition preset)

@@ -32,7 +32,8 @@ public class WizardAiGoal extends Goal
     {
         this.mob = mob;
         this.preset = preset;
-        MobWizardryAttackGoal goal = new MobWizardryAttackGoal((IMagicEntity) mob, preset.speed, preset.castInterval, preset.castInterval * 2);
+        int castIntervalMax = preset.castIntervalMax > preset.castInterval ? preset.castIntervalMax : preset.castInterval * 2;
+        MobWizardryAttackGoal goal = new MobWizardryAttackGoal((IMagicEntity) mob, preset.speed, preset.castInterval, castIntervalMax);
         goal.setSpells(
                         resolveSpells(preset.spells.attack),
                         resolveSpells(preset.spells.defense),
