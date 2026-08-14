@@ -30,6 +30,8 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     private static final float ESCAPE_CHANCE = 0.35f;
     private int mobwizardry$lastSupportCastTick = -100000;
     private int mobwizardry$lastSurvivalActionTick = -100000;
+    private double mobwizardry$movementStartDistance = 0;
+    private double mobwizardry$movementFarDistance = 0;
     private List<AbstractSpell> mobwizardry$emergencyHealSpells = new ArrayList<>();
     private List<AbstractSpell> mobwizardry$escapeSpells = new ArrayList<>();
 
@@ -46,6 +48,12 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     public void setEscapeSpells(List<AbstractSpell> escapeSpells)
     {
         this.mobwizardry$escapeSpells = escapeSpells != null ? escapeSpells : new ArrayList<>();
+    }
+
+    public void setMovementDistances(double startDistance, double farDistance)
+    {
+        this.mobwizardry$movementStartDistance = startDistance;
+        this.mobwizardry$movementFarDistance = farDistance;
     }
 
     @Override
@@ -132,15 +140,17 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         }
         double distSqr = mob.distanceToSqr(target.getX(), target.getY(), target.getZ());
         double range = Math.sqrt(spellcastingRangeSqr);
+        double start = mobwizardry$movementStartDistance > 0 ? mobwizardry$movementStartDistance : range * 0.75;
+        double far = mobwizardry$movementFarDistance > start ? mobwizardry$movementFarDistance : range;
         double distance = Math.sqrt(distSqr);
         int weight = 0;
-        if (distance > range)
+        if (distance > far)
         {
-            weight += 200 + (int) (100.0 * Math.min((distance - range) / range, 2.0));
+            weight += 200 + (int) (100.0 * Math.min((distance - far) / far, 2.0));
         }
-        else if (distance > range * 0.75)
+        else if (distance > start)
         {
-            weight += (int) (80.0 * (distance - range * 0.75) / (range * 0.25));
+            weight += (int) (80.0 * (distance - start) / Math.max(far - start, 1.0));
         }
         if (!hasLineOfSight)
         {

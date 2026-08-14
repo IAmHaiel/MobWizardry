@@ -13,6 +13,8 @@ public class PresetDefinition
     public double speed = 1.0;
     public int castInterval = 60;
     public int castIntervalMax = 0;
+    public double movementStartDistance = 0;
+    public double movementFarDistance = 0;
     public Map<String, String> equipment = new HashMap<>();
     public Map<String, Double> attributes = new HashMap<>();
     public Spells spells = new Spells();

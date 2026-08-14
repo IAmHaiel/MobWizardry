@@ -42,6 +42,7 @@ public class WizardAiGoal extends Goal
                 .setSpellQuality(minQuality(), maxQuality());
         goal.setEmergencyHealSpells(resolveEmergencySpells(preset.spells.support));
         goal.setEscapeSpells(resolveSpells(preset.spells.escape));
+        goal.setMovementDistances(preset.movementStartDistance, preset.movementFarDistance);
         this.inner = goal;
         setFlags(inner.getFlags());
     }

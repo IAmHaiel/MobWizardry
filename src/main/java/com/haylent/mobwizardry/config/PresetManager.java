@@ -99,6 +99,10 @@ public class PresetManager
         {
             LOGGER.warn("[MobWizardry] Preset '{}' has castIntervalMax ({}) smaller than castInterval ({}) - using castInterval*2 ({})", name, preset.castIntervalMax, castMin, castMax);
         }
+        if (preset.movementStartDistance > 0 && preset.movementFarDistance > 0 && preset.movementStartDistance >= preset.movementFarDistance)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has movementStartDistance ({}) >= movementFarDistance ({}) - using defaults (15/20)", name, preset.movementStartDistance, preset.movementFarDistance);
+        }
         Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
         String castInfo = ", castRange=" + castMin + "-" + castMax + "t";
         String manaInfo = maxManaAttr != null ? ", max_mana=" + maxManaAttr : "";
@@ -106,8 +110,10 @@ public class PresetManager
         String emergencyInfo = emergencyHeals > 0 ? ", emergencyHeals=" + emergencyHeals : "";
         int escapeCount = preset.spells.escape.size();
         String escapeInfo = escapeCount > 0 ? ", escape=" + escapeCount : "";
+        String movementInfo = (preset.movementStartDistance > 0 || preset.movementFarDistance > 0)
+                ? ", movement=" + (preset.movementStartDistance > 0 ? preset.movementStartDistance : 15) + "-" + (preset.movementFarDistance > 0 ? preset.movementFarDistance : 20) : "";
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{}{}{}{})", name, preset.requiredTag, castInfo, manaInfo, emergencyInfo, escapeInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}{}{}{}{}{})", name, preset.requiredTag, castInfo, movementInfo, manaInfo, emergencyInfo, escapeInfo);
     }
 
     private static void validateEquipment(String presetName, PresetDefinition preset)
