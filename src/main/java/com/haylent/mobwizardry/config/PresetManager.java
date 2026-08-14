@@ -218,6 +218,9 @@ public class PresetManager
                       ],
                       "support": [
                         { "id": "irons_spellbooks:heal", "level": 1, "emergency": true }
+                      ],
+                      "escape": [
+                        { "id": "irons_spellbooks:teleport", "level": 1 }
                       ]
                     }
                   },

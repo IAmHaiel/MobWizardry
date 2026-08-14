@@ -86,13 +86,14 @@ Here is a plain-English explanation of every setting:
   ```
   (Slot synonyms: `hand`/`main_hand` = mainhand, `off_hand` = offhand, `chestplate` = chest, `leggings` = legs, `helmet` = head, `boots` = feet.)
 - **`attributes`** — the mob's magic stats. Examples: `irons_spellbooks:max_mana` (mana pool size), `irons_spellbooks:mana_regen` (mana per second), `irons_spellbooks:spell_power` (spell damage multiplier).
-- **`spells`** — its spell kit, split into four categories (see below). Each spell is written as `{ "id": "mod:spell_id", "level": 1 }`. A support spell may also set `"emergency": true` — see the support category.
+- **`spells`** — its spell kit, split into five categories (see below). Each spell is written as `{ "id": "mod:spell_id", "level": 1 }`. A support spell may also set `"emergency": true` — see the support category.
 
 Spell categories:
 - **`attack`** — cast in combat against the target.
 - **`defense`** — cast only while the caster is actually **being attacked** (recently hurt). Tip: any spell works here — put `irons_spellbooks:shield` for a classic barrier, or put an offensive spell like `irons_spellbooks:fireball` to make the caster retaliate when it gets hit.
 - **`movement`** — cast when the target is **far away / out of spell range** to close the gap (e.g. `irons_spellbooks:blood_step`, `irons_spellbooks:teleport`).
 - **`support`** — self-aid spells, cast when the caster is hurt or below half health. Good options: `irons_spellbooks:heal`, `irons_spellbooks:greater_heal` (health), `irons_spellbooks:fortify` (armor), `irons_spellbooks:charge` (speed), `irons_spellbooks:heartstop`. Note: there is no "mana regen" spell in Iron's Spells 'n Spellbooks — mana recovery is the `irons_spellbooks:mana_regen` attribute, so give a support caster that attribute as well. Balance: support casts are **chance-gated** (up to ~55% per cast attempt, scaling with missing health) and **cooldown-limited** (at most once every 7 seconds), so a dying caster can't heal-spam itself to immortality. Smart healing: mark a support spell `"emergency": true` (e.g. on `heal`/`greater_heal`) and, when the caster drops below 30% health, support casts will always pick one of those emergency heals instead of randomly wasting the cast on a buff like `fortify`.
+- **`escape`** — repositioning spells cast only when the caster is **critically low** (below 30% health) **and** has recently been attacked, to retreat from danger (e.g. `irons_spellbooks:teleport`). Escape shares a 100-tick survival cooldown with emergency heals: after an escape, a heal can't land inside the same window, and a critical heal likewise blocks a follow-up escape — so the two can't chain together. It is chance-gated (~35% per eligible cast attempt) so a wizard doesn't teleport-spam, and it is checked before the weighted category pick, so it always wins over attack/movement while its conditions hold.
 
 ### Mana explained
 
@@ -135,6 +136,9 @@ This is exactly the default config the mod writes on first launch — copy it an
       ],
       "support": [
         { "id": "irons_spellbooks:heal", "level": 1, "emergency": true }
+      ],
+      "escape": [
+        { "id": "irons_spellbooks:teleport", "level": 1 }
       ]
     }
   },
@@ -227,6 +231,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - **defense** spells cast while it is being attacked,
    - **movement** spells cast when the target is far / out of range,
    - **support** spells cast when it is hurt or below half health,
+   - **escape** spells cast when it is critically low and recently attacked,
    - cooldowns match the spell's own configured values.
 5. Tweak `presets.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 

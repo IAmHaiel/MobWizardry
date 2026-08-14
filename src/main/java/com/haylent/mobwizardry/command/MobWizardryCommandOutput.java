@@ -72,15 +72,18 @@ public final class MobWizardryCommandOutput
             root.append(Component.literal("\n  Attributes: ").withStyle(ChatFormatting.GRAY));
             root.append(Component.literal(p.attributes.toString()).withStyle(ChatFormatting.WHITE));
         }
-        root.append(Component.literal("\n  Attack:   ").withStyle(ChatFormatting.GRAY));
-        root.append(formatSpellList(p.spells.attack));
-        root.append(Component.literal("\n  Defense:  ").withStyle(ChatFormatting.GRAY));
-        root.append(formatSpellList(p.spells.defense));
-        root.append(Component.literal("\n  Movement: ").withStyle(ChatFormatting.GRAY));
-        root.append(formatSpellList(p.spells.movement));
-        root.append(Component.literal("\n  Support:  ").withStyle(ChatFormatting.GRAY));
-        root.append(formatSpellList(p.spells.support));
+        appendSpellCategory(root, "Attack", p.spells.attack);
+        appendSpellCategory(root, "Defense", p.spells.defense);
+        appendSpellCategory(root, "Movement", p.spells.movement);
+        appendSpellCategory(root, "Support", p.spells.support);
+        appendSpellCategory(root, "Escape", p.spells.escape);
         return root;
+    }
+
+    private static void appendSpellCategory(MutableComponent root, String label, List<PresetDefinition.SpellEntry> entries)
+    {
+        root.append(Component.literal("\n  " + label + ": ").withStyle(ChatFormatting.GRAY));
+        root.append(formatSpellList(entries));
     }
 
     public static Component formatSpellList(List<PresetDefinition.SpellEntry> entries)
