@@ -259,6 +259,10 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
             return -1000;
         }
         float chance = Mth.clamp(0.15f + (0.55f - hpRatio) * 0.9f, 0.0f, 0.55f);
+        if (mobwizardry$wizardType.supportOpenWhileEngaging(distance))
+        {
+            chance = Math.max(chance, 0.3f);
+        }
         if (mob.getRandom().nextFloat() >= chance)
         {
             return -1000;
