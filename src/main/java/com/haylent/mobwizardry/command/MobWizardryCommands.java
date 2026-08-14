@@ -1,5 +1,6 @@
 package com.haylent.mobwizardry.command;
 
+import com.haylent.mobwizardry.ai.SpawnHelper;
 import com.haylent.mobwizardry.ai.WizardAiGoal;
 import com.haylent.mobwizardry.ai.WizardMobInit;
 import com.haylent.mobwizardry.config.PresetDefinition;
@@ -145,7 +146,7 @@ public class MobWizardryCommands
             throw NOT_A_MOB.create();
         }
 
-        Vec3 safePos = WizardMobInit.findSafeSpawn(level, pos);
+        Vec3 safePos = SpawnHelper.findSafeSpawn(level, pos);
         boolean moved = !safePos.equals(pos);
         mob.moveTo(safePos.x, safePos.y, safePos.z, ctx.getSource().getRotation().y, 0);
         warnOnEquipmentMismatch(ctx, preset, mob);
