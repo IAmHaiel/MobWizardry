@@ -103,8 +103,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         {
             return false;
         }
-        float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
-        if (hpRatio >= ESCAPE_HP)
+        if (hpRatio() >= ESCAPE_HP)
         {
             return false;
         }
@@ -118,7 +117,12 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
 
     private boolean isCritical()
     {
-        return mob.getMaxHealth() > 0 && mob.getHealth() / mob.getMaxHealth() < CRITICAL_HP;
+        return hpRatio() < CRITICAL_HP;
+    }
+
+    private float hpRatio()
+    {
+        return mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
     }
 
     @Override
@@ -189,13 +193,8 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
             return -1000;
         }
         int weight = -20;
-        float health = mob.getHealth();
-        float maxHealth = mob.getMaxHealth();
-        if (maxHealth > 0)
-        {
-            float hp = health / maxHealth;
-            weight += (int) (50.0f * (1.0f - hp * hp * hp));
-        }
+        float hp = hpRatio();
+        weight += (int) (50.0f * (1.0f - hp * hp * hp));
         weight += 95 * projectileCount;
         if (target != null && target.getMaxHealth() > 0)
         {
@@ -230,7 +229,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
             weight += 80;
         }
         double distRatio = Mth.clamp(distSqr / spellcastingRangeSqr, 0.0, 1.0);
-        float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
+        float hpRatio = hpRatio();
         weight += (int) (400.0f * (1.0f - hpRatio) * (1.0f - hpRatio) * (float) (1.0 - distRatio) * (float) (1.0 - distRatio));
         return weight;
     }
@@ -242,7 +241,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         {
             return -1000;
         }
-        float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
+        float hpRatio = hpRatio();
         boolean hurt = recentlyAttacked();
         double distance = target == null ? Double.MAX_VALUE : mob.distanceTo(target);
         if (!hurt && hpRatio >= 0.5f && !mobwizardry$wizardType.supportOpenWhileEngaging(distance))
