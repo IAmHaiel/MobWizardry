@@ -26,3 +26,6 @@ forge*changelog.txt
 
 # Local-only teaching/explanation docs (never pushed to GitHub)
 explanations/
+
+# Local-only implementation plans (never pushed to GitHub)
+implementation_plans/
