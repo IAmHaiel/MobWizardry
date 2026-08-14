@@ -41,6 +41,7 @@ public class WizardAiGoal extends Goal
         MobWizardryAttackGoal goal = new MobWizardryAttackGoal((IMagicEntity) mob, preset.speed, preset.castInterval, preset.effectiveCastIntervalMax());
         goal.setSpells(attack, defense, movement, support)
                 .setSpellQuality(Math.max(0.0f, qualityRange[0]), Math.min(1.0f, qualityRange[1]));
+        goal.setWizardType(WizardType.fromName(preset.wizardType));
         goal.setEmergencyHealSpells(emergencyHeals);
         goal.setEscapeSpells(escape);
         goal.setMovementDistances(preset.movementStartDistance, preset.movementFarDistance);

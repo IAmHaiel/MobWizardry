@@ -19,7 +19,9 @@ import java.util.List;
  *   <li>in critical health, an {@code emergency}-flagged heal is guaranteed (checked before the
  *       weighted category pick, so attack/movement spells can't crowd it out);</li>
  *   <li>escape and critical support casts share one survival cooldown: a heal can't land inside
- *       an escape's window and a heal itself blocks a follow-up escape for the same duration.</li>
+ *       an escape's window and a heal itself blocks a follow-up escape for the same duration;</li>
+ *   <li>type-specific behavior (approach, melee, buffs, escape eligibility) is delegated to the
+ *       preset's {@link WizardType} strategy instead of boolean flags.</li>
  * </ul>
  */
 public class MobWizardryAttackGoal extends WizardAttackGoal
@@ -27,6 +29,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     private static final int DEFENSE_WINDOW_TICKS = 100;
     private static final int SUPPORT_COOLDOWN_TICKS = 140;
     private static final int SURVIVAL_COOLDOWN_TICKS = 100;
+    private static final int MELEE_PAUSE_TICKS = 20;
     private static final float CRITICAL_HP = 0.3f;
     private static final float ESCAPE_HP = 0.5f;
     private static final float ESCAPE_CHANCE = 0.35f;
@@ -36,10 +39,16 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     private double mobwizardry$movementFarDistance = 0;
     private List<AbstractSpell> mobwizardry$emergencyHealSpells = new ArrayList<>();
     private List<AbstractSpell> mobwizardry$escapeSpells = new ArrayList<>();
+    private WizardType mobwizardry$wizardType = WizardType.RANGED;
 
     public MobWizardryAttackGoal(IMagicEntity entity, double speed, int minInterval, int maxInterval)
     {
         super(entity, speed, minInterval, maxInterval);
+    }
+
+    public void setWizardType(WizardType wizardType)
+    {
+        this.mobwizardry$wizardType = wizardType != null ? wizardType : WizardType.RANGED;
     }
 
     public void setEmergencyHealSpells(List<AbstractSpell> emergencyHealSpells)
@@ -91,7 +100,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
 
     private boolean shouldEscape()
     {
-        if (mobwizardry$escapeSpells.isEmpty() || !survivalCooldownReady())
+        if (!mobwizardry$wizardType.allowsEscape() || mobwizardry$escapeSpells.isEmpty() || !survivalCooldownReady())
         {
             return false;
         }
@@ -115,6 +124,66 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     private boolean isCritical()
     {
         return mob.getMaxHealth() > 0 && mob.getHealth() / mob.getMaxHealth() < CRITICAL_HP;
+    }
+
+    @Override
+    protected int getAttackWeight()
+    {
+        int base = super.getAttackWeight();
+        if (target == null)
+        {
+            return base;
+        }
+        double distance = mob.distanceTo(target);
+        double range = Math.sqrt(spellcastingRangeSqr);
+        return mobwizardry$wizardType.adjustAttackWeight(base, distance, range);
+    }
+
+    @Override
+    protected void doMovement(double distanceSqr)
+    {
+        float forwardOverride = mobwizardry$wizardType.strafeForward();
+        if (forwardOverride <= 0)
+        {
+            super.doMovement(distanceSqr);
+            return;
+        }
+        double speed = (spellCastingMob.isCasting() ? 0.75f : 1.0f) * movementSpeed();
+        mob.lookAt(target, 30.0f, 30.0f);
+        float strafeMultiplier = getStrafeMultiplier();
+        if (distanceSqr < spellcastingRangeSqr && seeTime >= 5)
+        {
+            mob.getNavigation().stop();
+            strafeTime++;
+            if (strafeTime > 25 && mob.getRandom().nextDouble() < 0.1)
+            {
+                strafingClockwise = !strafingClockwise;
+                strafeTime = 0;
+            }
+            float strafeDir = strafingClockwise ? 1.0f : -1.0f;
+            mob.getMoveControl().strafe(forwardOverride * strafeMultiplier, (float) speed * strafeDir * strafeMultiplier);
+            if (mob.horizontalCollision && mob.getRandom().nextFloat() < 0.1f)
+            {
+                tryJump();
+            }
+        }
+        else
+        {
+            mob.getNavigation().moveTo(target, speedModifier);
+        }
+    }
+
+    @Override
+    protected void doSpellAction()
+    {
+        boolean emergencyDue = isCritical() && survivalCooldownReady() && !mobwizardry$emergencyHealSpells.isEmpty();
+        if (!emergencyDue && target != null && mobwizardry$wizardType.wantsMelee(mob.distanceTo(target)))
+        {
+            mob.doHurtTarget(target);
+            spellAttackDelay = MELEE_PAUSE_TICKS;
+            return;
+        }
+        super.doSpellAction();
     }
 
     @Override
@@ -180,7 +249,8 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         }
         float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
         boolean hurt = recentlyAttacked();
-        if (!hurt && hpRatio >= 0.5f)
+        double distance = target == null ? Double.MAX_VALUE : mob.distanceTo(target);
+        if (!hurt && hpRatio >= 0.5f && !mobwizardry$wizardType.supportOpenWhileEngaging(distance))
         {
             return -1000;
         }
@@ -198,7 +268,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         {
             weight += 60;
         }
-        return weight;
+        return mobwizardry$wizardType.adjustSupportWeight(weight, distance, hurt, hpRatio);
     }
 
     private boolean recentlyAttacked()
