@@ -24,12 +24,6 @@ public abstract class WizardType
         return 0.0f;
     }
 
-    /** Whether an adjacent target should be melee'd instead of casting this window. */
-    public boolean wantsMelee(double distance)
-    {
-        return false;
-    }
-
     /** Whether the support gate opens while engaging (e.g. for pre-fight buffs). */
     public boolean supportOpenWhileEngaging(double distance)
     {

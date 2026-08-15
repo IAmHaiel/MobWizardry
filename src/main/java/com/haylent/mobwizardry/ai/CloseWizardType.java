@@ -1,13 +1,11 @@
 package com.haylent.mobwizardry.ai;
 
 /**
- * Close-range behavior: charge in, cast point-blank, melee when adjacent and
- * buff while engaging.
+ * Close-range behavior: charge in, cast point-blank, keep a ~5-block standoff and
+ * buff while engaging. Does not melee - it is purely a spellcaster.
  */
 public class CloseWizardType extends WizardType
 {
-    private static final double MELEE_REACH = 2.5;
-    private static final double MELEE_CHANCE = 0.5;
     private static final double POINT_BLANK_DISTANCE = 10.0;
     private static final double ENGAGE_DISTANCE = 12.0;
     private static final double REPOSITION_TOO_CLOSE = 5.0;
@@ -59,12 +57,6 @@ public class CloseWizardType extends WizardType
             return Math.max(base, REPOSITION_WEIGHT);
         }
         return base;
-    }
-
-    @Override
-    public boolean wantsMelee(double distance)
-    {
-        return distance <= MELEE_REACH && Math.random() < MELEE_CHANCE;
     }
 
     @Override

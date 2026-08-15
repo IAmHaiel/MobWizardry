@@ -20,7 +20,7 @@ import java.util.List;
  *       weighted category pick, so attack/movement spells can't crowd it out);</li>
  *   <li>escape and critical support casts share one survival cooldown: a heal can't land inside
  *       an escape's window and a heal itself blocks a follow-up escape for the same duration;</li>
- *   <li>type-specific behavior (approach, melee, buffs, escape eligibility) is delegated to the
+ *   <li>type-specific behavior (approach, buffs, escape eligibility) is delegated to the
  *       preset's {@link WizardType} strategy instead of boolean flags.</li>
  * </ul>
  */
@@ -29,7 +29,6 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     private static final int DEFENSE_WINDOW_TICKS = 100;
     private static final int SUPPORT_COOLDOWN_TICKS = 140;
     private static final int SURVIVAL_COOLDOWN_TICKS = 100;
-    private static final int MELEE_PAUSE_TICKS = 20;
     private static final float CRITICAL_HP = 0.3f;
     private static final float ESCAPE_HP = 0.5f;
     private static final float ESCAPE_CHANCE = 0.35f;
@@ -194,18 +193,6 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         {
             mob.getNavigation().moveTo(target, speedModifier);
         }
-    }
-
-    @Override
-    protected void doSpellAction()
-    {
-        if (!emergencyHealDue() && target != null && mobwizardry$wizardType.wantsMelee(mob.distanceTo(target)))
-        {
-            mob.doHurtTarget(target);
-            spellAttackDelay = MELEE_PAUSE_TICKS;
-            return;
-        }
-        super.doSpellAction();
     }
 
     @Override
