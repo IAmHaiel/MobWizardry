@@ -18,11 +18,12 @@ public final class SpawnHelper
     public static Vec3 findSafeSpawn(ServerLevel level, Vec3 pos)
     {
         BlockPos.MutableBlockPos bp = new BlockPos.MutableBlockPos();
-        if (isSpawnableAt(level, bp.set(pos.x, pos.y, pos.z)) && pos.y >= topSolidY(level, pos.x, pos.z))
+        double surfaceY = topSolidY(level, pos.x, pos.z);
+        if (isSpawnableAt(level, bp.set(pos.x, pos.y, pos.z)) && pos.y >= surfaceY)
         {
             return pos;
         }
-        Vec3 surfacePos = new Vec3(Math.floor(pos.x) + 0.5, topSolidY(level, pos.x, pos.z) + 1, Math.floor(pos.z) + 0.5);
+        Vec3 surfacePos = new Vec3(Math.floor(pos.x) + 0.5, surfaceY + 1, Math.floor(pos.z) + 0.5);
         if (isSpawnableAt(level, bp.set(surfacePos.x, surfacePos.y, surfacePos.z)))
         {
             return surfacePos;

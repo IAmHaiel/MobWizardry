@@ -2,6 +2,7 @@ package com.haylent.mobwizardry.ai;
 
 import com.haylent.mobwizardry.config.PresetDefinition;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
+import io.redspace.ironsspellbooks.api.registry.AttributeRegistry;
 import com.mojang.logging.LogUtils;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -93,7 +94,7 @@ public class WizardMobInit
     {
         // Mob casting is free (CastSource.MOB bypasses mana costs), so just keep the mana bar full.
         MagicData magicData = MagicData.getPlayerMagicData((LivingEntity) mob);
-        float maxMana = (float) mob.getAttributeValue(io.redspace.ironsspellbooks.api.registry.AttributeRegistry.MAX_MANA.get());
+        float maxMana = (float) mob.getAttributeValue(AttributeRegistry.MAX_MANA.get());
         magicData.setMana(Math.max(0.0f, maxMana));
     }
 }

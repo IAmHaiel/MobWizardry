@@ -9,14 +9,7 @@ public class CloseWizardType extends WizardType
     private static final double POINT_BLANK_DISTANCE = 10.0;
     private static final double ENGAGE_DISTANCE = 12.0;
     private static final double REPOSITION_TOO_CLOSE = 5.0;
-    private static final int REPOSITION_WEIGHT = 400;
     private static final int POINT_BLANK_ATTACK_BOOST = 80;
-
-    @Override
-    public String getName()
-    {
-        return "close";
-    }
 
     @Override
     public boolean allowsEscape()

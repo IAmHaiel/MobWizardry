@@ -9,8 +9,7 @@ public abstract class WizardType
 {
     public static final WizardType RANGED = new RangedWizardType();
     public static final WizardType CLOSE = new CloseWizardType();
-
-    public abstract String getName();
+    protected static final int REPOSITION_WEIGHT = 400;
 
     /** Whether the wizard may use its escape kit (retreat). Ranged: yes. Close: no. */
     public boolean allowsEscape()

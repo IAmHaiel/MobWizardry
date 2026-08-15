@@ -134,6 +134,11 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         return mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
     }
 
+    private double spellRange()
+    {
+        return Math.sqrt(spellcastingRangeSqr);
+    }
+
     @Override
     protected int getAttackWeight()
     {
@@ -143,8 +148,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
             return base;
         }
         double distance = mob.distanceTo(target);
-        double range = Math.sqrt(spellcastingRangeSqr);
-        return mobwizardry$wizardType.adjustAttackWeight(base, distance, range);
+        return mobwizardry$wizardType.adjustAttackWeight(base, distance, spellRange());
     }
 
     @Override
@@ -153,7 +157,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         double speed = (spellCastingMob.isCasting() ? 0.75f : 1.0f) * movementSpeed();
         mob.lookAt(target, 30.0f, 30.0f);
         float strafeMultiplier = getStrafeMultiplier();
-        double range = Math.sqrt(spellcastingRangeSqr);
+        double range = spellRange();
         double orbitRange = mobwizardry$wizardType.orbitRange(range);
         double distance = Math.sqrt(distanceSqr);
         double tooClose = mobwizardry$wizardType.tooCloseDistance(range);
@@ -221,7 +225,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
             return 0;
         }
         double distSqr = mob.distanceToSqr(target.getX(), target.getY(), target.getZ());
-        double range = Math.sqrt(spellcastingRangeSqr);
+        double range = spellRange();
         double start = mobwizardry$movementStartDistance > 0 ? mobwizardry$movementStartDistance : range * 0.75;
         double far = mobwizardry$movementFarDistance > start ? mobwizardry$movementFarDistance : range;
         double distance = Math.sqrt(distSqr);

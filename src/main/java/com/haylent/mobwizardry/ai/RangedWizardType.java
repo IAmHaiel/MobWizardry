@@ -9,13 +9,6 @@ package com.haylent.mobwizardry.ai;
 public class RangedWizardType extends WizardType
 {
     private static final double TOO_CLOSE_RATIO = 0.4;
-    private static final int REPOSITION_WEIGHT = 400;
-
-    @Override
-    public String getName()
-    {
-        return "ranged";
-    }
 
     @Override
     public int adjustMovementWeight(int base, double distance, double range)
