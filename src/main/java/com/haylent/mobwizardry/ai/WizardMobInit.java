@@ -27,6 +27,9 @@ public class WizardMobInit
         applyEquipment(mob, preset);
         applyAttributes(mob, preset);
         applyMana(mob, preset);
+        // If the preset overrode max health (e.g. minecraft:generic.max_health), refill the mob
+        // so it spawns at full health instead of at a fraction of the new max.
+        mob.setHealth(mob.getMaxHealth());
     }
 
     /**

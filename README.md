@@ -86,7 +86,7 @@ Here is a plain-English explanation of every setting:
   }
   ```
   (Slot synonyms: `hand`/`main_hand` = mainhand, `off_hand` = offhand, `chestplate` = chest, `leggings` = legs, `helmet` = head, `boots` = feet.)
-- **`attributes`** — the mob's magic stats. Examples: `irons_spellbooks:max_mana` (mana pool size), `irons_spellbooks:mana_regen` (mana per second), `irons_spellbooks:spell_power` (spell damage multiplier).
+- **`attributes`** — the mob's magic stats. Examples: `irons_spellbooks:max_mana` (mana pool size), `irons_spellbooks:mana_regen` (mana per second), `irons_spellbooks:spell_power` (spell damage multiplier). You can also override **vanilla attributes** — they use the `minecraft:generic.*` namespace, e.g. `minecraft:generic.max_health` for max health, `minecraft:generic.armor`, `minecraft:generic.attack_damage`, `minecraft:generic.movement_speed`. After applying the overrides the mob refills to full health, so a boosted `max_health` spawns it at full HP.
 - **`spells`** — its spell kit, split into five categories (see below). Each spell is written as `{ "id": "mod:spell_id", "level": 1 }`. A support spell may also set `"emergency": true` — see the support category.
 
 Spell categories:
