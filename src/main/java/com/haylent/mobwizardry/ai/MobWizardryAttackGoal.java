@@ -44,6 +44,11 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     public MobWizardryAttackGoal(IMagicEntity entity, double speed, int minInterval, int maxInterval)
     {
         super(entity, speed, minInterval, maxInterval);
+        // Retreat is handled by the preset's escape kit (teleport etc.), never by on-foot
+        // walking-flee. The base class enables allowFleeing by default, which makes the
+        // wizard pathfind away while the strafe block still circles it - the "flee while
+        // strafing" jitter. Disable it so movement is a clean strafe/orbit.
+        setAllowFleeing(false);
     }
 
     public void setWizardType(WizardType wizardType)
@@ -141,12 +146,6 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     @Override
     protected void doMovement(double distanceSqr)
     {
-        float forwardOverride = mobwizardry$wizardType.strafeForward();
-        if (forwardOverride <= 0)
-        {
-            super.doMovement(distanceSqr);
-            return;
-        }
         double speed = (spellCastingMob.isCasting() ? 0.75f : 1.0f) * movementSpeed();
         mob.lookAt(target, 30.0f, 30.0f);
         float strafeMultiplier = getStrafeMultiplier();
@@ -160,7 +159,13 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
                 strafeTime = 0;
             }
             float strafeDir = strafingClockwise ? 1.0f : -1.0f;
-            mob.getMoveControl().strafe(forwardOverride * strafeMultiplier, (float) speed * strafeDir * strafeMultiplier);
+            float forwardOverride = mobwizardry$wizardType.strafeForward();
+            // Ranged: always orbit the target at the base in-range forward value - never
+            // back-pedal, so there is no diagonal "flee while strafing". Close: push in.
+            float forward = forwardOverride > 0
+                    ? forwardOverride
+                    : 0.5f * 0.2f * (float) speedModifier;
+            mob.getMoveControl().strafe(forward * strafeMultiplier, (float) speed * strafeDir * strafeMultiplier);
             if (mob.horizontalCollision && mob.getRandom().nextFloat() < 0.1f)
             {
                 tryJump();
