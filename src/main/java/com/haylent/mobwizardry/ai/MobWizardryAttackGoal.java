@@ -154,7 +154,8 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         double speed = (spellCastingMob.isCasting() ? 0.75f : 1.0f) * movementSpeed();
         mob.lookAt(target, 30.0f, 30.0f);
         float strafeMultiplier = getStrafeMultiplier();
-        if (distanceSqr < spellcastingRangeSqr && seeTime >= 5)
+        double orbitRange = mobwizardry$wizardType.orbitRange(Math.sqrt(spellcastingRangeSqr));
+        if (distanceSqr < orbitRange * orbitRange && seeTime >= 5)
         {
             mob.getNavigation().stop();
             strafeTime++;

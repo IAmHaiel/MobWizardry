@@ -48,6 +48,15 @@ public abstract class WizardType
         return base;
     }
 
+    /**
+     * The distance inside which the wizard orbits/strafes the target instead of running
+     * straight at it. Ranged: the full spell range. Close: point-blank combat range.
+     */
+    public double orbitRange(double spellRange)
+    {
+        return spellRange;
+    }
+
     /** Modifies the computed support weight. */
     public int adjustSupportWeight(int base, double distance, boolean recentlyAttacked, float hpRatio)
     {
