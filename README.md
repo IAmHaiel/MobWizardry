@@ -155,6 +155,9 @@ This is exactly the default config the mod writes on first launch — copy it an
     "wizardType": "ranged",
     "speed": 1.15,
     "castInterval": 60,
+    "castIntervalMax": 0,
+    "movementStartDistance": 0,
+    "movementFarDistance": 0,
     "equipment": {
       "mainhand": "irons_spellbooks:blood_staff",
       "head": "irons_spellbooks:wandering_magician_helmet",
@@ -191,6 +194,9 @@ This is exactly the default config the mod writes on first launch — copy it an
     "wizardType": "ranged",
     "speed": 1.1,
     "castInterval": 80,
+    "castIntervalMax": 0,
+    "movementStartDistance": 0,
+    "movementFarDistance": 0,
     "equipment": {
       "mainhand": "irons_spellbooks:blood_staff",
       "head": "irons_spellbooks:wandering_magician_helmet",
@@ -209,7 +215,8 @@ This is exactly the default config the mod writes on first launch — copy it an
       ],
       "defense": [],
       "movement": [],
-      "support": []
+      "support": [],
+      "escape": []
     }
   },
   "wizard_range": {
@@ -256,6 +263,9 @@ This is exactly the default config the mod writes on first launch — copy it an
     "wizardType": "close",
     "speed": 1.2,
     "castInterval": 50,
+    "castIntervalMax": 0,
+    "movementStartDistance": 0,
+    "movementFarDistance": 0,
     "equipment": {
       "mainhand": "irons_spellbooks:blood_staff",
       "head": "minecraft:iron_helmet",

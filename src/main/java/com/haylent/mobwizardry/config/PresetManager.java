@@ -213,6 +213,9 @@ public class PresetManager
                     "wizardType": "ranged",
                     "speed": 1.15,
                     "castInterval": 60,
+                    "castIntervalMax": 0,
+                    "movementStartDistance": 0,
+                    "movementFarDistance": 0,
                     "equipment": {
                       "mainhand": "irons_spellbooks:blood_staff",
                       "head": "irons_spellbooks:wandering_magician_helmet",
@@ -249,6 +252,9 @@ public class PresetManager
                     "wizardType": "ranged",
                     "speed": 1.1,
                     "castInterval": 80,
+                    "castIntervalMax": 0,
+                    "movementStartDistance": 0,
+                    "movementFarDistance": 0,
                     "equipment": {
                       "mainhand": "irons_spellbooks:blood_staff",
                       "head": "irons_spellbooks:wandering_magician_helmet",
@@ -267,7 +273,8 @@ public class PresetManager
                       ],
                       "defense": [],
                       "movement": [],
-                      "support": []
+                      "support": [],
+                      "escape": []
                     }
                   },
                   "wizard_range": {
@@ -314,6 +321,9 @@ public class PresetManager
                     "wizardType": "close",
                     "speed": 1.2,
                     "castInterval": 50,
+                    "castIntervalMax": 0,
+                    "movementStartDistance": 0,
+                    "movementFarDistance": 0,
                     "equipment": {
                       "mainhand": "irons_spellbooks:blood_staff",
                       "head": "minecraft:iron_helmet",
