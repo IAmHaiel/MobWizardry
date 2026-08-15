@@ -30,7 +30,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.PathfinderMob;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Equipable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -155,7 +154,6 @@ public class MobWizardryCommands
         level.addFreshEntity(mob);
 
         WizardAiGoal.attach(mob, preset);
-        targetNearestPlayer(level, mob);
 
         final boolean finalMoved = moved;
         final Vec3 finalSafePos = safePos;
@@ -189,15 +187,6 @@ public class MobWizardryCommands
         }
     }
 
-    private static void targetNearestPlayer(ServerLevel level, PathfinderMob mob)
-    {
-        Player nearest = level.getNearestPlayer(mob, 64.0);
-        if (nearest != null)
-        {
-            mob.setTarget(nearest);
-        }
-    }
-
     private static int wizardify(CommandContext<CommandSourceStack> ctx, String presetName, int radius, Vec3 center) throws CommandSyntaxException
     {
         PresetDefinition preset = requirePreset(ctx, presetName);
@@ -227,7 +216,6 @@ public class MobWizardryCommands
             WizardAiGoal.attach(mob, preset);
             wizardified++;
             playWizardifyEffect(level, mob.position());
-            targetNearestPlayer(level, mob);
         }
         final int wf = wizardified;
         final int alr = already;
