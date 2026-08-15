@@ -212,6 +212,45 @@ This is exactly the default config the mod writes on first launch — copy it an
       "support": []
     }
   },
+  "wizard_range": {
+    "requiredTag": "wizard_range",
+    "wizardType": "ranged",
+    "speed": 1.15,
+    "castInterval": 60,
+    "castIntervalMax": 100,
+    "movementStartDistance": 15.0,
+    "movementFarDistance": 20.0,
+    "equipment": {
+      "mainhand": "irons_spellbooks:blood_staff",
+      "head": "irons_spellbooks:wandering_magician_helmet",
+      "chest": "irons_spellbooks:wandering_magician_chestplate",
+      "legs": "irons_spellbooks:wandering_magician_leggings",
+      "feet": "irons_spellbooks:wandering_magician_boots"
+    },
+    "attributes": {
+      "irons_spellbooks:max_mana": 100,
+      "irons_spellbooks:mana_regen": 3,
+      "irons_spellbooks:spell_power": 1.5
+    },
+    "spells": {
+      "attack": [
+        { "id": "irons_spellbooks:magic_missile", "level": 1 },
+        { "id": "irons_spellbooks:fireball", "level": 1 }
+      ],
+      "defense": [
+        { "id": "irons_spellbooks:shield", "level": 1 }
+      ],
+      "movement": [
+        { "id": "irons_spellbooks:blood_step", "level": 1 }
+      ],
+      "support": [
+        { "id": "irons_spellbooks:heal", "level": 1, "emergency": true }
+      ],
+      "escape": [
+        { "id": "irons_spellbooks:teleport", "level": 1 }
+      ]
+    }
+  },
   "wizard_close": {
     "requiredTag": "wizard_close",
     "wizardType": "close",
