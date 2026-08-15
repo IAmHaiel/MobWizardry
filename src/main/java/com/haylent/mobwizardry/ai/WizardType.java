@@ -42,6 +42,12 @@ public abstract class WizardType
         return base;
     }
 
+    /** Modifies the computed movement weight. */
+    public int adjustMovementWeight(int base, double distance, double range)
+    {
+        return base;
+    }
+
     /** Modifies the computed support weight. */
     public int adjustSupportWeight(int base, double distance, boolean recentlyAttacked, float hpRatio)
     {

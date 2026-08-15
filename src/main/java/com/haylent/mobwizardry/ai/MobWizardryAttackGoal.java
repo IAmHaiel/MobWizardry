@@ -240,7 +240,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         double distRatio = Mth.clamp(distSqr / spellcastingRangeSqr, 0.0, 1.0);
         float hp = hpRatio();
         weight += (int) (400.0f * (1.0f - hp) * (1.0f - hp) * (float) (1.0 - distRatio) * (float) (1.0 - distRatio));
-        return weight;
+        return mobwizardry$wizardType.adjustMovementWeight(weight, distance, range);
     }
 
     @Override
