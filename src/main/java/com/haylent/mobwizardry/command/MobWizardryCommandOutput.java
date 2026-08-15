@@ -64,13 +64,13 @@ public final class MobWizardryCommandOutput
         root.append(Component.literal(String.valueOf(p.castInterval)).withStyle(ChatFormatting.WHITE));
         if (!p.equipment.isEmpty())
         {
-            root.append(Component.literal("\n  Equipment: ").withStyle(ChatFormatting.GRAY));
-            root.append(Component.literal(p.equipment.toString()).withStyle(ChatFormatting.WHITE));
+            root.append(Component.literal("\n  Equipment:").withStyle(ChatFormatting.GRAY));
+            appendMapEntries(root, p.equipment);
         }
         if (!p.attributes.isEmpty())
         {
-            root.append(Component.literal("\n  Attributes: ").withStyle(ChatFormatting.GRAY));
-            root.append(Component.literal(p.attributes.toString()).withStyle(ChatFormatting.WHITE));
+            root.append(Component.literal("\n  Attributes:").withStyle(ChatFormatting.GRAY));
+            appendMapEntries(root, p.attributes);
         }
         appendSpellCategory(root, "Attack", p.spells.attack);
         appendSpellCategory(root, "Defense", p.spells.defense);
@@ -78,6 +78,15 @@ public final class MobWizardryCommandOutput
         appendSpellCategory(root, "Support", p.spells.support);
         appendSpellCategory(root, "Escape", p.spells.escape);
         return root;
+    }
+
+    private static void appendMapEntries(MutableComponent root, Map<String, ?> entries)
+    {
+        for (Map.Entry<String, ?> entry : entries.entrySet())
+        {
+            root.append(Component.literal("\n    " + entry.getKey() + ": ").withStyle(ChatFormatting.WHITE));
+            root.append(Component.literal(String.valueOf(entry.getValue())).withStyle(ChatFormatting.WHITE));
+        }
     }
 
     private static void appendSpellCategory(MutableComponent root, String label, List<PresetDefinition.SpellEntry> entries)
