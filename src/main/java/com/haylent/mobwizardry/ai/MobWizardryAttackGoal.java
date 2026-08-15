@@ -154,7 +154,18 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         double speed = (spellCastingMob.isCasting() ? 0.75f : 1.0f) * movementSpeed();
         mob.lookAt(target, 30.0f, 30.0f);
         float strafeMultiplier = getStrafeMultiplier();
-        double orbitRange = mobwizardry$wizardType.orbitRange(Math.sqrt(spellcastingRangeSqr));
+        double range = Math.sqrt(spellcastingRangeSqr);
+        double orbitRange = mobwizardry$wizardType.orbitRange(range);
+        double distance = Math.sqrt(distanceSqr);
+        double tooClose = mobwizardry$wizardType.tooCloseDistance(range);
+        if (tooClose > 0 && distance < tooClose && seeTime >= 5)
+        {
+            // Standoff: back straight away from the target (no lateral strafe) so the
+            // wizard holds ~5 blocks instead of closing into melee range.
+            mob.getNavigation().stop();
+            mob.getMoveControl().strafe(-(float) speed * strafeMultiplier, 0.0f);
+            return;
+        }
         if (distanceSqr < orbitRange * orbitRange && seeTime >= 5)
         {
             mob.getNavigation().stop();
@@ -165,10 +176,12 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
                 strafeTime = 0;
             }
             float strafeDir = strafingClockwise ? 1.0f : -1.0f;
-            float forwardOverride = mobwizardry$wizardType.strafeForward();
-            // Ranged: always orbit the target at the base in-range forward value - never
-            // back-pedal, so there is no diagonal "flee while strafing". Close: push in.
-            float forward = forwardOverride > 0
+            float forwardOverride = mobwizardry$wizardType.strafeForward(distance);
+            // Ranged (override 0): orbit at the base in-range forward value - never back-pedal,
+            // so there is no diagonal "flee while strafing". Close: keep a ~5-block standoff -
+            // the strategy returns a negative forward inside the band to back away, positive
+            // outside to close in.
+            float forward = forwardOverride != 0
                     ? forwardOverride
                     : 0.5f * 0.2f * (float) speedModifier;
             mob.getMoveControl().strafe(forward * strafeMultiplier, (float) speed * strafeDir * strafeMultiplier);

@@ -10,7 +10,7 @@ public class CloseWizardType extends WizardType
     private static final double MELEE_CHANCE = 0.5;
     private static final double POINT_BLANK_DISTANCE = 10.0;
     private static final double ENGAGE_DISTANCE = 12.0;
-    private static final double REPOSITION_TOO_CLOSE = 2.5;
+    private static final double REPOSITION_TOO_CLOSE = 5.0;
     private static final int REPOSITION_WEIGHT = 400;
     private static final int POINT_BLANK_ATTACK_BOOST = 80;
 
@@ -27,15 +27,27 @@ public class CloseWizardType extends WizardType
     }
 
     @Override
-    public float strafeForward()
+    public float strafeForward(double distance)
     {
-        return 0.6f;
+        // Keep a ~5-block standoff: back away while orbiting when the target is inside the
+        // band, gently close in when beyond it, so the wizard never charges into melee range.
+        if (distance < REPOSITION_TOO_CLOSE)
+        {
+            return -0.3f;
+        }
+        return 0.15f;
     }
 
     @Override
     public double orbitRange(double spellRange)
     {
         return Math.min(spellRange, POINT_BLANK_DISTANCE);
+    }
+
+    @Override
+    public double tooCloseDistance(double spellRange)
+    {
+        return REPOSITION_TOO_CLOSE;
     }
 
     @Override
