@@ -152,6 +152,7 @@ public class WizardAiGoal extends Goal
         if (mob.getTags().contains(preset.requiredTag) && !hasGoal(mob))
         {
             mob.goalSelector.addGoal(1, new WizardAiGoal(mob, preset));
+            mob.targetSelector.addGoal(0, new StickyTargetGoal(mob, preset.requiredTag));
             LOGGER.info("[MobWizardry] Attached wizard AI (tag={}) to {} at {}",
                     preset.requiredTag, mob.getType().getDescriptionId(), mob.blockPosition());
             return true;
