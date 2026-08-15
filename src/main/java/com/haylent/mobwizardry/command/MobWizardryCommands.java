@@ -171,12 +171,7 @@ public class MobWizardryCommands
             {
                 continue;
             }
-            ResourceLocation rl = ResourceLocation.tryParse(entry.getValue());
-            if (rl == null)
-            {
-                continue;
-            }
-            Item item = ForgeRegistries.ITEMS.getValue(rl);
+            Item item = PresetDefinition.resolveItem(entry.getValue());
             if (item == null)
             {
                 continue;

@@ -80,7 +80,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
             mobwizardry$lastSurvivalActionTick = mob.tickCount;
             return mobwizardry$escapeSpells.get(mob.getRandom().nextInt(mobwizardry$escapeSpells.size()));
         }
-        if (isCritical() && survivalCooldownReady() && !mobwizardry$emergencyHealSpells.isEmpty())
+        if (emergencyHealDue())
         {
             mobwizardry$lastSurvivalActionTick = mob.tickCount;
             mobwizardry$lastSupportCastTick = mob.tickCount;
@@ -96,6 +96,11 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
             }
         }
         return spell;
+    }
+
+    private boolean emergencyHealDue()
+    {
+        return isCritical() && survivalCooldownReady() && !mobwizardry$emergencyHealSpells.isEmpty();
     }
 
     private boolean shouldEscape()
@@ -180,8 +185,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     @Override
     protected void doSpellAction()
     {
-        boolean emergencyDue = isCritical() && survivalCooldownReady() && !mobwizardry$emergencyHealSpells.isEmpty();
-        if (!emergencyDue && target != null && mobwizardry$wizardType.wantsMelee(mob.distanceTo(target)))
+        if (!emergencyHealDue() && target != null && mobwizardry$wizardType.wantsMelee(mob.distanceTo(target)))
         {
             mob.doHurtTarget(target);
             spellAttackDelay = MELEE_PAUSE_TICKS;
@@ -234,8 +238,8 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
             weight += 80;
         }
         double distRatio = Mth.clamp(distSqr / spellcastingRangeSqr, 0.0, 1.0);
-        float hpRatio = hpRatio();
-        weight += (int) (400.0f * (1.0f - hpRatio) * (1.0f - hpRatio) * (float) (1.0 - distRatio) * (float) (1.0 - distRatio));
+        float hp = hpRatio();
+        weight += (int) (400.0f * (1.0f - hp) * (1.0f - hp) * (float) (1.0 - distRatio) * (float) (1.0 - distRatio));
         return weight;
     }
 

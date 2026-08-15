@@ -4,6 +4,9 @@ import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,6 +38,24 @@ public class PresetDefinition
             case "feet", "boots" -> EquipmentSlot.FEET;
             default -> null;
         };
+    }
+
+    /**
+     * Resolves an item id from the registry, or null if it is missing/invalid.
+     */
+    public static Item resolveItem(String itemId)
+    {
+        ResourceLocation rl = ResourceLocation.tryParse(itemId);
+        return rl == null ? null : ForgeRegistries.ITEMS.getValue(rl);
+    }
+
+    /**
+     * Resolves an attribute id from the registry, or null if it is missing/invalid.
+     */
+    public static Attribute resolveAttribute(String attributeId)
+    {
+        ResourceLocation rl = ResourceLocation.tryParse(attributeId);
+        return rl == null ? null : ForgeRegistries.ATTRIBUTES.getValue(rl);
     }
 
     public int effectiveCastIntervalMax()

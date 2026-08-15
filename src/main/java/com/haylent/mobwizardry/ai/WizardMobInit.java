@@ -3,14 +3,13 @@ package com.haylent.mobwizardry.ai;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import com.mojang.logging.LogUtils;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
 import java.util.Map;
@@ -57,12 +56,7 @@ public class WizardMobInit
                 LOGGER.warn("[MobWizardry] Unknown equipment slot '{}' in preset '{}' - skipped", entry.getKey(), preset.requiredTag);
                 continue;
             }
-            ResourceLocation rl = ResourceLocation.tryParse(entry.getValue());
-            if (rl == null)
-            {
-                continue;
-            }
-            var item = ForgeRegistries.ITEMS.getValue(rl);
+            Item item = PresetDefinition.resolveItem(entry.getValue());
             if (item == null)
             {
                 LOGGER.warn("[MobWizardry] Equipment item '{}' not found for preset '{}' - skipped", entry.getValue(), preset.requiredTag);
@@ -77,12 +71,7 @@ public class WizardMobInit
     {
         for (Map.Entry<String, Double> entry : preset.attributes.entrySet())
         {
-            ResourceLocation rl = ResourceLocation.tryParse(entry.getKey());
-            if (rl == null)
-            {
-                continue;
-            }
-            Attribute attribute = ForgeRegistries.ATTRIBUTES.getValue(rl);
+            Attribute attribute = PresetDefinition.resolveAttribute(entry.getKey());
             if (attribute == null)
             {
                 continue;
