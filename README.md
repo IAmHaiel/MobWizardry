@@ -65,6 +65,8 @@ Here is a plain-English explanation of every setting:
 - **`requiredTag`** — the magic word that *turns the creature on*. A mob only gets its wizard AI while it carries this tag (you apply the tag with the commands below). Each preset needs a unique tag. The mob type is chosen at summon time — the preset itself is not limited to any creature type.
 - **`wizardType`** — how the wizard fights. `ranged` (default) keeps distance and casts from afar; `close` charges in, casts point-blank, keeps a ~5-block standoff, and buffs while engaging. See below.
 - **`team`** — *optional* team name. Mobs carrying presets with the same team name can never target, retaliate against, or hurt each other (even through spell splash). Leave it out or empty for a mob with no team. Example: give undead mobs `"team": "undead"` and human mobs `"team": "human"` so undead never fight undead and humans never fight humans, while the two groups still fight each other.
+- **`faction`** — *optional* (`enemy` or `friendly`, default `enemy`). **`enemy`** wizards act like hostile mobs (a Wizard NPC hunts players, villagers and iron golems). **`friendly`** wizards never attack on their own — they only fight back when hurt, and they still cast spells. Best used with the Wizard NPC below.
+- **`skin`** — *optional* skin name for the Wizard NPC (a file in the skins folder, e.g. `"skin": "alex"`). Leave it out to get a random skin per spawned NPC.
 - **`speed`** — how fast the mob moves while casting. `1.0` is normal walking speed; bigger = faster.
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
 - **`movementDistanceOffset`** — how much *earlier* the wizard uses its movement spell (the teleport/dash spells like `blood_step`) to jump closer to its target. Measured in blocks; it is subtracted from the spell's range. Default `5.0`.
@@ -329,6 +331,23 @@ At server start (and on `/mobwizardry reload`) every entry is validated against 
 - a warning is logged when a spell's intrinsic cooldown exceeds `castInterval`.
 
 Invalid presets fail loudly in the log instead of silently doing nothing.
+
+## The Wizard NPC (2.0.0)
+
+A new entity, **`mobwizardry:wizard`**, that looks like a player and uses the same preset system:
+
+- **Spawning** — the intended way is `/mobwizardry summon <preset> mobwizardry:wizard`. A vanilla
+  `/summon mobwizardry:wizard` also works and automatically applies the default `wizard` preset
+  (ranged, enemy faction). There's also a spawn egg in the MobWizardry creative tab.
+- **Skins** — the NPC renders with a player-shaped model. Skin files are 64x64 PNGs placed in
+  `assets/mobwizardry/textures/entity/wizard/skins/` (shipped with the mod or a server-installed
+  resource pack). Each spawned NPC picks a random skin; a preset's `"skin": "name"` field forces
+  a specific one. Missing files fall back to the vanilla Steve texture.
+- **Faction** — the preset's `faction` field decides behavior:
+  - `enemy` — hunts players, villagers and iron golems like a hostile mob.
+  - `friendly` — never attacks on its own; it only fights back when hurt (and still casts).
+- **Teams** — same-team NPCs can never hurt/target each other, so you can build friendly and
+  enemy groups that coexist.
 
 ## Admin commands
 

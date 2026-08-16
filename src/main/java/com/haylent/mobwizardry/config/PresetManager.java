@@ -89,6 +89,7 @@ public class PresetManager
 
         validateWizardType(name, preset);
         validateTeam(name, preset);
+        validateFaction(name, preset);
 
         validateSpellList(name, "attack", preset.spells.attack, preset.castInterval);
         validateSpellList(name, "defense", preset.spells.defense, preset.castInterval);
@@ -117,6 +118,8 @@ public class PresetManager
         Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
         String castInfo = ", castRange=" + castMin + "-" + castMax + "t";
         String teamInfo = preset.team != null && !preset.team.isBlank() ? ", team=" + preset.team : "";
+        String factionInfo = preset.faction != null && !preset.faction.isBlank() ? ", faction=" + preset.faction : "";
+        String skinInfo = preset.skin != null && !preset.skin.isBlank() ? ", skin=" + preset.skin : "";
         String manaInfo = maxManaAttr != null ? ", max_mana=" + maxManaAttr : "";
         long emergencyHeals = preset.spells.support.stream().filter(e -> e.emergency).count();
         String emergencyInfo = emergencyHeals > 0 ? ", emergencyHeals=" + emergencyHeals : "";
@@ -126,7 +129,7 @@ public class PresetManager
                 ? ", movement=" + (preset.movementStartDistance > 0 ? preset.movementStartDistance : "range*0.75") + "-" + (preset.movementFarDistance > 0 ? preset.movementFarDistance : "range") : "";
         String movementOffsetInfo = preset.movementDistanceOffset > 0 ? ", movementOffset=" + preset.movementDistanceOffset : "";
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, teamInfo, castInfo, movementInfo, movementOffsetInfo, manaInfo, emergencyInfo, escapeInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, teamInfo, factionInfo, skinInfo, castInfo, movementInfo, movementOffsetInfo, manaInfo, emergencyInfo, escapeInfo);
     }
 
     private static void validateWizardType(String name, PresetDefinition preset)
@@ -152,6 +155,20 @@ public class PresetManager
         else
         {
             preset.team = preset.team.trim();
+        }
+    }
+
+    private static void validateFaction(String name, PresetDefinition preset)
+    {
+        String faction = preset.faction == null ? "" : preset.faction.trim().toLowerCase();
+        if (!"friendly".equals(faction) && !"enemy".equals(faction))
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has invalid faction '{}' - falling back to 'enemy'", name, preset.faction);
+            preset.faction = "enemy";
+        }
+        else
+        {
+            preset.faction = faction;
         }
     }
 
@@ -233,6 +250,7 @@ public class PresetManager
                     "requiredTag": "wizard",
                     "wizardType": "ranged",
                     "team": "undead",
+                    "faction": "enemy",
                     "speed": 1.15,
                     "castInterval": 60,
                     "castIntervalMax": 0,
@@ -274,6 +292,7 @@ public class PresetManager
                     "requiredTag": "wizard_lite",
                     "wizardType": "ranged",
                     "team": "undead",
+                    "faction": "enemy",
                     "speed": 1.1,
                     "castInterval": 80,
                     "castIntervalMax": 0,
@@ -306,6 +325,7 @@ public class PresetManager
                     "requiredTag": "wizard_range",
                     "wizardType": "ranged",
                     "team": "undead",
+                    "faction": "enemy",
                     "speed": 1.15,
                     "castInterval": 60,
                     "castIntervalMax": 100,
@@ -347,6 +367,7 @@ public class PresetManager
                     "requiredTag": "wizard_close",
                     "wizardType": "close",
                     "team": "undead",
+                    "faction": "enemy",
                     "speed": 1.2,
                     "castInterval": 50,
                     "castIntervalMax": 0,

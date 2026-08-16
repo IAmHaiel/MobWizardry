@@ -4,6 +4,8 @@ import com.haylent.mobwizardry.ai.WizardAiGoal;
 import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
+import com.haylent.mobwizardry.entity.WizardNpc;
+import com.haylent.mobwizardry.entity.WizardSkins;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
@@ -26,6 +28,7 @@ public class MobWizardryEvents
             return;
         }
 
+        boolean matched = false;
         for (PresetDefinition preset : PresetManager.getPresets().values())
         {
             if (!mob.getTags().contains(preset.requiredTag))
@@ -33,6 +36,22 @@ public class MobWizardryEvents
                 continue;
             }
             WizardAiGoal.attach(mob, preset);
+            matched = true;
+        }
+        if (mob instanceof WizardNpc npc)
+        {
+            // A wizard NPC summoned outside MobWizardry (e.g. vanilla /summon) has no preset tag:
+            // default it to the ranged 'wizard' preset so it is still a functional wizard.
+            if (!matched)
+            {
+                PresetDefinition fallback = PresetManager.getPreset("wizard");
+                if (fallback != null)
+                {
+                    npc.addTag(fallback.requiredTag);
+                    WizardAiGoal.attach(npc, fallback);
+                }
+            }
+            WizardSkins.ensureSkin(npc);
         }
     }
 

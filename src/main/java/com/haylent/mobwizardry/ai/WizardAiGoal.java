@@ -3,6 +3,7 @@ package com.haylent.mobwizardry.ai;
 import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
+import com.haylent.mobwizardry.entity.WizardNpc;
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.entity.mobs.goals.WizardAttackGoal;
@@ -146,6 +147,10 @@ public class WizardAiGoal extends Goal
     {
         WizardMobInit.apply(mob, preset);
         tryApply(mob, preset);
+        if (mob instanceof WizardNpc npc && preset.skin != null && !preset.skin.isBlank())
+        {
+            npc.setSkin(preset.skin.trim());
+        }
     }
 
     /**
@@ -156,6 +161,7 @@ public class WizardAiGoal extends Goal
     {
         if (mob.getTags().contains(preset.requiredTag) && !hasGoal(mob))
         {
+            WizardFaction.apply(mob, preset);
             mob.goalSelector.addGoal(1, new WizardAiGoal(mob, preset));
             mob.targetSelector.addGoal(0, new StickyTargetGoal(mob, preset.requiredTag));
             MobWizardryTeams.setTeam(mob, preset.team);
@@ -230,10 +236,15 @@ public class WizardAiGoal extends Goal
             }
         }
         MobWizardryTeams.setTeam(mob, preset.team);
+        WizardFaction.apply(mob, preset);
         WizardMobInit.stripWizardEquipment(mob, preset);
         WizardMobInit.apply(mob, preset);
         mob.goalSelector.addGoal(1, new WizardAiGoal(mob, preset));
         mob.targetSelector.addGoal(0, new StickyTargetGoal(mob, preset.requiredTag));
+        if (mob instanceof WizardNpc npc && preset.skin != null && !preset.skin.isBlank())
+        {
+            npc.setSkin(preset.skin.trim());
+        }
         LOGGER.info("[MobWizardry] Re-applied preset '{}' to {} at {}",
                 preset.requiredTag, mob.getType().getDescriptionId(), mob.blockPosition());
     }
