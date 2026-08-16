@@ -26,10 +26,11 @@ public class PresetManager
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private static final Map<String, PresetDefinition> PRESETS = new LinkedHashMap<>();
+    private static final Map<String, PresetDefinition> PRESETS_VIEW = Collections.unmodifiableMap(PRESETS);
 
     public static Map<String, PresetDefinition> getPresets()
     {
-        return Collections.unmodifiableMap(PRESETS);
+        return PRESETS_VIEW;
     }
 
     public static PresetDefinition getPreset(String name)

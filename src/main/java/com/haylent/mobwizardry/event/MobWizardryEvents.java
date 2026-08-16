@@ -51,13 +51,18 @@ public class MobWizardryEvents
         {
             return;
         }
+        // Teams are only ever assigned to wizardified Mobs, so nothing else can share one.
+        if (!(event.getEntity() instanceof Mob mob))
+        {
+            return;
+        }
         LivingEntity proposed = event.getNewTarget();
-        if (proposed == null || !MobWizardryTeams.sameTeam(event.getEntity(), proposed))
+        if (proposed == null || !MobWizardryTeams.sameTeam(mob, proposed))
         {
             return;
         }
         event.setCanceled(true);
-        if (event.getEntity() instanceof Mob mob && mob.getTarget() == proposed)
+        if (mob.getTarget() == proposed)
         {
             mob.setTarget(null);
         }
@@ -71,6 +76,11 @@ public class MobWizardryEvents
     public void onLivingAttack(LivingAttackEvent event)
     {
         if (event.getEntity().level().isClientSide())
+        {
+            return;
+        }
+        // Teams are only ever assigned to wizardified Mobs, so nothing else can share one.
+        if (!(event.getEntity() instanceof Mob))
         {
             return;
         }
