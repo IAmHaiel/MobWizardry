@@ -286,7 +286,9 @@ public class MobWizardryCommands
     {
         PresetManager.reload();
         int count = PresetManager.getPresets().size();
-        ctx.getSource().sendSuccess(() -> Component.literal("Reloaded MobWizardry config. Loaded " + count + " preset(s)."), true);
+        int reapplied = WizardAiGoal.reapplyAll(ctx.getSource().getServer());
+        final int re = reapplied;
+        ctx.getSource().sendSuccess(() -> Component.literal("Reloaded MobWizardry config. Loaded " + count + " preset(s). Re-applied config to " + re + " existing wizard(s)."), true);
         return count;
     }
 

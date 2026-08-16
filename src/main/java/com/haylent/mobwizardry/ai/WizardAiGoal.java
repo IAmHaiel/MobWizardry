@@ -2,10 +2,14 @@ package com.haylent.mobwizardry.ai;
 
 import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
+import com.haylent.mobwizardry.config.PresetManager;
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.entity.mobs.goals.WizardAttackGoal;
 import com.mojang.logging.LogUtils;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.goal.WrappedGoal;
@@ -172,5 +176,65 @@ public class WizardAiGoal extends Goal
             }
         }
         return false;
+    }
+
+    /**
+     * Re-applies the (reloaded) presets to every wizardified mob in all loaded dimensions. Used
+     * by {@code /mobwizardry reload} so config edits take effect on existing wizards, not just
+     * newly summoned/wizardified ones.
+     *
+     * @return the number of mobs re-applied
+     */
+    public static int reapplyAll(MinecraftServer server)
+    {
+        int reapplied = 0;
+        for (ServerLevel level : server.getAllLevels())
+        {
+            for (Entity entity : level.getAllEntities())
+            {
+                if (!(entity instanceof PathfinderMob mob))
+                {
+                    continue;
+                }
+                for (PresetDefinition preset : PresetManager.getPresets().values())
+                {
+                    if (mob.getTags().contains(preset.requiredTag))
+                    {
+                        reapply(mob, preset);
+                        reapplied++;
+                    }
+                }
+            }
+        }
+        return reapplied;
+    }
+
+    /**
+     * Replaces an existing wizard's setup with the given preset: removes the old wizard goals,
+     * re-applies team, equipment, attributes and mana, then re-attaches fresh goals.
+     */
+    private static void reapply(PathfinderMob mob, PresetDefinition preset)
+    {
+        for (WrappedGoal goal : new ArrayList<>(mob.goalSelector.getAvailableGoals()))
+        {
+            if (goal.getGoal() instanceof WizardAiGoal)
+            {
+                mob.goalSelector.removeGoal(goal.getGoal());
+            }
+        }
+        for (WrappedGoal goal : new ArrayList<>(mob.targetSelector.getAvailableGoals()))
+        {
+            if (goal.getGoal() instanceof StickyTargetGoal)
+            {
+                mob.targetSelector.removeGoal(goal.getGoal());
+            }
+        }
+        MobWizardryTeams.setTeam(mob, preset.team);
+        WizardMobInit.stripWizardEquipment(mob, preset);
+        WizardMobInit.apply(mob, preset);
+        mob.goalSelector.addGoal(1, new WizardAiGoal(mob, preset));
+        mob.targetSelector.addGoal(0, new StickyTargetGoal(mob, preset.requiredTag));
+        LOGGER.info("[MobWizardry] Re-applied preset '{}' to {} at {}",
+                preset.requiredTag, mob.getType().getDescriptionId(), mob.blockPosition());
     }
 }
