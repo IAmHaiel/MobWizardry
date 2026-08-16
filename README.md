@@ -67,7 +67,12 @@ Here is a plain-English explanation of every setting:
 - **`team`** — *optional* team name. Mobs carrying presets with the same team name can never target, retaliate against, or hurt each other (even through spell splash). Leave it out or empty for a mob with no team. Example: give undead mobs `"team": "undead"` and human mobs `"team": "human"` so undead never fight undead and humans never fight humans, while the two groups still fight each other.
 - **`speed`** — how fast the mob moves while casting. `1.0` is normal walking speed; bigger = faster.
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
-- **`movementDistanceOffset`** — how many blocks closer than the spell range the wizard repositions with a movement spell. Default `5.0`: with a 20-block spell range it uses a movement spell when the target is beyond 15 blocks instead of 20. Set `0` for the old behavior, or ignore this and set explicit absolute distances via `movementStartDistance` / `movementFarDistance` (those take precedence when set).
+- **`movementDistanceOffset`** — how much *earlier* the wizard uses its movement spell (the teleport/dash spells like `blood_step`) to jump closer to its target. Measured in blocks; it is subtracted from the spell's range. Default `5.0`.
+  - Example with spells that reach 20 blocks: old behavior = the wizard only jumps when the target is **20+ blocks** away; with `5.0` it jumps when the target is **15+ blocks** away (5 blocks sooner).
+  - A **bigger** number = the wizard repositions sooner (the target can't get as far away before the wizard jumps). `0` = the old "wait until out of range" behavior.
+  - It only moves the *trigger point* — it does **not** change how far the teleport spell itself jumps.
+  - Negative numbers are ignored (treated as `0`), and the trigger never drops below 2 blocks, so the wizard won't teleport when the target is right next to it.
+  - Want exact distances instead? Set `movementStartDistance` / `movementFarDistance` — those override the offset when both are set.
 - **`equipment`** — what gear the mob wears. A slot name maps to an item ID; the mob puts the item on and it never drops. All six equipment slots are supported:
   - `mainhand` — the weapon/staff hand (e.g. `irons_spellbooks:blood_staff`)
   - `offhand` — the other hand (e.g. a shield)
