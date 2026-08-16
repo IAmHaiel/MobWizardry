@@ -17,6 +17,7 @@ public class PresetDefinition
 {
     public String requiredTag = "";
     public String wizardType = "ranged";
+    public String team = "";
     public double speed = 1.0;
     public int castInterval = 60;
     public int castIntervalMax = 0;

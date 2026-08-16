@@ -1,5 +1,6 @@
 package com.haylent.mobwizardry.ai;
 
+import com.haylent.mobwizardry.config.MobWizardryTeams;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -85,14 +86,15 @@ public class StickyTargetGoal extends TargetGoal
 
     /**
      * True while the mob was recently hurt by a live, attackable entity that is not its current
-     * target. Releases the {@code TARGET} flag so the vanilla {@code HurtByTargetGoal} can switch
-     * the mob to the attacker.
+     * target and is not on its own team. Releases the {@code TARGET} flag so the vanilla
+     * {@code HurtByTargetGoal} can switch the mob to the attacker.
      */
     private boolean shouldYieldToAttacker()
     {
         LivingEntity attacker = mob.getLastHurtByMob();
         return attacker != null
                 && attacker != mob.getTarget()
+                && !MobWizardryTeams.sameTeam(mob, attacker)
                 && mob.canAttack(attacker)
                 && mob.tickCount - mob.getLastHurtByMobTimestamp() <= YIELD_AFTER_HURT_TICKS;
     }

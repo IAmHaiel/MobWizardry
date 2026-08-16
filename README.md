@@ -63,7 +63,8 @@ Think of the config as a **list of "wizard job applications"**. Each block is on
 Here is a plain-English explanation of every setting:
 
 - **`requiredTag`** — the magic word that *turns the creature on*. A mob only gets its wizard AI while it carries this tag (you apply the tag with the commands below). Each preset needs a unique tag. The mob type is chosen at summon time — the preset itself is not limited to any creature type.
-- **`wizardType`** — how the wizard fights. `ranged` (default) keeps distance and casts from afar; `close` charges in, casts point-blank, melees when adjacent, and buffs while engaging. See below.
+- **`wizardType`** — how the wizard fights. `ranged` (default) keeps distance and casts from afar; `close` charges in, casts point-blank, keeps a ~5-block standoff, and buffs while engaging. See below.
+- **`team`** — *optional* team name. Mobs carrying presets with the same team name can never target, retaliate against, or hurt each other (even through spell splash). Leave it out or empty for a mob with no team. Example: give undead mobs `"team": "undead"` and human mobs `"team": "human"` so undead never fight undead and humans never fight humans, while the two groups still fight each other.
 - **`speed`** — how fast the mob moves while casting. `1.0` is normal walking speed; bigger = faster.
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
 - **`equipment`** — what gear the mob wears. A slot name maps to an item ID; the mob puts the item on and it never drops. All six equipment slots are supported:

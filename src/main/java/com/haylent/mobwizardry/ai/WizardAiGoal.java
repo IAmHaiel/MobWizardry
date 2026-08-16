@@ -1,5 +1,6 @@
 package com.haylent.mobwizardry.ai;
 
+import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
@@ -153,6 +154,7 @@ public class WizardAiGoal extends Goal
         {
             mob.goalSelector.addGoal(1, new WizardAiGoal(mob, preset));
             mob.targetSelector.addGoal(0, new StickyTargetGoal(mob, preset.requiredTag));
+            MobWizardryTeams.setTeam(mob, preset.team);
             LOGGER.info("[MobWizardry] Attached wizard AI (tag={}) to {} at {}",
                     preset.requiredTag, mob.getType().getDescriptionId(), mob.blockPosition());
             return true;

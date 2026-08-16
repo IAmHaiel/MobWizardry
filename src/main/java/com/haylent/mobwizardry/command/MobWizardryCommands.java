@@ -3,6 +3,7 @@ package com.haylent.mobwizardry.command;
 import com.haylent.mobwizardry.ai.SpawnHelper;
 import com.haylent.mobwizardry.ai.WizardAiGoal;
 import com.haylent.mobwizardry.ai.WizardMobInit;
+import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.mojang.brigadier.CommandDispatcher;
@@ -241,6 +242,7 @@ public class MobWizardryCommands
             if (entity.removeTag(preset.requiredTag))
             {
                 removed++;
+                MobWizardryTeams.setTeam(entity, "");
                 playUnwizardifyEffect(level, entity.position());
                 if (entity instanceof PathfinderMob mob)
                 {

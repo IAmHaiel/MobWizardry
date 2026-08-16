@@ -87,6 +87,7 @@ public class PresetManager
         }
 
         validateWizardType(name, preset);
+        validateTeam(name, preset);
 
         validateSpellList(name, "attack", preset.spells.attack, preset.castInterval);
         validateSpellList(name, "defense", preset.spells.defense, preset.castInterval);
@@ -109,6 +110,7 @@ public class PresetManager
         }
         Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
         String castInfo = ", castRange=" + castMin + "-" + castMax + "t";
+        String teamInfo = preset.team != null && !preset.team.isBlank() ? ", team=" + preset.team : "";
         String manaInfo = maxManaAttr != null ? ", max_mana=" + maxManaAttr : "";
         long emergencyHeals = preset.spells.support.stream().filter(e -> e.emergency).count();
         String emergencyInfo = emergencyHeals > 0 ? ", emergencyHeals=" + emergencyHeals : "";
@@ -117,7 +119,7 @@ public class PresetManager
         String movementInfo = (preset.movementStartDistance > 0 || preset.movementFarDistance > 0)
                 ? ", movement=" + (preset.movementStartDistance > 0 ? preset.movementStartDistance : "range*0.75") + "-" + (preset.movementFarDistance > 0 ? preset.movementFarDistance : "range") : "";
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, castInfo, movementInfo, manaInfo, emergencyInfo, escapeInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, teamInfo, castInfo, movementInfo, manaInfo, emergencyInfo, escapeInfo);
     }
 
     private static void validateWizardType(String name, PresetDefinition preset)
@@ -131,6 +133,18 @@ public class PresetManager
         else
         {
             preset.wizardType = type;
+        }
+    }
+
+    private static void validateTeam(String name, PresetDefinition preset)
+    {
+        if (preset.team == null)
+        {
+            preset.team = "";
+        }
+        else
+        {
+            preset.team = preset.team.trim();
         }
     }
 
@@ -211,6 +225,7 @@ public class PresetManager
                   "wizard": {
                     "requiredTag": "wizard",
                     "wizardType": "ranged",
+                    "team": "undead",
                     "speed": 1.15,
                     "castInterval": 60,
                     "castIntervalMax": 0,
@@ -250,6 +265,7 @@ public class PresetManager
                   "wizard_lite": {
                     "requiredTag": "wizard_lite",
                     "wizardType": "ranged",
+                    "team": "undead",
                     "speed": 1.1,
                     "castInterval": 80,
                     "castIntervalMax": 0,
@@ -280,6 +296,7 @@ public class PresetManager
                   "wizard_range": {
                     "requiredTag": "wizard_range",
                     "wizardType": "ranged",
+                    "team": "undead",
                     "speed": 1.15,
                     "castInterval": 60,
                     "castIntervalMax": 100,
@@ -319,6 +336,7 @@ public class PresetManager
                   "wizard_close": {
                     "requiredTag": "wizard_close",
                     "wizardType": "close",
+                    "team": "undead",
                     "speed": 1.2,
                     "castInterval": 50,
                     "castIntervalMax": 0,
