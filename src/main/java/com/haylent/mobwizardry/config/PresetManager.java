@@ -109,6 +109,11 @@ public class PresetManager
         {
             LOGGER.warn("[MobWizardry] Preset '{}' has movementStartDistance ({}) >= movementFarDistance ({}) - ignoring both, movement triggers will be derived from the spell range", name, preset.movementStartDistance, preset.movementFarDistance);
         }
+        if (preset.movementDistanceOffset < 0)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has a negative movementDistanceOffset ({}) - using 0", name, preset.movementDistanceOffset);
+            preset.movementDistanceOffset = 0;
+        }
         Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
         String castInfo = ", castRange=" + castMin + "-" + castMax + "t";
         String teamInfo = preset.team != null && !preset.team.isBlank() ? ", team=" + preset.team : "";
@@ -119,8 +124,9 @@ public class PresetManager
         String escapeInfo = escapeCount > 0 ? ", escape=" + escapeCount : "";
         String movementInfo = (preset.movementStartDistance > 0 || preset.movementFarDistance > 0)
                 ? ", movement=" + (preset.movementStartDistance > 0 ? preset.movementStartDistance : "range*0.75") + "-" + (preset.movementFarDistance > 0 ? preset.movementFarDistance : "range") : "";
+        String movementOffsetInfo = preset.movementDistanceOffset > 0 ? ", movementOffset=" + preset.movementDistanceOffset : "";
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, teamInfo, castInfo, movementInfo, manaInfo, emergencyInfo, escapeInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, teamInfo, castInfo, movementInfo, movementOffsetInfo, manaInfo, emergencyInfo, escapeInfo);
     }
 
     private static void validateWizardType(String name, PresetDefinition preset)
@@ -232,6 +238,7 @@ public class PresetManager
                     "castIntervalMax": 0,
                     "movementStartDistance": 0,
                     "movementFarDistance": 0,
+                    "movementDistanceOffset": 5.0,
                     "equipment": {
                       "mainhand": "irons_spellbooks:blood_staff",
                       "head": "irons_spellbooks:wandering_magician_helmet",
@@ -272,6 +279,7 @@ public class PresetManager
                     "castIntervalMax": 0,
                     "movementStartDistance": 0,
                     "movementFarDistance": 0,
+                    "movementDistanceOffset": 5.0,
                     "equipment": {
                       "mainhand": "irons_spellbooks:blood_staff",
                       "head": "irons_spellbooks:wandering_magician_helmet",
@@ -303,6 +311,7 @@ public class PresetManager
                     "castIntervalMax": 100,
                     "movementStartDistance": 15.0,
                     "movementFarDistance": 20.0,
+                    "movementDistanceOffset": 5.0,
                     "equipment": {
                       "mainhand": "irons_spellbooks:blood_staff",
                       "head": "irons_spellbooks:wandering_magician_helmet",
@@ -343,6 +352,7 @@ public class PresetManager
                     "castIntervalMax": 0,
                     "movementStartDistance": 0,
                     "movementFarDistance": 0,
+                    "movementDistanceOffset": 5.0,
                     "equipment": {
                       "mainhand": "irons_spellbooks:blood_staff",
                       "head": "minecraft:iron_helmet",

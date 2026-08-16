@@ -67,6 +67,7 @@ Here is a plain-English explanation of every setting:
 - **`team`** — *optional* team name. Mobs carrying presets with the same team name can never target, retaliate against, or hurt each other (even through spell splash). Leave it out or empty for a mob with no team. Example: give undead mobs `"team": "undead"` and human mobs `"team": "human"` so undead never fight undead and humans never fight humans, while the two groups still fight each other.
 - **`speed`** — how fast the mob moves while casting. `1.0` is normal walking speed; bigger = faster.
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
+- **`movementDistanceOffset`** — how many blocks closer than the spell range the wizard repositions with a movement spell. Default `5.0`: with a 20-block spell range it uses a movement spell when the target is beyond 15 blocks instead of 20. Set `0` for the old behavior, or ignore this and set explicit absolute distances via `movementStartDistance` / `movementFarDistance` (those take precedence when set).
 - **`equipment`** — what gear the mob wears. A slot name maps to an item ID; the mob puts the item on and it never drops. All six equipment slots are supported:
   - `mainhand` — the weapon/staff hand (e.g. `irons_spellbooks:blood_staff`)
   - `offhand` — the other hand (e.g. a shield)
@@ -105,11 +106,10 @@ The `wizardType` field chooses how the wizard fights:
   when critically low and recently attacked (shares a 100-tick survival cooldown with
   emergency heals). This is the classic behavior.
 - **`close`** — charges in and stays engaged. It always advances toward the target while
-  circling (never backs away), casts its attack kit point-blank, melees when it's in arm's
-  reach (~50% per cast window), and casts its support buffs (`fortify`, `charge`, attack
-  damage) while engaging even at full health. It **ignores the `escape` kit** — it doubles
-  down instead of running. Buffs and melee stay chance-gated and cooldown-limited, so a close
-  wizard can't spam them.
+  circling (never backs away), casts its attack kit point-blank, keeps a ~5-block standoff, and
+  casts its support buffs (`fortify`, `charge`, attack damage) while engaging even at full
+  health. It **ignores the `escape` kit** — it doubles down instead of running. Buffs stay
+  chance-gated and cooldown-limited, so a close wizard can't spam them.
 
 Example close preset:
 ```json
@@ -363,7 +363,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - **movement** spells cast when the target is far / out of range,
    - **support** spells cast when it is hurt or below half health (or, for `close` wizards, while engaging),
    - **escape** spells cast when it is critically low and recently attacked (`ranged` only),
-   - a **`close`** wizard advances, casts point-blank, melees when adjacent, and never retreats,
+   - a **`close`** wizard advances, casts point-blank, keeps a ~5-block standoff, and never retreats,
    - cooldowns match the spell's own configured values.
 5. Tweak `presets.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 

@@ -36,6 +36,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     private int mobwizardry$lastSurvivalActionTick = -100000;
     private double mobwizardry$movementStartDistance = 0;
     private double mobwizardry$movementFarDistance = 0;
+    private double mobwizardry$movementDistanceOffset = 5.0;
     private List<AbstractSpell> mobwizardry$emergencyHealSpells = new ArrayList<>();
     private List<AbstractSpell> mobwizardry$escapeSpells = new ArrayList<>();
     private WizardType mobwizardry$wizardType = WizardType.RANGED;
@@ -65,10 +66,11 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         this.mobwizardry$escapeSpells = escapeSpells != null ? escapeSpells : new ArrayList<>();
     }
 
-    public void setMovementDistances(double startDistance, double farDistance)
+    public void setMovementDistances(double startDistance, double farDistance, double distanceOffset)
     {
         this.mobwizardry$movementStartDistance = startDistance;
         this.mobwizardry$movementFarDistance = farDistance;
+        this.mobwizardry$movementDistanceOffset = Math.max(0.0, distanceOffset);
     }
 
     @Override
@@ -226,8 +228,12 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         }
         double distSqr = mob.distanceToSqr(target.getX(), target.getY(), target.getZ());
         double range = spellRange();
-        double start = mobwizardry$movementStartDistance > 0 ? mobwizardry$movementStartDistance : range * 0.75;
-        double far = mobwizardry$movementFarDistance > start ? mobwizardry$movementFarDistance : range;
+        // The movement trigger defaults derive from the spell range; the configurable offset
+        // pulls them closer so the wizard repositions sooner. Absolute preset distances, when
+        // set, take precedence.
+        double effectiveRange = Math.max(2.0, range - mobwizardry$movementDistanceOffset);
+        double start = mobwizardry$movementStartDistance > 0 ? mobwizardry$movementStartDistance : effectiveRange * 0.75;
+        double far = mobwizardry$movementFarDistance > start ? mobwizardry$movementFarDistance : effectiveRange;
         double distance = Math.sqrt(distSqr);
         int weight = 0;
         if (distance > far)

@@ -45,7 +45,7 @@ public class WizardAiGoal extends Goal
         goal.setWizardType(WizardType.fromName(preset.wizardType));
         goal.setEmergencyHealSpells(emergencyHeals);
         goal.setEscapeSpells(escape);
-        goal.setMovementDistances(preset.movementStartDistance, preset.movementFarDistance);
+        goal.setMovementDistances(preset.movementStartDistance, preset.movementFarDistance, preset.movementDistanceOffset);
         this.inner = goal;
         setFlags(inner.getFlags());
     }
