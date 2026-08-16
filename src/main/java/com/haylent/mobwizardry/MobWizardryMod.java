@@ -3,12 +3,14 @@ package com.haylent.mobwizardry;
 import com.haylent.mobwizardry.command.MobWizardryCommands;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.haylent.mobwizardry.event.MobWizardryEvents;
+import com.haylent.mobwizardry.registration.ModEntities;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
 
 @Mod(MobWizardryMod.MODID)
@@ -19,6 +21,10 @@ public class MobWizardryMod
 
     public MobWizardryMod()
     {
+        ModEntities.ENTITY_TYPES.register(FMLJavaModLoadingContext.get().getModEventBus());
+        ModEntities.ITEMS.register(FMLJavaModLoadingContext.get().getModEventBus());
+        ModEntities.CREATIVE_TABS.register(FMLJavaModLoadingContext.get().getModEventBus());
+
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new MobWizardryEvents());
     }
