@@ -1,12 +1,14 @@
 package com.haylent.mobwizardry.config;
 
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.monster.Monster;
 
 /**
  * Team and faction membership for wizardified mobs, stored on the entity's persistent NBT so it
  * survives saves. Mobs that share a non-blank team cannot target, retaliate against, or hurt each
  * other; mobs with different or no teams keep vanilla behavior. The faction mirrors the preset's
- * {@code faction} field so other wizards can identify enemies.
+ * {@code faction} field so other wizards can identify enemies — and the enemy faction is sided
+ * with hostile mobs (they treat each other as allies).
  */
 public class MobWizardryTeams
 {
@@ -47,6 +49,21 @@ public class MobWizardryTeams
     {
         String team = teamOf(a);
         return !team.isEmpty() && team.equals(teamOf(b));
+    }
+
+    /**
+     * True when the two entities must never fight: they share a team, or one is a hostile
+     * {@link Monster} and the other carries the {@code enemy} faction (the enemy faction is sided
+     * with the monsters). Friendly wizards are NOT allies of monsters/enemies — they hunt them.
+     */
+    public static boolean areAllies(Entity a, Entity b)
+    {
+        if (sameTeam(a, b))
+        {
+            return true;
+        }
+        return (a instanceof Monster && "enemy".equals(factionOf(b)))
+                || (b instanceof Monster && "enemy".equals(factionOf(a)));
     }
 
     /**

@@ -104,7 +104,7 @@ public class StickyTargetGoal extends TargetGoal
         {
             return false;
         }
-        if (MobWizardryTeams.sameTeam(mob, attacker))
+        if (MobWizardryTeams.areAllies(mob, attacker))
         {
             return false;
         }

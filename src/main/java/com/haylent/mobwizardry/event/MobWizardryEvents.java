@@ -56,8 +56,9 @@ public class MobWizardryEvents
     }
 
     /**
-     * Same-team mobs never become each other's target - this is the single choke point every
-     * target change (natural goals, retaliation, sticky re-assert) passes through.
+     * Allied mobs (same team, or enemy-faction wizards vs hostile monsters) never become each
+     * other's target - this is the single choke point every target change (natural goals,
+     * retaliation, sticky re-assert) passes through.
      */
     @SubscribeEvent
     public void onLivingChangeTarget(LivingChangeTargetEvent event)
@@ -76,7 +77,7 @@ public class MobWizardryEvents
             return;
         }
         LivingEntity proposed = event.getNewTarget();
-        if (proposed == null || !MobWizardryTeams.sameTeam(mob, proposed))
+        if (proposed == null || !MobWizardryTeams.areAllies(mob, proposed))
         {
             return;
         }
@@ -88,7 +89,7 @@ public class MobWizardryEvents
     }
 
     /**
-     * Same-team mobs cannot hurt each other at all - melee and spell/projectile hits (owner from
+     * Allied mobs cannot hurt each other at all - melee and spell/projectile hits (owner from
      * {@code DamageSource.getEntity()}) are canceled before damage is applied.
      */
     @SubscribeEvent
@@ -107,7 +108,7 @@ public class MobWizardryEvents
         {
             return;
         }
-        if (MobWizardryTeams.sameTeam(attacker, event.getEntity()))
+        if (MobWizardryTeams.areAllies(attacker, event.getEntity()))
         {
             event.setCanceled(true);
         }
