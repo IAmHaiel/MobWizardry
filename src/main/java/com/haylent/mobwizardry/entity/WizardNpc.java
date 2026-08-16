@@ -24,6 +24,8 @@ public class WizardNpc extends PathfinderMob
 
     private static final EntityDataAccessor<String> DATA_SKIN =
             SynchedEntityData.defineId(WizardNpc.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<String> DATA_CASTING_SPELL =
+            SynchedEntityData.defineId(WizardNpc.class, EntityDataSerializers.STRING);
 
     public WizardNpc(EntityType<? extends WizardNpc> type, Level level)
     {
@@ -54,6 +56,7 @@ public class WizardNpc extends PathfinderMob
     {
         super.defineSynchedData();
         this.entityData.define(DATA_SKIN, "");
+        this.entityData.define(DATA_CASTING_SPELL, "");
     }
 
     public String getSkin()
@@ -64,6 +67,20 @@ public class WizardNpc extends PathfinderMob
     public void setSkin(String skin)
     {
         this.entityData.set(DATA_SKIN, skin == null ? "" : skin);
+    }
+
+    /**
+     * The id of the spell currently being cast, or {@code ""} when idle. Synced to clients so the
+     * renderer can play the matching player casting animation on both sides.
+     */
+    public String getCastingSpell()
+    {
+        return this.entityData.get(DATA_CASTING_SPELL);
+    }
+
+    public void setCastingSpell(String spellId)
+    {
+        this.entityData.set(DATA_CASTING_SPELL, spellId == null ? "" : spellId);
     }
 
     @Override

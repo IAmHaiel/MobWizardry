@@ -7,6 +7,9 @@
   "mixins": [
     "MobMagicMixin"
   ],
+  "client": [
+    "WizardNpcAnimationMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

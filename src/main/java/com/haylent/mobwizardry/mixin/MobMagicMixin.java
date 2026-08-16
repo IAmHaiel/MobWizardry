@@ -1,5 +1,6 @@
 package com.haylent.mobwizardry.mixin;
 
+import com.haylent.mobwizardry.entity.WizardNpc;
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.api.magic.MagicData;
 import io.redspace.ironsspellbooks.api.magic.SpellSelectionManager;
@@ -30,10 +31,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Mob.class)
 public abstract class MobMagicMixin implements IMagicEntity
 {
+    /**
+     * How long the synced casting spell stays visible after the cast itself ends (ticks), so the
+     * client reliably sees the cast transition even for instant-cast spells.
+     */
+    private static final int CAST_SYNC_MIN_TICKS = 10;
+
     @Unique
     private SpellData mobwizardry$castingSpell;
     @Unique
     private boolean mobwizardry$hasUsedSingleAttack;
+    @Unique
+    private int mobwizardry$castSyncUntilTick;
 
     @Override
     public MagicData getMagicData()
@@ -59,6 +68,7 @@ public abstract class MobMagicMixin implements IMagicEntity
         if (spell == SpellRegistry.none())
         {
             this.mobwizardry$castingSpell = null;
+            syncNpcCasting("");
             return;
         }
         this.mobwizardry$castingSpell = new SpellData(spell, level);
@@ -89,6 +99,10 @@ public abstract class MobMagicMixin implements IMagicEntity
             }
             magicData.initiateCast(spell, level, spell.getEffectiveCastTime(level, self), CastSource.MOB, SpellSelectionManager.MAINHAND);
             spell.onServerPreCast(self.level(), level, self, magicData);
+            // Keep the synced casting spell visible long enough for the client to pick it up,
+            // even for instant-cast spells that complete within one tick.
+            this.mobwizardry$castSyncUntilTick = self.tickCount + CAST_SYNC_MIN_TICKS;
+            syncNpcCasting(spell.getSpellId());
         }
     }
 
@@ -117,6 +131,19 @@ public abstract class MobMagicMixin implements IMagicEntity
             magicData.resetCastingState();
         }
         this.mobwizardry$castingSpell = null;
+    }
+
+    /**
+     * Tells a {@link WizardNpc} which spell it is casting so the synced value reaches the client
+     * and the renderer can play the matching player casting animation. No-op for other mobs.
+     */
+    @Unique
+    private void syncNpcCasting(String spellId)
+    {
+        if ((Object) this instanceof WizardNpc npc)
+        {
+            npc.setCastingSpell(spellId);
+        }
     }
 
     @Override
@@ -179,12 +206,21 @@ public abstract class MobMagicMixin implements IMagicEntity
     @Inject(method = "customServerAiStep()V", at = @At("RETURN"))
     private void mobwizardry$tickCast(CallbackInfo ci)
     {
-        if (this.mobwizardry$castingSpell == null)
+        LivingEntity self = (LivingEntity) (Object) this;
+        if (self.level().isClientSide)
         {
             return;
         }
-        LivingEntity self = (LivingEntity) (Object) this;
-        if (self.level().isClientSide)
+        // Clear the synced casting spell a few ticks after the cast itself has ended, so even
+        // instant-cast spells stay visible long enough for the client to trigger the animation.
+        if (this.mobwizardry$castingSpell == null
+                && this.mobwizardry$castSyncUntilTick != 0
+                && self.tickCount >= this.mobwizardry$castSyncUntilTick)
+        {
+            this.mobwizardry$castSyncUntilTick = 0;
+            syncNpcCasting("");
+        }
+        if (this.mobwizardry$castingSpell == null)
         {
             return;
         }
