@@ -90,6 +90,8 @@ public class PresetManager
         validateWizardType(name, preset);
         validateTeam(name, preset);
         validateFaction(name, preset);
+        validateMovement(name, preset);
+        validateRetaliation(name, preset);
 
         validateSpellList(name, "attack", preset.spells.attack, preset.castInterval);
         validateSpellList(name, "defense", preset.spells.defense, preset.castInterval);
@@ -121,6 +123,9 @@ public class PresetManager
         String factionInfo = preset.faction != null && !preset.faction.isBlank() ? ", faction=" + preset.faction : "";
         String skinInfo = preset.skin != null && !preset.skin.isBlank() ? ", skin=" + preset.skin : "";
         String manaInfo = maxManaAttr != null ? ", max_mana=" + maxManaAttr : "";
+        Double maxHealthAttr = preset.attributes.get("minecraft:generic.max_health");
+        String maxHealthInfo = maxHealthAttr != null ? ", max_health=" + maxHealthAttr : "";
+        String retaliationInfo = ", retaliation=" + preset.retaliationChance;
         long emergencyHeals = preset.spells.support.stream().filter(e -> e.emergency).count();
         String emergencyInfo = emergencyHeals > 0 ? ", emergencyHeals=" + emergencyHeals : "";
         int escapeCount = preset.spells.escape.size();
@@ -128,8 +133,9 @@ public class PresetManager
         String movementInfo = (preset.movementStartDistance > 0 || preset.movementFarDistance > 0)
                 ? ", movement=" + (preset.movementStartDistance > 0 ? preset.movementStartDistance : "range*0.75") + "-" + (preset.movementFarDistance > 0 ? preset.movementFarDistance : "range") : "";
         String movementOffsetInfo = preset.movementDistanceOffset > 0 ? ", movementOffset=" + preset.movementDistanceOffset : "";
+        String movementTooCloseInfo = preset.movementTooCloseDistance > 0 ? ", tooClose=" + preset.movementTooCloseDistance : "";
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, teamInfo, factionInfo, skinInfo, castInfo, movementInfo, movementOffsetInfo, manaInfo, emergencyInfo, escapeInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{}{}{}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, teamInfo, factionInfo, skinInfo, castInfo, movementInfo, movementOffsetInfo, movementTooCloseInfo, manaInfo, maxHealthInfo, emergencyInfo, escapeInfo, retaliationInfo);
     }
 
     private static void validateWizardType(String name, PresetDefinition preset)
@@ -169,6 +175,24 @@ public class PresetManager
         else
         {
             preset.faction = faction;
+        }
+    }
+
+    private static void validateMovement(String name, PresetDefinition preset)
+    {
+        if (preset.movementTooCloseDistance < 0)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has a negative movementTooCloseDistance ({}) - using 0", name, preset.movementTooCloseDistance);
+            preset.movementTooCloseDistance = 0;
+        }
+    }
+
+    private static void validateRetaliation(String name, PresetDefinition preset)
+    {
+        if (preset.retaliationChance < 0 || preset.retaliationChance > 1)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has retaliationChance ({}) outside 0-1 - clamping", name, preset.retaliationChance);
+            preset.retaliationChance = Math.max(0.0, Math.min(1.0, preset.retaliationChance));
         }
     }
 

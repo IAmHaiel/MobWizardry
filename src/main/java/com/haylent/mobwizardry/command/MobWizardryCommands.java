@@ -243,6 +243,7 @@ public class MobWizardryCommands
             {
                 removed++;
                 MobWizardryTeams.setTeam(entity, "");
+                MobWizardryTeams.setFaction(entity, "");
                 playUnwizardifyEffect(level, entity.position());
                 if (entity instanceof PathfinderMob mob)
                 {

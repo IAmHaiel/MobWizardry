@@ -18,7 +18,7 @@ public abstract class WizardType
     }
 
     /** Forward strafe amount while in combat range; 0 = use the base goal's movement. */
-    public float strafeForward(double distance)
+    public float strafeForward(double distance, double tooCloseDistance)
     {
         return 0.0f;
     }
@@ -36,7 +36,7 @@ public abstract class WizardType
     }
 
     /** Modifies the computed movement weight. */
-    public int adjustMovementWeight(int base, double distance, double range)
+    public int adjustMovementWeight(int base, double distance, double range, double tooCloseDistance)
     {
         return base;
     }
@@ -52,9 +52,10 @@ public abstract class WizardType
 
     /**
      * The distance below which the wizard backs straight away from the target instead of
-     * orbiting (its standoff). Ranged: 0 = never back-pedal. Close: ~5 blocks.
+     * orbiting (its standoff). Ranged: 0 = never back-pedal. Close: the configured too-close
+     * distance (default ~5 blocks).
      */
-    public double tooCloseDistance(double spellRange)
+    public double tooCloseDistance(double tooCloseDistance)
     {
         return 0.0;
     }

@@ -1,6 +1,7 @@
 package com.haylent.mobwizardry.ai;
 
 import com.haylent.mobwizardry.config.MobWizardryTeams;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -27,11 +28,15 @@ public class StickyTargetGoal extends TargetGoal
     private static final int YIELD_AFTER_HURT_TICKS = 10;
 
     private final String requiredTag;
+    private final double retaliationChance;
+    private int decisionTick = -1;
+    private boolean yieldDecision;
 
-    public StickyTargetGoal(Mob mob, String requiredTag)
+    public StickyTargetGoal(Mob mob, String requiredTag, double retaliationChance)
     {
         super(mob, false, false);
         this.requiredTag = requiredTag;
+        this.retaliationChance = Mth.clamp(retaliationChance, 0.0, 1.0);
         this.setFlags(EnumSet.of(Goal.Flag.TARGET));
     }
 
@@ -87,15 +92,36 @@ public class StickyTargetGoal extends TargetGoal
     /**
      * True while the mob was recently hurt by a live, attackable entity that is not its current
      * target and is not on its own team. Releases the {@code TARGET} flag so the vanilla
-     * {@code HurtByTargetGoal} can switch the mob to the attacker.
+     * {@code HurtByTargetGoal} can switch the mob to the attacker - but only with the configured
+     * {@code retaliationChance} when the wizard is already committed to a target (an idle wizard
+     * always retaliates). The roll happens once per hurt event, not per tick, so the configured
+     * percentage is meaningful.
      */
     private boolean shouldYieldToAttacker()
     {
         LivingEntity attacker = mob.getLastHurtByMob();
-        return attacker != null
-                && attacker != mob.getTarget()
-                && !MobWizardryTeams.sameTeam(mob, attacker)
-                && mob.canAttack(attacker)
-                && mob.tickCount - mob.getLastHurtByMobTimestamp() <= YIELD_AFTER_HURT_TICKS;
+        if (attacker == null || attacker == mob.getTarget() || !mob.canAttack(attacker))
+        {
+            return false;
+        }
+        if (MobWizardryTeams.sameTeam(mob, attacker))
+        {
+            return false;
+        }
+        if (mob.tickCount - mob.getLastHurtByMobTimestamp() > YIELD_AFTER_HURT_TICKS)
+        {
+            return false;
+        }
+        if (mob.getTarget() == null)
+        {
+            return true;
+        }
+        int hurtTick = mob.getLastHurtByMobTimestamp();
+        if (hurtTick != this.decisionTick)
+        {
+            this.decisionTick = hurtTick;
+            this.yieldDecision = mob.getRandom().nextDouble() < this.retaliationChance;
+        }
+        return this.yieldDecision;
     }
 }

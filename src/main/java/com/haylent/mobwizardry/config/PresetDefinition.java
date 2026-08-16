@@ -26,6 +26,8 @@ public class PresetDefinition
     public double movementStartDistance = 0;
     public double movementFarDistance = 0;
     public double movementDistanceOffset = 5.0;
+    public double movementTooCloseDistance = 5.0;
+    public double retaliationChance = 0.4;
     public Map<String, String> equipment = new HashMap<>();
     public Map<String, Double> attributes = new HashMap<>();
     public Spells spells = new Spells();

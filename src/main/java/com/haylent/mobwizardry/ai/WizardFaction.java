@@ -17,9 +17,9 @@ import java.util.ArrayList;
  *   <li>{@code enemy} (default) — hostile like zombies/pillagers. The Wizard NPC gets
  *       player/villager/iron-golem targeting (existing mobs already have their own natural
  *       hostile goals).</li>
- *   <li>{@code friendly} — never initiates: removes {@code NearestAttackableTargetGoal}
- *       instances so the mob does not attack anything on its own, while keeping
- *       {@code HurtByTargetGoal} so it still retaliates when hurt.</li>
+ *   <li>{@code friendly} — never attacks players or villagers, but hunts vanilla hostile mobs
+ *       and {@code enemy}-faction wizards ({@link TargetEnemiesGoal}) and still retaliates when
+ *       hurt (baseline {@code HurtByTargetGoal}).</li>
  * </ul>
  */
 public class WizardFaction
@@ -32,12 +32,10 @@ public class WizardFaction
     {
         if ("friendly".equalsIgnoreCase(preset.faction))
         {
-            for (WrappedGoal goal : new ArrayList<>(mob.targetSelector.getAvailableGoals()))
+            removeDefaultTargetGoals(mob);
+            if (!hasNearestTargetGoal(mob))
             {
-                if (goal.getGoal() instanceof NearestAttackableTargetGoal<?>)
-                {
-                    mob.targetSelector.removeGoal(goal.getGoal());
-                }
+                mob.targetSelector.addGoal(3, new TargetEnemiesGoal(mob));
             }
         }
         else if (mob instanceof WizardNpc && !hasNearestTargetGoal(mob))
@@ -45,6 +43,21 @@ public class WizardFaction
             mob.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(mob, Player.class, true));
             mob.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(mob, AbstractVillager.class, false));
             mob.targetSelector.addGoal(3, new NearestAttackableTargetGoal<>(mob, IronGolem.class, true));
+        }
+    }
+
+    /**
+     * Removes the natural nearest-target goals (player/villager/golem) so a friendly wizard never
+     * initiates against players or villagers. {@code TargetEnemiesGoal} is intentionally kept.
+     */
+    private static void removeDefaultTargetGoals(PathfinderMob mob)
+    {
+        for (WrappedGoal goal : new ArrayList<>(mob.targetSelector.getAvailableGoals()))
+        {
+            if (goal.getGoal() instanceof NearestAttackableTargetGoal<?> && !(goal.getGoal() instanceof TargetEnemiesGoal))
+            {
+                mob.targetSelector.removeGoal(goal.getGoal());
+            }
         }
     }
 

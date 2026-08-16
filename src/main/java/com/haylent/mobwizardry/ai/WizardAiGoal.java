@@ -50,7 +50,7 @@ public class WizardAiGoal extends Goal
         goal.setWizardType(WizardType.fromName(preset.wizardType));
         goal.setEmergencyHealSpells(emergencyHeals);
         goal.setEscapeSpells(escape);
-        goal.setMovementDistances(preset.movementStartDistance, preset.movementFarDistance, preset.movementDistanceOffset);
+        goal.setMovementDistances(preset.movementStartDistance, preset.movementFarDistance, preset.movementDistanceOffset, preset.movementTooCloseDistance);
         this.inner = goal;
         setFlags(inner.getFlags());
     }
@@ -163,8 +163,9 @@ public class WizardAiGoal extends Goal
         {
             WizardFaction.apply(mob, preset);
             mob.goalSelector.addGoal(1, new WizardAiGoal(mob, preset));
-            mob.targetSelector.addGoal(0, new StickyTargetGoal(mob, preset.requiredTag));
+            mob.targetSelector.addGoal(0, new StickyTargetGoal(mob, preset.requiredTag, preset.retaliationChance));
             MobWizardryTeams.setTeam(mob, preset.team);
+            MobWizardryTeams.setFaction(mob, preset.faction);
             LOGGER.info("[MobWizardry] Attached wizard AI (tag={}) to {} at {}",
                     preset.requiredTag, mob.getType().getDescriptionId(), mob.blockPosition());
             return true;
@@ -236,11 +237,12 @@ public class WizardAiGoal extends Goal
             }
         }
         MobWizardryTeams.setTeam(mob, preset.team);
+        MobWizardryTeams.setFaction(mob, preset.faction);
         WizardFaction.apply(mob, preset);
         WizardMobInit.stripWizardEquipment(mob, preset);
         WizardMobInit.apply(mob, preset);
         mob.goalSelector.addGoal(1, new WizardAiGoal(mob, preset));
-        mob.targetSelector.addGoal(0, new StickyTargetGoal(mob, preset.requiredTag));
+        mob.targetSelector.addGoal(0, new StickyTargetGoal(mob, preset.requiredTag, preset.retaliationChance));
         if (mob instanceof WizardNpc npc && preset.skin != null && !preset.skin.isBlank())
         {
             npc.setSkin(preset.skin.trim());

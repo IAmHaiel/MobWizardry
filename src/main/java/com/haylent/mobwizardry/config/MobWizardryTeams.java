@@ -3,13 +3,15 @@ package com.haylent.mobwizardry.config;
 import net.minecraft.world.entity.Entity;
 
 /**
- * Team membership for wizardified mobs, stored on the entity's persistent NBT so it survives
- * saves. Mobs that share a non-blank team cannot target, retaliate against, or hurt each other;
- * mobs with different or no teams keep vanilla behavior.
+ * Team and faction membership for wizardified mobs, stored on the entity's persistent NBT so it
+ * survives saves. Mobs that share a non-blank team cannot target, retaliate against, or hurt each
+ * other; mobs with different or no teams keep vanilla behavior. The faction mirrors the preset's
+ * {@code faction} field so other wizards can identify enemies.
  */
 public class MobWizardryTeams
 {
     private static final String TEAM_KEY = "mobwizardry_team";
+    private static final String FACTION_KEY = "mobwizardry_faction";
 
     private MobWizardryTeams()
     {
@@ -45,5 +47,28 @@ public class MobWizardryTeams
     {
         String team = teamOf(a);
         return !team.isEmpty() && team.equals(teamOf(b));
+    }
+
+    /**
+     * Assigns a faction to an entity. A blank faction removes the membership.
+     */
+    public static void setFaction(Entity entity, String faction)
+    {
+        if (faction == null || faction.isBlank())
+        {
+            entity.getPersistentData().remove(FACTION_KEY);
+        }
+        else
+        {
+            entity.getPersistentData().putString(FACTION_KEY, faction.trim());
+        }
+    }
+
+    /**
+     * The entity's configured faction, or an empty string when it has none.
+     */
+    public static String factionOf(Entity entity)
+    {
+        return entity.getPersistentData().getString(FACTION_KEY);
     }
 }

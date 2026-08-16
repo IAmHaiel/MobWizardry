@@ -37,6 +37,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     private double mobwizardry$movementStartDistance = 0;
     private double mobwizardry$movementFarDistance = 0;
     private double mobwizardry$movementDistanceOffset = 5.0;
+    private double mobwizardry$movementTooCloseDistance = 5.0;
     private List<AbstractSpell> mobwizardry$emergencyHealSpells = new ArrayList<>();
     private List<AbstractSpell> mobwizardry$escapeSpells = new ArrayList<>();
     private WizardType mobwizardry$wizardType = WizardType.RANGED;
@@ -66,11 +67,12 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         this.mobwizardry$escapeSpells = escapeSpells != null ? escapeSpells : new ArrayList<>();
     }
 
-    public void setMovementDistances(double startDistance, double farDistance, double distanceOffset)
+    public void setMovementDistances(double startDistance, double farDistance, double distanceOffset, double tooCloseDistance)
     {
         this.mobwizardry$movementStartDistance = startDistance;
         this.mobwizardry$movementFarDistance = farDistance;
         this.mobwizardry$movementDistanceOffset = Math.max(0.0, distanceOffset);
+        this.mobwizardry$movementTooCloseDistance = Math.max(0.0, tooCloseDistance);
     }
 
     @Override
@@ -162,7 +164,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         double range = spellRange();
         double orbitRange = mobwizardry$wizardType.orbitRange(range);
         double distance = Math.sqrt(distanceSqr);
-        double tooClose = mobwizardry$wizardType.tooCloseDistance(range);
+        double tooClose = mobwizardry$wizardType.tooCloseDistance(mobwizardry$movementTooCloseDistance);
         if (tooClose > 0 && distance < tooClose && seeTime >= 5)
         {
             // Standoff: back straight away from the target (no lateral strafe) so the
@@ -181,7 +183,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
                 strafeTime = 0;
             }
             float strafeDir = strafingClockwise ? 1.0f : -1.0f;
-            float forwardOverride = mobwizardry$wizardType.strafeForward(distance);
+            float forwardOverride = mobwizardry$wizardType.strafeForward(distance, tooClose);
             // Ranged (override 0): orbit at the base in-range forward value - never back-pedal,
             // so there is no diagonal "flee while strafing". Close: keep a ~5-block standoff -
             // the strategy returns a negative forward inside the band to back away, positive
@@ -251,7 +253,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         double distRatio = Mth.clamp(distSqr / spellcastingRangeSqr, 0.0, 1.0);
         float hp = hpRatio();
         weight += (int) (400.0f * (1.0f - hp) * (1.0f - hp) * (float) (1.0 - distRatio) * (float) (1.0 - distRatio));
-        return mobwizardry$wizardType.adjustMovementWeight(weight, distance, range);
+        return mobwizardry$wizardType.adjustMovementWeight(weight, distance, range, mobwizardry$movementTooCloseDistance);
     }
 
     @Override
