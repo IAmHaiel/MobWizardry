@@ -70,8 +70,8 @@ Here is a plain-English explanation of every setting:
 - **`requiredTag`** — the magic word that *turns the creature on*. A mob only gets its wizard AI while it carries this tag (you apply the tag with the commands below). Each preset needs a unique tag. The mob type is chosen at summon time — the preset itself is not limited to any creature type.
 - **`wizardType`** — how the wizard fights. `ranged` (default) keeps distance and casts from afar; `close` charges in, casts point-blank, keeps a ~5-block standoff, and buffs while engaging. See below.
 - **`team`** — *optional* team name. Mobs carrying presets with the same team name can never target, retaliate against, or hurt each other (even through spell splash). Leave it out or empty for a mob with no team. Example: give undead mobs `"team": "undead"` and human mobs `"team": "human"` so undead never fight undead and humans never fight humans, while the two groups still fight each other.
-- **`faction`** — *optional* (`enemy` or `friendly`, default `enemy`). **`enemy`** wizards act like hostile mobs (a Wizard NPC hunts players, villagers and iron golems). **`friendly`** wizards never attack players or villagers, but they **hunt hostile mobs and enemy-faction wizards** (like a guard), fight back when hurt, and still cast spells. Best used with the Wizard NPC below.
-- **`skin`** — *optional* skin name for the Wizard NPC (a file in the skins folder, e.g. `"skin": "alex"`). Leave it out to get a random skin per spawned NPC.
+- **`faction`** — *optional* (`enemy` or `friendly`, default `enemy`). **`enemy`** wizards act like hostile mobs: they hunt **friendly-faction wizards**, and a Wizard NPC additionally hunts players, villagers and iron golems. **`friendly`** wizards never attack players or villagers, but they **hunt hostile mobs and enemy-faction wizards** (like a guard), fight back when hurt, and still cast spells. Best used with the Wizard NPC below.
+- **`skin`** — *optional* skin name for the Wizard NPC (a `.png` file in `config/mobwizardry/wizard-skins/`, e.g. `"skin": "alex"`). Leave it out to get a random skin per spawned NPC.
 - **`speed`** — how fast the mob moves while casting. `1.0` is normal walking speed; bigger = faster.
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
 - **`castIntervalMax`** — *optional* upper bound for the cast interval. If set above `0`, the actual interval is randomized between `castInterval` and `castIntervalMax` each cast (keeps the timing unpredictable). `0` (default) = always exactly `castInterval`. If it is set lower than `castInterval`, it is ignored.
@@ -423,11 +423,11 @@ A new entity, **`mobwizardry:wizard`**, that looks like a player and uses the sa
   `/summon mobwizardry:wizard` also works and automatically applies the default `wizard` preset
   (ranged, enemy faction). There's also a spawn egg in the MobWizardry creative tab.
 - **Skins** — the NPC renders with a player-shaped model. Skin files are 64x64 PNGs placed in
-  `assets/mobwizardry/textures/entity/wizard/skins/` (shipped with the mod or a server-installed
-  resource pack). Each spawned NPC picks a random skin; a preset's `"skin": "name"` field forces
+  `config/mobwizardry/wizard-skins/` (created on first launch; each `.png` file's name is a
+  skin). Each spawned NPC picks a random skin; a preset's `"skin": "name"` field forces
   a specific one. Missing files fall back to the vanilla Steve texture.
 - **Faction** — the preset's `faction` field decides behavior:
-  - `enemy` — hunts players, villagers and iron golems like a hostile mob.
+  - `enemy` — hunts friendly-faction wizards, players, villagers and iron golems like a hostile mob.
   - `friendly` — never attacks on its own; it only fights back when hurt (and still casts).
 - **Teams** — same-team NPCs can never hurt/target each other, so you can build friendly and
   enemy groups that coexist.
