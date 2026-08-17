@@ -45,6 +45,10 @@ public class WizardAiGoal extends Goal
         goal.setEmergencyHealSpells(kit.emergencyHeals);
         goal.setEscapeSpells(kit.escape);
         goal.setMovementDistances(preset.movementStartDistance, preset.movementFarDistance, preset.movementDistanceOffset, preset.movementTooCloseDistance);
+        if (preset.boss != null && !preset.boss.combos.isEmpty())
+        {
+            goal.setComboExecutor(new BossComboExecutor(mob, preset.boss.name, preset.boss.combos, preset.castInterval));
+        }
         this.inner = goal;
         setFlags(inner.getFlags());
     }

@@ -41,6 +41,7 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     private List<AbstractSpell> mobwizardry$emergencyHealSpells = new ArrayList<>();
     private List<AbstractSpell> mobwizardry$escapeSpells = new ArrayList<>();
     private WizardType mobwizardry$wizardType = WizardType.RANGED;
+    private BossComboExecutor mobwizardry$comboExecutor;
 
     public MobWizardryAttackGoal(IMagicEntity entity, double speed, int minInterval, int maxInterval)
     {
@@ -73,6 +74,61 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         this.mobwizardry$movementFarDistance = farDistance;
         this.mobwizardry$movementDistanceOffset = Math.max(0.0, distanceOffset);
         this.mobwizardry$movementTooCloseDistance = Math.max(0.0, tooCloseDistance);
+    }
+
+    /**
+     * Attaches a boss combo executor. While set, the boss's attack casting is driven entirely by
+     * its combos and the weighted attack pick is disabled; defense/movement/support/escape are
+     * unaffected.
+     */
+    public void setComboExecutor(BossComboExecutor comboExecutor)
+    {
+        this.mobwizardry$comboExecutor = comboExecutor;
+    }
+
+    /**
+     * Whether the mob is mid-cast (any spell, combo or base logic). Used by the combo executor
+     * so its steps wait for a free cast.
+     */
+    public boolean isCastingSpell()
+    {
+        return spellCastingMob.isCasting();
+    }
+
+    /**
+     * Casts a combo step's spell and gives the base logic a small buffer so it cannot start a
+     * cast in the same tick.
+     */
+    public void castComboSpell(AbstractSpell spell, int level)
+    {
+        spellCastingMob.initiateCastSpell(spell, level);
+        spellAttackDelay = 5;
+    }
+
+    @Override
+    public void tick()
+    {
+        if (mobwizardry$comboExecutor != null)
+        {
+            mobwizardry$comboExecutor.tick(this);
+        }
+        super.tick();
+    }
+
+    @Override
+    protected int getAttackWeight()
+    {
+        if (mobwizardry$comboExecutor != null)
+        {
+            return -1000;
+        }
+        int base = super.getAttackWeight();
+        if (target == null)
+        {
+            return base;
+        }
+        double distance = mob.distanceTo(target);
+        return mobwizardry$wizardType.adjustAttackWeight(base, distance, spellRange());
     }
 
     @Override
@@ -141,18 +197,6 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
     private double spellRange()
     {
         return Math.sqrt(spellcastingRangeSqr);
-    }
-
-    @Override
-    protected int getAttackWeight()
-    {
-        int base = super.getAttackWeight();
-        if (target == null)
-        {
-            return base;
-        }
-        double distance = mob.distanceTo(target);
-        return mobwizardry$wizardType.adjustAttackWeight(base, distance, spellRange());
     }
 
     @Override
