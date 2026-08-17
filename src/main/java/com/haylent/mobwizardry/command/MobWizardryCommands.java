@@ -1,11 +1,13 @@
 package com.haylent.mobwizardry.command;
 
+import com.haylent.mobwizardry.ai.RaidManager;
 import com.haylent.mobwizardry.ai.SpawnHelper;
 import com.haylent.mobwizardry.ai.WizardAiGoal;
 import com.haylent.mobwizardry.ai.WizardMobInit;
 import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
+import com.haylent.mobwizardry.config.RaidDefinition;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -48,6 +50,7 @@ public class MobWizardryCommands
     private static final SimpleCommandExceptionType UNKNOWN_MOB = new SimpleCommandExceptionType(Component.literal("Unknown mob type."));
     private static final SimpleCommandExceptionType NOT_A_MOB = new SimpleCommandExceptionType(Component.literal("That entity type cannot cast spells or use equipment - it must be a PathfinderMob (zombie, skeleton, etc.)."));
     private static final SimpleCommandExceptionType NOT_A_BOSS = new SimpleCommandExceptionType(Component.literal("That preset is not boss-enabled. Define a \"boss\" entry for it in config/mobwizardry/bosses.json."));
+    private static final SimpleCommandExceptionType UNKNOWN_RAID = new SimpleCommandExceptionType(Component.literal("Unknown MobWizardry raid. Use /mobwizardry raid list to see available raids."));
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher)
     {
@@ -70,6 +73,18 @@ public class MobWizardryCommands
                                         .executes(ctx -> boss(ctx, StringArgumentType.getString(ctx, "preset"), ResourceLocationArgument.getId(ctx, "mobType").toString(), ctx.getSource().getPosition()))
                                         .then(Commands.argument("pos", Vec3Argument.vec3())
                                                 .executes(ctx -> boss(ctx, StringArgumentType.getString(ctx, "preset"), ResourceLocationArgument.getId(ctx, "mobType").toString(), Vec3Argument.getVec3(ctx, "pos")))))))
+                .then(Commands.literal("raid")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.literal("start")
+                                .then(Commands.argument("raid", StringArgumentType.word())
+                                        .suggests(MobWizardryCommands::suggestRaids)
+                                        .executes(ctx -> raidStart(ctx, StringArgumentType.getString(ctx, "raid"), ctx.getSource().getPosition()))
+                                        .then(Commands.argument("pos", Vec3Argument.vec3())
+                                                .executes(ctx -> raidStart(ctx, StringArgumentType.getString(ctx, "raid"), Vec3Argument.getVec3(ctx, "pos"))))))
+                        .then(Commands.literal("stop")
+                                .executes(MobWizardryCommands::raidStop))
+                        .then(Commands.literal("list")
+                                .executes(MobWizardryCommands::raidList)))
                 .then(Commands.literal("wizardify")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("preset", StringArgumentType.word())
@@ -163,6 +178,50 @@ public class MobWizardryCommands
         ctx.getSource().sendSuccess(() -> Component.literal("Summoned boss '" + bossName + "' (" + mobTypeId + ") with preset '" + presetName + "' (tag: " + preset.requiredTag + ") at " + safePos), true);
         LOGGER.info("[MobWizardry] /mobwizardry boss {} {} at {} by {}", presetName, mobTypeId, safePos, ctx.getSource().getTextName());
         return 1;
+    }
+
+    private static int raidStart(CommandContext<CommandSourceStack> ctx, String raidName, Vec3 pos) throws CommandSyntaxException
+    {
+        RaidDefinition raid = PresetManager.getRaid(raidName);
+        if (raid == null)
+        {
+            throw UNKNOWN_RAID.create();
+        }
+        ServerLevel level = ctx.getSource().getLevel();
+        RaidManager.startRaid(raidName, level, pos);
+        ctx.getSource().sendSuccess(() -> Component.literal("Started raid '" + raid.name + "' (" + raid.waves.size() + " waves" + (raid.boss.isBlank() ? "" : ", boss: " + raid.boss) + ")"), true);
+        LOGGER.info("[MobWizardry] /mobwizardry raid start {} at {} by {}", raidName, pos, ctx.getSource().getTextName());
+        return 1;
+    }
+
+    private static int raidStop(CommandContext<CommandSourceStack> ctx)
+    {
+        if (!RaidManager.isRaidActive())
+        {
+            ctx.getSource().sendFailure(Component.literal("No raid is active."));
+            return 0;
+        }
+        RaidManager.stopRaid();
+        ctx.getSource().sendSuccess(() -> Component.literal("Stopped the active raid."), true);
+        return 1;
+    }
+
+    private static int raidList(CommandContext<CommandSourceStack> ctx)
+    {
+        Map<String, RaidDefinition> raids = PresetManager.getRaids();
+        if (raids.isEmpty())
+        {
+            ctx.getSource().sendSuccess(() -> Component.literal("No raids configured."), false);
+            return 0;
+        }
+        raids.forEach((key, raid) -> ctx.getSource().sendSuccess(() -> Component.literal("'" + key + "' - " + raid.name + " (" + raid.waves.size() + " waves, boss: " + (raid.boss.isBlank() ? "none" : raid.boss) + ")"), false));
+        return raids.size();
+    }
+
+    private static CompletableFuture<Suggestions> suggestRaids(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder)
+    {
+        PresetManager.getRaids().keySet().stream().sorted().forEach(builder::suggest);
+        return builder.buildFuture();
     }
 
     /**
@@ -312,6 +371,9 @@ public class MobWizardryCommands
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "help", "Show this help.");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "summon <preset> <mobType> [pos]", "Summon a new mob as a wizard using a preset's equipment, attributes and spells.");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "boss <preset> <mobType> [pos]", "Summon a boss - like summon, but the preset must be boss-enabled (config/mobwizardry/bosses.json).");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "raid start <raid> [pos]", "Start a configured raid (config/mobwizardry/raids.json) - waves of enemy wizards ending in a boss fight.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "raid stop", "Stop the active raid.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "raid list", "List configured raids.");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "wizardify <preset> [radius] [pos]", "Turn nearby mobs into wizards - adds the preset tag and applies equipment and wizard AI.");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "unwizardify <preset> [radius] [pos]", "Remove wizard status from nearby mobs - removes the preset tag and strips wizard equipment.");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "reload", "Reload presets.json and bosses.json from the config folder.");
