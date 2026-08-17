@@ -45,6 +45,12 @@ public class PresetManager
      */
     private static final Map<String, PresetDefinition> BY_TAG = new LinkedHashMap<>();
 
+    /**
+     * Raid definitions parsed from {@code raids.json}, keyed by raid name.
+     */
+    private static final Map<String, RaidDefinition> RAIDS = new LinkedHashMap<>();
+    private static final Map<String, RaidDefinition> RAIDS_VIEW = Collections.unmodifiableMap(RAIDS);
+
     public static Map<String, PresetDefinition> getPresets()
     {
         return PRESETS_VIEW;
@@ -60,6 +66,16 @@ public class PresetManager
         return BY_TAG.get(tag);
     }
 
+    public static Map<String, RaidDefinition> getRaids()
+    {
+        return RAIDS_VIEW;
+    }
+
+    public static RaidDefinition getRaid(String name)
+    {
+        return RAIDS.get(name);
+    }
+
     /**
      * Reloads {@code presets.json} first, then {@code bosses.json} (spawn settings + per-boss
      * definitions, validated against the matching preset), merges each boss config into its
@@ -71,6 +87,7 @@ public class PresetManager
         PRESETS.clear();
         BOSS_CONFIGS.clear();
         BY_TAG.clear();
+        RAIDS.clear();
         Path configDir = FMLPaths.CONFIGDIR.get().resolve(MobWizardryMod.MODID);
 
         loadPresetsFile(configDir);
@@ -82,6 +99,9 @@ public class PresetManager
             logLoadedPreset(entry.getKey(), entry.getValue());
         }
         rebuildTagIndex();
+        // Load raids after the boss configs are merged so the raid boss check sees the real
+        // boss-enabled state.
+        loadRaidsFile(configDir);
         for (String bossKey : BOSS_CONFIGS.keySet())
         {
             if (!PRESETS.containsKey(bossKey))
@@ -167,6 +187,119 @@ public class PresetManager
         {
             LOGGER.error("[MobWizardry] Could not read bosses.json - no boss config loaded", e);
         }
+    }
+
+
+    private static void loadRaidsFile(Path configDir)
+    {
+        Path configPath = configDir.resolve("raids.json");
+        try
+        {
+            Files.createDirectories(configDir);
+            if (!Files.exists(configPath))
+            {
+                Files.writeString(configPath, defaultRaidsJson());
+                LOGGER.warn("[MobWizardry] No raids.json found - wrote default config to {}", configPath);
+            }
+
+            try (Reader reader = Files.newBufferedReader(configPath))
+            {
+                JsonElement rootElement = JsonParser.parseReader(reader);
+                if (rootElement == null || !rootElement.isJsonObject())
+                {
+                    LOGGER.error("[MobWizardry] raids.json is empty or invalid - no raids loaded");
+                    return;
+                }
+                JsonObject root = rootElement.getAsJsonObject();
+                JsonElement raids = root.get("raids");
+                if (raids == null || !raids.isJsonObject())
+                {
+                    return;
+                }
+                for (Map.Entry<String, JsonElement> entry : raids.getAsJsonObject().entrySet())
+                {
+                    RaidDefinition raid = GSON.fromJson(entry.getValue(), RaidDefinition.class);
+                    if (raid == null)
+                    {
+                        LOGGER.error("[MobWizardry] Raid '{}' in raids.json could not be parsed - skipped", entry.getKey());
+                        continue;
+                    }
+                    validateRaid(entry.getKey(), raid);
+                    RAIDS.put(entry.getKey(), raid);
+                }
+            }
+        }
+        catch (JsonSyntaxException e)
+        {
+            LOGGER.error("[MobWizardry] Failed to parse raids.json - no raids loaded", e);
+        }
+        catch (IOException e)
+        {
+            LOGGER.error("[MobWizardry] Could not read raids.json - no raids loaded", e);
+        }
+    }
+
+    private static void validateRaid(String name, RaidDefinition raid)
+    {
+        if (raid.name == null || raid.name.isBlank())
+        {
+            raid.name = name;
+        }
+        if (raid.waves == null)
+        {
+            raid.waves = new ArrayList<>();
+        }
+        raid.waves.removeIf(wave -> wave == null);
+        if (raid.waves.isEmpty())
+        {
+            LOGGER.warn("[MobWizardry] Raid '{}' has no waves - starting it will end immediately", name);
+        }
+        for (RaidDefinition.RaidWave wave : raid.waves)
+        {
+            if (wave.number < 1)
+            {
+                wave.number = 1;
+            }
+            if (wave.enemies == null)
+            {
+                wave.enemies = new ArrayList<>();
+            }
+            wave.enemies.removeIf(enemy -> enemy == null);
+            if (wave.enemies.isEmpty())
+            {
+                LOGGER.warn("[MobWizardry] Raid '{}' wave {} has no enemies - the wave is skipped when reached", name, wave.number);
+                continue;
+            }
+            for (RaidDefinition.RaidEnemy enemy : wave.enemies)
+            {
+                if (enemy.preset == null || enemy.preset.isBlank() || !PRESETS.containsKey(enemy.preset))
+                {
+                    LOGGER.warn("[MobWizardry] Raid '{}' wave {} references an unknown preset '{}' - the group is skipped", name, wave.number, enemy.preset);
+                    continue;
+                }
+                if (enemy.count < 1)
+                {
+                    LOGGER.warn("[MobWizardry] Raid '{}' wave {} preset '{}' has count {} below 1 - using 1", name, wave.number, enemy.preset, enemy.count);
+                    enemy.count = 1;
+                }
+                if (enemy.weight < 0)
+                {
+                    LOGGER.warn("[MobWizardry] Raid '{}' wave {} preset '{}' has a negative weight ({}) - using 0", name, wave.number, enemy.preset, enemy.weight);
+                    enemy.weight = 0;
+                }
+            }
+        }
+        if (raid.boss != null && !raid.boss.isBlank())
+        {
+            PresetDefinition bossPreset = PRESETS.get(raid.boss);
+            if (bossPreset == null || bossPreset.boss == null || !bossPreset.boss.enabled)
+            {
+                LOGGER.warn("[MobWizardry] Raid '{}' boss '{}' is not a boss-enabled preset - the raid will end after the last wave", name, raid.boss);
+                raid.boss = "";
+            }
+        }
+        LOGGER.info("[MobWizardry] Loaded raid '{}' (name={}, waves={}, boss={})",
+                name, raid.name, raid.waves.size(), raid.boss.isBlank() ? "none" : raid.boss);
     }
 
     private static void loadPresetsFile(Path configDir)
@@ -1024,6 +1157,38 @@ public class PresetManager
                           ]
                         }
                       ]
+                    }
+                  }
+                }
+                """;
+    }
+
+    private static String defaultRaidsJson()
+    {
+        return """
+                {
+                  "raids": {
+                    "wizard_horde": {
+                      "name": "The Wizard Horde",
+                      "startMessage": "The Wizard Horde has arrived!",
+                      "victoryMessage": "The Wizard Horde has been driven back!",
+                      "defeatMessage": "The Wizard Horde has overrun the realm!",
+                      "waves": [
+                        {
+                          "number": 1,
+                          "enemies": [
+                            { "preset": "wizard",       "count": 4, "weight": 1 },
+                            { "preset": "wizard_close", "count": 2, "weight": 1 }
+                          ]
+                        },
+                        {
+                          "number": 2,
+                          "enemies": [
+                            { "preset": "wizard_range", "count": 6, "weight": 2 }
+                          ]
+                        }
+                      ],
+                      "boss": "wizard_boss"
                     }
                   }
                 }
