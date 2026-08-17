@@ -363,9 +363,11 @@ validated against the real registries:
 - spell levels are clamped to the spell's max level,
 - a warning is logged when a spell's intrinsic cooldown exceeds `castInterval`,
 - boss config issues (unknown spawn entity, invalid name color, weights/health percents out of
-  range, phases referencing unknown spells) are logged and fixed or disabled,
-- a boss key in `bosses.json` with no matching preset, a preset with an inline `boss` block, and
-  a `_spawnSettings` left in `presets.json` are all warned about.
+  range, bad spawn settings like a negative interval or overlapping distances, phases referencing
+  unknown spells) are logged and fixed or disabled,
+- a boss key in `bosses.json` with no matching preset, a preset with an inline `boss` block, a
+  leftover top-level `_spawnSettings` in `bosses.json`, and a `_spawnSettings` left in
+  `presets.json` are all warned about.
 
 Invalid presets fail loudly in the log instead of silently doing nothing.
 
@@ -401,11 +403,11 @@ The file's shape is:
 
 ```json
 {
-  "_spawnSettings": { ... },
   "bosses": {
     "wizard_boss": {
       "enabled": true,
       "name": "...",
+      "spawnSettings": { ... },
       "phases": [ ... ]
     }
   }
@@ -424,7 +426,8 @@ presets.json keeps working but is warned to migrate; the bosses.json entry wins 
 | `name` | the boss's display name (used for the name tag and chat). |
 | `nameColor` | the name tag / chat color — a Minecraft color name like `red`, `dark_red`, `gold`, `aqua`, or a hex color like `#FF5555`. Default `red`. |
 | `spawnEntity` | which entity type the natural spawner uses for this boss (e.g. `mobwizardry:wizard`, `minecraft:zombie`). Commands still let you pick any mob type. |
-| `daySpawnWeight` | how likely this boss is to be naturally spawned during the day (see `_spawnSettings`). `0` = never by day. |
+| `spawnSettings` | this boss's own natural-spawn controls (below) — each boss decides whether and how often it naturally spawns, its own concurrent cap and its own spawn distance. |
+| `daySpawnWeight` | how likely this boss is to be naturally spawned during the day. `0` = never by day. |
 | `nightSpawnWeight` | how likely this boss is to be naturally spawned at night. `0` = never by night. |
 | `phases` | the list of health-based phases (below). |
 
@@ -471,13 +474,13 @@ boss is at or below 50% health. Phases are sorted by `healthPercent` descending 
 phase with the highest threshold (usually `100`) is the boss's starting kit. A boss with no
 `phases` is still a named boss (lightning + name tag + arrival) but never changes kits.
 
-### Natural spawning (`_spawnSettings`)
+### Natural spawning (per-boss `spawnSettings`)
 
-The mod can spawn bosses in the world on a timer, controlled by the `_spawnSettings` block at the
-top of `bosses.json` — configured alongside the boss definitions:
+The mod can spawn bosses in the world on a timer. Each boss controls its own natural spawning
+through its `spawnSettings` block — there is no global setting:
 
 ```json
-"_spawnSettings": {
+"spawnSettings": {
   "enabled": true,
   "attemptIntervalSeconds": 300,
   "maxActiveBosses": 3,
@@ -486,12 +489,18 @@ top of `bosses.json` — configured alongside the boss definitions:
 }
 ```
 
-Every `attemptIntervalSeconds` (300 = every 5 minutes) the mod rolls for a spawn: it counts the
-bosses currently alive (it stops if `maxActiveBosses` is already reached), picks a random online
-player, and selects one boss preset at random — weighted by `daySpawnWeight` during the day and
-`nightSpawnWeight` at night (higher weight = more likely). The chosen boss is spawned at a safe
-spot between `minDistanceFromPlayer` and `maxDistanceFromPlayer` blocks from that player. A boss
-with both weights at `0` never naturally spawns (summon/wizardify still work).
+| Field | Meaning |
+|---|---|
+| `enabled` | `false` = this boss never naturally spawns (summon/wizardify still work). |
+| `attemptIntervalSeconds` | minimum seconds between this boss's natural spawns (300 = every 5 minutes). |
+| `maxActiveBosses` | how many of *this* boss may be alive at once before it stops rolling. |
+| `minDistanceFromPlayer` / `maxDistanceFromPlayer` | this boss spawns at a safe spot between these distances from a random online player. |
+
+Each boss schedules its own spawn attempts: every tick, a boss whose `enabled` is true, whose
+day/night weight for the current time is above `0`, whose live count is below its own
+`maxActiveBosses` and whose interval has elapsed joins a weighted pool; one winner is spawned
+using that boss's own distances. A boss with `daySpawnWeight` and `nightSpawnWeight` both at `0`
+(or `spawnSettings.enabled` false) never naturally spawns.
 
 ### Example boss preset
 
@@ -546,7 +555,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
 5. For a **boss** preset (a `boss` entry in `bosses.json`):
    - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, and shows the colored name tag,
    - deal damage until it crosses a phase's `healthPercent` — the phase message appears and its spell kit swaps (e.g. phase 2 gains the spells you listed there),
-   - with `_spawnSettings.enabled` and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher).
+   - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher).
 6. Tweak `presets.json` / `bosses.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
 ## Notes
