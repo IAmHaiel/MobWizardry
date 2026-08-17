@@ -5,6 +5,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
@@ -12,6 +13,7 @@ import net.minecraft.world.entity.PathfinderMob;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
@@ -118,6 +120,43 @@ public class BossManager
                     goal.applyPhaseSpells(phase);
                 }
                 return;
+            }
+        }
+    }
+
+    /**
+     * Per-tick server work for bosses: health-based phase transitions. Called from a
+     * {@code ServerTickEvent} (END phase) in {@code MobWizardryMod}.
+     */
+    public static void tickServer(MinecraftServer server)
+    {
+        tickPhases(server);
+    }
+
+    private static void tickPhases(MinecraftServer server)
+    {
+        if (BOSSES.isEmpty())
+        {
+            return;
+        }
+        for (Iterator<Map.Entry<UUID, ActiveBoss>> it = BOSSES.entrySet().iterator(); it.hasNext();)
+        {
+            ActiveBoss active = it.next().getValue();
+            PathfinderMob mob = active.mob();
+            if (mob == null || !mob.isAlive() || mob.isRemoved())
+            {
+                it.remove();
+                continue;
+            }
+            PresetDefinition preset = active.preset();
+            int activePhase = mob.getPersistentData().getInt(PHASE_KEY);
+            float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
+            for (PresetDefinition.BossPhase phase : preset.boss.phases)
+            {
+                if (phase.number > activePhase && hpRatio <= phase.healthPercent / 100.0f)
+                {
+                    activatePhase(mob, preset, phase);
+                }
             }
         }
     }

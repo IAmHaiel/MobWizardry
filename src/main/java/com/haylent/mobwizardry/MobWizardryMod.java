@@ -1,5 +1,6 @@
 package com.haylent.mobwizardry;
 
+import com.haylent.mobwizardry.ai.BossManager;
 import com.haylent.mobwizardry.command.MobWizardryCommands;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.haylent.mobwizardry.event.MobWizardryEvents;
@@ -7,6 +8,7 @@ import com.haylent.mobwizardry.registration.ModEntities;
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -40,5 +42,14 @@ public class MobWizardryMod
     {
         LOGGER.info("MobWizardry mod loaded on server");
         PresetManager.reload();
+    }
+
+    @SubscribeEvent
+    public void onServerTick(TickEvent.ServerTickEvent event)
+    {
+        if (event.phase == TickEvent.Phase.END)
+        {
+            BossManager.tickServer(event.getServer());
+        }
     }
 }
