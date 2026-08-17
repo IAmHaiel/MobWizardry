@@ -34,6 +34,12 @@ public class PresetManager
     private static final Map<String, PresetDefinition> PRESETS = new LinkedHashMap<>();
     private static final Map<String, PresetDefinition> PRESETS_VIEW = Collections.unmodifiableMap(PRESETS);
 
+    /**
+     * Boss configs parsed from {@code bosses.json}, keyed by the preset name they apply to.
+     * Merged into the matching preset's {@code boss} field during {@link #reload()}.
+     */
+    private static final Map<String, PresetDefinition.Boss> BOSS_CONFIGS = new LinkedHashMap<>();
+
     public static Map<String, PresetDefinition> getPresets()
     {
         return PRESETS_VIEW;
@@ -44,17 +50,101 @@ public class PresetManager
         return PRESETS.get(name);
     }
 
+    /**
+     * Reloads {@code presets.json} first, then {@code bosses.json} (spawn settings + per-boss
+     * definitions, validated against the matching preset), merges each boss config into its
+     * preset, and logs the effective presets. {@code /mobwizardry reload} calls this so boss
+     * edits take effect without a restart.
+     */
     public static void reload()
     {
         PRESETS.clear();
+        BOSS_CONFIGS.clear();
         BossSpawnSettings.set(new BossSpawnSettings());
-        Path configPath = FMLPaths.CONFIGDIR.get().resolve(MobWizardryMod.MODID).resolve("presets.json");
-        Path configDir = configPath.getParent();
+        Path configDir = FMLPaths.CONFIGDIR.get().resolve(MobWizardryMod.MODID);
 
+        loadPresetsFile(configDir);
+        loadBossesFile(configDir);
+
+        for (Map.Entry<String, PresetDefinition> entry : PRESETS.entrySet())
+        {
+            applyBossConfig(entry.getKey(), entry.getValue());
+            logLoadedPreset(entry.getKey(), entry.getValue());
+        }
+        for (String bossKey : BOSS_CONFIGS.keySet())
+        {
+            if (!PRESETS.containsKey(bossKey))
+            {
+                LOGGER.warn("[MobWizardry] Boss '{}' in bosses.json has no matching preset in presets.json - it is ignored", bossKey);
+            }
+        }
+    }
+
+    private static void loadBossesFile(Path configDir)
+    {
+        Path configPath = configDir.resolve("bosses.json");
         try
         {
             Files.createDirectories(configDir);
+            if (!Files.exists(configPath))
+            {
+                Files.writeString(configPath, defaultBossesJson());
+                LOGGER.warn("[MobWizardry] No bosses.json found - wrote default config to {}", configPath);
+            }
 
+            try (Reader reader = Files.newBufferedReader(configPath))
+            {
+                JsonElement rootElement = JsonParser.parseReader(reader);
+                if (rootElement == null || !rootElement.isJsonObject())
+                {
+                    LOGGER.error("[MobWizardry] bosses.json is empty or invalid - no boss config loaded");
+                    return;
+                }
+                JsonObject root = rootElement.getAsJsonObject();
+
+                JsonElement spawnSettings = root.get("_spawnSettings");
+                if (spawnSettings != null && spawnSettings.isJsonObject())
+                {
+                    BossSpawnSettings parsed = GSON.fromJson(spawnSettings, BossSpawnSettings.class);
+                    BossSpawnSettings.set(parsed != null ? parsed : new BossSpawnSettings());
+                }
+
+                JsonElement bosses = root.get("bosses");
+                if (bosses == null || !bosses.isJsonObject())
+                {
+                    return;
+                }
+                for (Map.Entry<String, JsonElement> entry : bosses.getAsJsonObject().entrySet())
+                {
+                    String bossKey = entry.getKey();
+                    PresetDefinition.Boss boss = GSON.fromJson(entry.getValue(), PresetDefinition.Boss.class);
+                    if (boss == null)
+                    {
+                        LOGGER.error("[MobWizardry] Boss '{}' in bosses.json could not be parsed - skipped", bossKey);
+                        continue;
+                    }
+                    PresetDefinition preset = PRESETS.get(bossKey);
+                    validateBossConfig(bossKey, boss, preset != null ? preset.castInterval : 60);
+                    BOSS_CONFIGS.put(bossKey, boss);
+                }
+            }
+        }
+        catch (JsonSyntaxException e)
+        {
+            LOGGER.error("[MobWizardry] Failed to parse bosses.json - no boss config loaded", e);
+        }
+        catch (IOException e)
+        {
+            LOGGER.error("[MobWizardry] Could not read bosses.json - no boss config loaded", e);
+        }
+    }
+
+    private static void loadPresetsFile(Path configDir)
+    {
+        Path configPath = configDir.resolve("presets.json");
+        try
+        {
+            Files.createDirectories(configDir);
             if (!Files.exists(configPath))
             {
                 Files.writeString(configPath, defaultPresetsJson());
@@ -78,8 +168,7 @@ public class PresetManager
                     {
                         if ("_spawnSettings".equals(presetName))
                         {
-                            BossSpawnSettings parsed = GSON.fromJson(entry.getValue(), BossSpawnSettings.class);
-                            BossSpawnSettings.set(parsed != null ? parsed : new BossSpawnSettings());
+                            LOGGER.warn("[MobWizardry] '_spawnSettings' in presets.json is ignored - it moved to config/mobwizardry/bosses.json");
                         }
                         continue;
                     }
@@ -90,6 +179,7 @@ public class PresetManager
                         continue;
                     }
                     validatePreset(presetName, preset);
+                    PRESETS.put(presetName, preset);
                 }
             }
         }
@@ -100,6 +190,25 @@ public class PresetManager
         catch (IOException e)
         {
             LOGGER.error("[MobWizardry] Could not read presets.json - no presets loaded", e);
+        }
+    }
+
+    /**
+     * Overrides the preset's inline boss block with the bosses.json config when one exists (the
+     * separate file wins). A preset that still defines its boss inline is honored with a warning
+     * to migrate.
+     */
+    private static void applyBossConfig(String presetName, PresetDefinition preset)
+    {
+        PresetDefinition.Boss configured = BOSS_CONFIGS.get(presetName);
+        if (configured != null)
+        {
+            preset.boss = configured;
+            return;
+        }
+        if (preset.boss != null && preset.boss.enabled)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' defines its boss inline in presets.json - move it to config/mobwizardry/bosses.json (it still works for now)", presetName);
         }
     }
 
@@ -116,7 +225,14 @@ public class PresetManager
         validateFaction(name, preset);
         validateMovement(name, preset);
         validateRetaliation(name, preset);
-        validateBoss(name, preset);
+        if (preset.boss == null)
+        {
+            preset.boss = new PresetDefinition.Boss();
+        }
+        else
+        {
+            validateBossConfig(name, preset.boss, preset.castInterval);
+        }
 
         validateSpellList(name, "attack", preset.spells.attack, preset.castInterval);
         validateSpellList(name, "defense", preset.spells.defense, preset.castInterval);
@@ -142,11 +258,17 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] Preset '{}' has a negative movementDistanceOffset ({}) - using 0", name, preset.movementDistanceOffset);
             preset.movementDistanceOffset = 0;
         }
-        Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
+    }
+
+    private static void logLoadedPreset(String name, PresetDefinition preset)
+    {
+        int castMin = preset.castInterval;
+        int castMax = preset.effectiveCastIntervalMax();
         String castInfo = ", castRange=" + castMin + "-" + castMax + "t";
         String teamInfo = preset.team != null && !preset.team.isBlank() ? ", team=" + preset.team : "";
         String factionInfo = preset.faction != null && !preset.faction.isBlank() ? ", faction=" + preset.faction : "";
         String skinInfo = preset.skin != null && !preset.skin.isBlank() ? ", skin=" + preset.skin : "";
+        Double maxManaAttr = preset.attributes.get("irons_spellbooks:max_mana");
         String manaInfo = maxManaAttr != null ? ", max_mana=" + maxManaAttr : "";
         Double maxHealthAttr = preset.attributes.get("minecraft:generic.max_health");
         String maxHealthInfo = maxHealthAttr != null ? ", max_health=" + maxHealthAttr : "";
@@ -167,7 +289,6 @@ public class PresetManager
                     + ", dayW=" + preset.boss.daySpawnWeight
                     + ", nightW=" + preset.boss.nightSpawnWeight;
         }
-        PRESETS.put(name, preset);
         LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{}{}{}{}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, teamInfo, factionInfo, skinInfo, castInfo, movementInfo, movementOffsetInfo, movementTooCloseInfo, manaInfo, maxHealthInfo, emergencyInfo, escapeInfo, retaliationInfo, bossInfo);
     }
 
@@ -229,26 +350,20 @@ public class PresetManager
         }
     }
 
-    private static void validateBoss(String name, PresetDefinition preset)
+    private static void validateBossConfig(String name, PresetDefinition.Boss boss, int castInterval)
     {
-        PresetDefinition.Boss boss = preset.boss;
-        if (boss == null)
-        {
-            preset.boss = new PresetDefinition.Boss();
-            return;
-        }
         if (!boss.enabled)
         {
             return;
         }
         if (boss.name == null || boss.name.isBlank())
         {
-            LOGGER.warn("[MobWizardry] Preset '{}' is boss-enabled with a blank name - using the preset name", name);
+            LOGGER.warn("[MobWizardry] Boss '{}' has a blank name - using the preset name", name);
             boss.name = name;
         }
         if (!isValidNameColor(boss.nameColor))
         {
-            LOGGER.warn("[MobWizardry] Preset '{}' has an invalid boss nameColor '{}' - using 'red'", name, boss.nameColor);
+            LOGGER.warn("[MobWizardry] Boss '{}' has an invalid nameColor '{}' - using 'red'", name, boss.nameColor);
             boss.nameColor = "red";
         }
         if (boss.spawnEntity == null || boss.spawnEntity.isBlank())
@@ -258,7 +373,7 @@ public class PresetManager
         ResourceLocation spawnRl = ResourceLocation.tryParse(boss.spawnEntity.trim());
         if (spawnRl == null || !ForgeRegistries.ENTITY_TYPES.containsKey(spawnRl))
         {
-            LOGGER.warn("[MobWizardry] Preset '{}' boss spawnEntity '{}' is not a known entity - natural spawning is disabled for this boss (commands still work)", name, boss.spawnEntity);
+            LOGGER.warn("[MobWizardry] Boss '{}' spawnEntity '{}' is not a known entity - natural spawning is disabled for this boss (commands still work)", name, boss.spawnEntity);
             boss.spawnEntity = "";
         }
         else
@@ -267,12 +382,12 @@ public class PresetManager
         }
         if (boss.daySpawnWeight < 0)
         {
-            LOGGER.warn("[MobWizardry] Preset '{}' has a negative boss daySpawnWeight ({}) - using 0", name, boss.daySpawnWeight);
+            LOGGER.warn("[MobWizardry] Boss '{}' has a negative daySpawnWeight ({}) - using 0", name, boss.daySpawnWeight);
             boss.daySpawnWeight = 0;
         }
         if (boss.nightSpawnWeight < 0)
         {
-            LOGGER.warn("[MobWizardry] Preset '{}' has a negative boss nightSpawnWeight ({}) - using 0", name, boss.nightSpawnWeight);
+            LOGGER.warn("[MobWizardry] Boss '{}' has a negative nightSpawnWeight ({}) - using 0", name, boss.nightSpawnWeight);
             boss.nightSpawnWeight = 0;
         }
         if (boss.phases == null)
@@ -282,19 +397,19 @@ public class PresetManager
         boss.phases.removeIf(phase -> phase == null);
         if (boss.phases.isEmpty())
         {
-            LOGGER.warn("[MobWizardry] Preset '{}' is boss-enabled but has no phases - it will just be a named boss with no phase behavior", name);
+            LOGGER.warn("[MobWizardry] Boss '{}' has no phases - it will just be a named boss with no phase behavior", name);
             return;
         }
         for (PresetDefinition.BossPhase phase : boss.phases)
         {
             if (phase.number < 1)
             {
-                LOGGER.warn("[MobWizardry] Preset '{}' has a boss phase with number {} (must be >= 1) - using 1", name, phase.number);
+                LOGGER.warn("[MobWizardry] Boss '{}' has a phase with number {} (must be >= 1) - using 1", name, phase.number);
                 phase.number = 1;
             }
             if (phase.healthPercent < 0 || phase.healthPercent > 100)
             {
-                LOGGER.warn("[MobWizardry] Preset '{}' boss phase {} has healthPercent {} outside 0-100 - clamping", name, phase.number, phase.healthPercent);
+                LOGGER.warn("[MobWizardry] Boss '{}' phase {} has healthPercent {} outside 0-100 - clamping", name, phase.number, phase.healthPercent);
                 phase.healthPercent = Math.max(0.0, Math.min(100.0, phase.healthPercent));
             }
             if (phase.spells == null)
@@ -302,11 +417,11 @@ public class PresetManager
                 phase.spells = new PresetDefinition.Spells();
             }
             String phaseLabel = "boss phase " + phase.number;
-            validateSpellList(name, phaseLabel + " attack", phase.spells.attack, preset.castInterval);
-            validateSpellList(name, phaseLabel + " defense", phase.spells.defense, preset.castInterval);
-            validateSpellList(name, phaseLabel + " movement", phase.spells.movement, preset.castInterval);
-            validateSpellList(name, phaseLabel + " support", phase.spells.support, preset.castInterval);
-            validateSpellList(name, phaseLabel + " escape", phase.spells.escape, preset.castInterval);
+            validateSpellList(name, phaseLabel + " attack", phase.spells.attack, castInterval);
+            validateSpellList(name, phaseLabel + " defense", phase.spells.defense, castInterval);
+            validateSpellList(name, phaseLabel + " movement", phase.spells.movement, castInterval);
+            validateSpellList(name, phaseLabel + " support", phase.spells.support, castInterval);
+            validateSpellList(name, phaseLabel + " escape", phase.spells.escape, castInterval);
         }
         // Highest healthPercent first so phase 1 (usually 100) is the boss's starting kit; ties
         // keep the file order via the original index.
@@ -410,13 +525,6 @@ public class PresetManager
     {
         return """
                 {
-                  "_spawnSettings": {
-                    "enabled": true,
-                    "attemptIntervalSeconds": 300,
-                    "maxActiveBosses": 3,
-                    "minDistanceFromPlayer": 24,
-                    "maxDistanceFromPlayer": 48
-                  },
                   "wizard": {
                     "requiredTag": "wizard",
                     "wizardType": "ranged",
@@ -613,8 +721,25 @@ public class PresetManager
                       "movement": [],
                       "support": [],
                       "escape": []
-                    },
-                    "boss": {
+                    }
+                  }
+                }
+                """;
+    }
+
+    private static String defaultBossesJson()
+    {
+        return """
+                {
+                  "_spawnSettings": {
+                    "enabled": true,
+                    "attemptIntervalSeconds": 300,
+                    "maxActiveBosses": 3,
+                    "minDistanceFromPlayer": 24,
+                    "maxDistanceFromPlayer": 48
+                  },
+                  "bosses": {
+                    "wizard_boss": {
                       "enabled": true,
                       "name": "Aetheron, the Crimson Archon",
                       "nameColor": "dark_red",
