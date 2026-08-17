@@ -122,11 +122,11 @@ public class BossManager
      */
     private static void targetArrivalPlayer(PathfinderMob mob, PresetDefinition preset)
     {
-        if (!(mob.level() instanceof ServerLevel level) || level.getServer() == null)
+        if (!(mob.level() instanceof ServerLevel level))
         {
             return;
         }
-        List<ServerPlayer> attackable = level.getServer().getPlayerList().getPlayers().stream()
+        List<ServerPlayer> attackable = level.players().stream()
                 .filter(mob::canAttack)
                 .toList();
         if (attackable.isEmpty())
