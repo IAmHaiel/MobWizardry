@@ -791,7 +791,7 @@ Details: [The boss block](#the-boss-block), [Phases](#phases),
 | wave `enemies` | list | the enemy groups of this wave |
 | enemy `preset` | string | the wizard preset to spawn (e.g. `wizard`) |
 | enemy `count` | int | how many of this preset the wave contains (max) |
-| enemy `weight` | number | relative chance this preset is picked per spawn (higher = more common, capped by `count`) |
+| enemy `weight` | number | relative chance this preset is picked per spawn roll — affects spawn order only; the final count is always `count` |
 | `boss` | string | the boss-enabled preset used for the final wave (empty = none) |
 
 Details and semantics (including "Why is there a weight?"): [Raid / horde](#raid--horde-300).
@@ -991,16 +991,17 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
 | `waves[].enemies` | The enemy groups of this wave. A wave spawns **`sum(counts)`** enemies in total. |
 | `enemy.preset` | Which wizard preset to spawn (e.g. `wizard`, `wizard_close`). Must exist in presets.json. Enemies are `mobwizardry:wizard` NPCs carrying the preset's tag (they never naturally despawn). |
 | `enemy.count` | How many mobs of this preset the wave may contain (the cap). The wave's total = the sum of all `count`s. |
-| `enemy.weight` | How likely this preset is picked for each spawn. Every spawn rolls a preset **weighted by `weight`** among the presets that haven't reached their `count` yet. A higher weight = that preset appears more often; `count` bounds how many of it can spawn. See "Why is there a weight?" below. |
+| `enemy.weight` | How likely this preset is picked for each spawn roll. It only affects the **spawn order** (higher = that preset's enemies arrive sooner) — the final numbers are always exactly each preset's `count`. See "Why is there a weight?" below. |
 | `boss` | The **boss-enabled preset** used for the final wave (e.g. `wizard_boss`). If empty — or not a boss-enabled preset — the raid ends with a player victory right after the last wave. |
 
-**Why is there a `weight`?** Without it, every preset in a wave would always spawn exactly its
-`count` and the mix would never vary. With `weight`, the composition is randomized: for each of
-the wave's `sum(counts)` spawn slots the raid rolls a preset, weighted by `weight`, skipping
-presets that already hit their `count`. Example: `{ preset: wizard, count: 4, weight: 3 }, { preset:
-wizard_close, count: 2, weight: 1 }` spawns 6 enemies where each roll picks `wizard` 3× as often
-as `wizard_close` (still capped at 4/2), so the wave usually has a strong `wizard` majority. Equal
-weights give a balanced random mix; all-zero weights just spawn each preset's `count` in order.
+**Why is there a `weight`?** `count` always fills **exactly** — a wave always spawns
+`sum(counts)` enemies with each preset at its `count` (4 `wizard` + 2 `wizard_close` in the
+example above). `weight` only decides the **spawn order**: for each of the wave's `sum(counts)`
+spawn slots the raid rolls a preset, weighted by `weight`, among the presets that haven't reached
+their `count` yet. A higher weight makes that preset's enemies **arrive earlier / swarm in more
+densely**, but it never changes the final numbers. Equal weights (1 and 1) = a fair, mixed order;
+`wizard: weight 3` vs `wizard_close: weight 1` = wizard's 4 enemies tend to come first. All-zero
+weights just spawn each preset's `count` in order.
 
 ### Raid start effects (3.1.0)
 
