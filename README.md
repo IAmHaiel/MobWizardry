@@ -776,6 +776,146 @@ Details: [The boss block](#the-boss-block), [Phases](#phases),
 [Combo presets](#combo-presets-230), [Natural spawning](#natural-spawning-per-boss-spawnsettings),
 [On arrival](#on-arrival).
 
+### Example — every `presets.json` field (one preset)
+
+One preset that uses **every** supported field, so each field's name, type and value format is
+visible at a glance:
+
+```json
+{
+  "archmage": {
+    "requiredTag": "archmage",
+    "wizardType": "ranged",
+    "team": "magic_users",
+    "faction": "enemy",
+    "skin": "alex",
+    "speed": 1.25,
+    "castInterval": 40,
+    "castIntervalMax": 80,
+    "movementStartDistance": 12.0,
+    "movementFarDistance": 20.0,
+    "movementDistanceOffset": 5.0,
+    "movementTooCloseDistance": 4.0,
+    "retaliationChance": 0.6,
+    "equipment": {
+      "mainhand": "irons_spellbooks:blood_staff",
+      "offhand": "minecraft:shield",
+      "head": "minecraft:netherite_helmet",
+      "chest": "minecraft:netherite_chestplate",
+      "legs": "minecraft:netherite_leggings",
+      "feet": "minecraft:netherite_boots"
+    },
+    "attributes": {
+      "irons_spellbooks:max_mana": 150,
+      "irons_spellbooks:mana_regen": 3,
+      "irons_spellbooks:spell_power": 2.0,
+      "minecraft:generic.max_health": 40,
+      "minecraft:generic.armor": 8
+    },
+    "spells": {
+      "attack": [
+        { "id": "irons_spellbooks:magic_missile", "level": 2 },
+        { "id": "irons_spellbooks:fireball", "level": 1 }
+      ],
+      "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
+      "movement": [ { "id": "irons_spellbooks:blood_step", "level": 1 } ],
+      "support": [
+        { "id": "irons_spellbooks:heal", "level": 1, "emergency": true },
+        { "id": "irons_spellbooks:fortify", "level": 1 }
+      ],
+      "escape": [ { "id": "irons_spellbooks:teleport", "level": 1 } ]
+    }
+  }
+}
+```
+
+### Example — every `bosses.json` field (one boss)
+
+One boss definition that uses **every** supported field (`archmage` matches the preset above, so
+this turns that wizard into a boss):
+
+```json
+{
+  "bosses": {
+    "archmage": {
+      "enabled": true,
+      "name": "Archmage Malador",
+      "nameColor": "dark_red",
+      "spawnEntity": "mobwizardry:wizard",
+      "spawnSettings": {
+        "enabled": true,
+        "spawnAttemptIntervalSeconds": 300,
+        "maxActiveBosses": 2,
+        "minDistanceFromPlayer": 24,
+        "maxDistanceFromPlayer": 48,
+        "despawnOnTimeChange": true,
+        "spawnGlowSeconds": 60
+      },
+      "daySpawnWeight": 10,
+      "nightSpawnWeight": 25,
+      "phases": [
+        {
+          "number": 1,
+          "healthPercent": 100,
+          "message": "You dare challenge the Archmage?",
+          "effects": [],
+          "spells": {
+            "defense": [], "movement": [], "support": [], "escape": []
+          }
+        },
+        {
+          "number": 2,
+          "healthPercent": 50,
+          "message": "Fool! Feel my true power!",
+          "effects": [
+            { "id": "minecraft:resistance", "amplifier": 1, "duration": -1 },
+            { "id": "minecraft:strength", "amplifier": 1, "duration": -1 }
+          ],
+          "spells": {
+            "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
+            "movement": [ { "id": "irons_spellbooks:blood_step", "level": 1 } ],
+            "support": [ { "id": "irons_spellbooks:heal", "level": 1, "emergency": true } ],
+            "escape": []
+          }
+        },
+        {
+          "number": 3,
+          "healthPercent": 25,
+          "message": "The archon's fury knows no end!",
+          "effects": [
+            { "id": "minecraft:speed", "amplifier": 2, "duration": -1 }
+          ],
+          "spells": {
+            "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
+            "movement": [ { "id": "irons_spellbooks:teleport", "level": 1 } ],
+            "support": [ { "id": "irons_spellbooks:fortify", "level": 1 } ],
+            "escape": [ { "id": "irons_spellbooks:teleport", "level": 1 } ]
+          }
+        }
+      ],
+      "combos": [
+        {
+          "pauseAfterComboExecution": 40,
+          "steps": [
+            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
+            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 25 },
+            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 50 },
+            { "category": "escape", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 120 }
+          ]
+        },
+        {
+          "pauseAfterComboExecution": 60,
+          "steps": [
+            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 20 },
+            { "category": "movement", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 40 }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
 ## Admin commands
 
 Requires permission level 2. (`help` and `list` are available to everyone.)
