@@ -12,6 +12,7 @@ import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -213,8 +214,8 @@ public class BossManager
     }
 
     /**
-     * Applies the spell kit of the phase recorded as active, restoring a reloaded or re-applied
-     * boss to the correct phase without re-broadcasting its message.
+     * Applies the spell kit (and phase effects) of the phase recorded as active, restoring a
+     * reloaded or re-applied boss to the correct phase without re-broadcasting its message.
      */
     private static void applyActivePhaseSpells(PathfinderMob mob, PresetDefinition preset)
     {
@@ -228,6 +229,7 @@ public class BossManager
                 {
                     goal.applyPhaseSpells(phase);
                 }
+                applyPhaseEffects(mob, phase);
                 return;
             }
         }
@@ -485,9 +487,27 @@ public class BossManager
         {
             goal.applyPhaseSpells(phase);
         }
+        applyPhaseEffects(mob, phase);
         broadcastPhaseMessage(mob, preset, phase);
         LOGGER.info("[MobWizardry] Boss '{}' entered phase {} (health <= {}%)",
                 preset.boss.name, phase.number, phase.healthPercent);
+    }
+
+    /**
+     * Applies the phase's effects to the boss. {@code duration} of -1 is infinite, so an
+     * effect applied in an earlier phase persists across all later phases (effects accumulate).
+     */
+    private static void applyPhaseEffects(PathfinderMob mob, PresetDefinition.BossPhase phase)
+    {
+        for (PresetDefinition.PhaseEffect effect : phase.effects)
+        {
+            MobEffect type = effect.resolveEffect();
+            if (type == null)
+            {
+                continue;
+            }
+            mob.addEffect(new MobEffectInstance(type, effect.duration, Math.max(0, effect.amplifier), false, false));
+        }
     }
 
     private static void strikeLightning(PathfinderMob mob)

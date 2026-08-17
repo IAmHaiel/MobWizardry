@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.item.Item;
@@ -157,8 +158,9 @@ public class PresetDefinition
     /**
      * One boss phase. The boss enters it once its health ratio drops to
      * {@code healthPercent} or below, at which point the phase's spell kit replaces the boss's
-     * current kit and the phase message is broadcast. Phases are sorted by {@code healthPercent}
-     * descending at load, so phase 1 (usually 100) is the boss's starting kit.
+     * current kit, its {@link #effects} are applied (and persist across all later phases), and
+     * the phase message is broadcast. Phases are sorted by {@code healthPercent} descending at
+     * load, so phase 1 (usually 100) is the boss's starting kit.
      */
     public static class BossPhase
     {
@@ -166,6 +168,32 @@ public class PresetDefinition
         public double healthPercent = 100;
         public String message = "";
         public Spells spells = new Spells();
+        public List<PhaseEffect> effects = new ArrayList<>();
+    }
+
+    /**
+     * A MobEffect applied to the boss when its phase activates. {@code duration} is in ticks;
+     * {@code -1} (the default) is infinite, so the effect persists across all later phases.
+     */
+    public static class PhaseEffect
+    {
+        public String id = "";
+        public int amplifier = 0;
+        public int duration = -1;
+
+        /**
+         * Resolves this effect's {@link MobEffect} from the registry, or null if the id is
+         * invalid/unknown.
+         */
+        public MobEffect resolveEffect()
+        {
+            ResourceLocation rl = ResourceLocation.tryParse(id);
+            if (rl == null)
+            {
+                return null;
+            }
+            return ForgeRegistries.MOB_EFFECTS.getValue(rl);
+        }
     }
 
     /**

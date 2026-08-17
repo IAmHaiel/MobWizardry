@@ -448,6 +448,7 @@ public class PresetManager
             {
                 phase.spells = new PresetDefinition.Spells();
             }
+            validatePhaseEffects(name, phase);
             String phaseLabel = "boss phase " + phase.number;
             validateSpellList(name, phaseLabel + " attack", phase.spells.attack, castInterval);
             validateSpellList(name, phaseLabel + " defense", phase.spells.defense, castInterval);
@@ -573,6 +574,34 @@ public class PresetManager
                     LOGGER.warn("[MobWizardry] Boss '{}' combo step '{}' has a negative castAfterTicks ({}) - using 0", name, step.spell, step.castAfterTicks);
                     step.castAfterTicks = 0;
                 }
+            }
+        }
+    }
+
+    private static void validatePhaseEffects(String name, PresetDefinition.BossPhase phase)
+    {
+        if (phase.effects == null)
+        {
+            phase.effects = new ArrayList<>();
+            return;
+        }
+        phase.effects.removeIf(effect -> effect == null);
+        for (PresetDefinition.PhaseEffect effect : phase.effects)
+        {
+            if (effect.id == null || effect.id.isBlank() || effect.resolveEffect() == null)
+            {
+                LOGGER.warn("[MobWizardry] Boss '{}' phase {} has an unknown effect '{}' - the effect is skipped", name, phase.number, effect.id);
+                continue;
+            }
+            if (effect.amplifier < 0)
+            {
+                LOGGER.warn("[MobWizardry] Boss '{}' phase {} effect '{}' has a negative amplifier ({}) - using 0", name, phase.number, effect.id, effect.amplifier);
+                effect.amplifier = 0;
+            }
+            if (effect.duration < -1)
+            {
+                LOGGER.warn("[MobWizardry] Boss '{}' phase {} effect '{}' has a duration below -1 ({}) - using -1 (infinite)", name, phase.number, effect.id, effect.duration);
+                effect.duration = -1;
             }
         }
     }
@@ -911,6 +940,9 @@ public class PresetManager
                           "number": 2,
                           "healthPercent": 50,
                           "message": "Fool! Now you face my true power!",
+                          "effects": [
+                            { "id": "minecraft:resistance", "amplifier": 1, "duration": -1 }
+                          ],
                           "spells": {
                             "attack": [
                               { "id": "irons_spellbooks:fireball", "level": 1 },
@@ -932,6 +964,9 @@ public class PresetManager
                           "number": 3,
                           "healthPercent": 25,
                           "message": "This is not over! The archon's fury knows no end!",
+                          "effects": [
+                            { "id": "minecraft:speed", "amplifier": 1, "duration": -1 }
+                          ],
                           "spells": {
                             "attack": [
                               { "id": "irons_spellbooks:fireball", "level": 2 },
