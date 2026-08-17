@@ -4,6 +4,7 @@ import com.haylent.mobwizardry.ai.BossManager;
 import com.haylent.mobwizardry.ai.RaidManager;
 import com.haylent.mobwizardry.command.MobWizardryCommands;
 import com.haylent.mobwizardry.config.PresetManager;
+import com.haylent.mobwizardry.entity.WizardSkins;
 import com.haylent.mobwizardry.event.MobWizardryEvents;
 import com.haylent.mobwizardry.registration.ModEntities;
 import com.mojang.logging.LogUtils;
@@ -42,6 +43,7 @@ public class MobWizardryMod
     public void onServerStarting(ServerStartingEvent event)
     {
         LOGGER.info("MobWizardry mod loaded on server");
+        WizardSkins.createSkinDirectory();
         PresetManager.reload();
     }
 
