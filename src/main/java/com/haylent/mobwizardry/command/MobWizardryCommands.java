@@ -139,9 +139,8 @@ public class MobWizardryCommands
     private static int summon(CommandContext<CommandSourceStack> ctx, String presetName, String mobTypeId, Vec3 pos) throws CommandSyntaxException
     {
         PresetDefinition preset = requirePreset(ctx, presetName);
-        MobSpawnResult result = spawnMob(ctx, preset, mobTypeId, pos);
-        final boolean moved = !result.pos().equals(pos);
-        final Vec3 safePos = result.pos();
+        Vec3 safePos = spawnMob(ctx, preset, mobTypeId, pos);
+        final boolean moved = !safePos.equals(pos);
         ctx.getSource().sendSuccess(() -> Component.literal("Summoned " + mobTypeId + " with preset '" + presetName + "' (tag: " + preset.requiredTag + ")" + (moved ? " at safe position " + safePos : " at " + safePos)), true);
         LOGGER.info("[MobWizardry] /mobwizardry summon {} {} at {} by {}", presetName, mobTypeId, safePos, ctx.getSource().getTextName());
         return 1;
@@ -159,9 +158,8 @@ public class MobWizardryCommands
         {
             throw NOT_A_BOSS.create();
         }
-        MobSpawnResult result = spawnMob(ctx, preset, mobTypeId, pos);
+        Vec3 safePos = spawnMob(ctx, preset, mobTypeId, pos);
         final String bossName = preset.boss.name;
-        final Vec3 safePos = result.pos();
         ctx.getSource().sendSuccess(() -> Component.literal("Summoned boss '" + bossName + "' (" + mobTypeId + ") with preset '" + presetName + "' (tag: " + preset.requiredTag + ") at " + safePos), true);
         LOGGER.info("[MobWizardry] /mobwizardry boss {} {} at {} by {}", presetName, mobTypeId, safePos, ctx.getSource().getTextName());
         return 1;
@@ -169,10 +167,10 @@ public class MobWizardryCommands
 
     /**
      * Creates the mob, finds a safe spawn, equips preset gear, tags it and adds it to the level,
-     * then attaches the wizard AI (the join handler also runs and is idempotent). Shared by the
-     * {@code summon} and {@code boss} commands.
+     * then attaches the wizard AI (the join handler also runs and is idempotent). Returns the
+     * safe position the mob landed at. Shared by the {@code summon} and {@code boss} commands.
      */
-    private static MobSpawnResult spawnMob(CommandContext<CommandSourceStack> ctx, PresetDefinition preset, String mobTypeId, Vec3 pos) throws CommandSyntaxException
+    private static Vec3 spawnMob(CommandContext<CommandSourceStack> ctx, PresetDefinition preset, String mobTypeId, Vec3 pos) throws CommandSyntaxException
     {
         ServerLevel level = ctx.getSource().getLevel();
         ResourceLocation rl = ResourceLocation.tryParse(mobTypeId);
@@ -197,7 +195,7 @@ public class MobWizardryCommands
         mob.addTag(preset.requiredTag);
         level.addFreshEntity(mob);
         WizardAiGoal.attach(mob, preset);
-        return new MobSpawnResult(mob, safePos);
+        return safePos;
     }
 
     private static void warnOnEquipmentMismatch(CommandContext<CommandSourceStack> ctx, PresetDefinition preset, PathfinderMob mob)
@@ -335,13 +333,5 @@ public class MobWizardryCommands
     {
         MobWizardryCommandOutput.sendPresetsPage(ctx.getSource(), PresetManager.getPresets(), page);
         return PresetManager.getPresets().size();
-    }
-
-    /**
-     * The mob spawned by {@link #spawnMob} plus the (possibly adjusted) safe position it landed
-     * at, so the caller can report it.
-     */
-    private record MobSpawnResult(PathfinderMob mob, Vec3 pos)
-    {
     }
 }
