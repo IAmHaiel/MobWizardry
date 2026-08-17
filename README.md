@@ -11,7 +11,8 @@ MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — full
    - the wizard type (`wizardType`: `ranged` or `close`), movement speed and cast cadence
    - equipment, attribute overrides and a full mana pool
    - attack / defense / movement / support / escape spell kits
-   - an optional `boss` block (name, color, health-based phases, day/night spawn weights)
+   (Boss behavior — name, color, health-based phases, day/night spawn weights — is defined
+   separately in `config/mobwizardry/bosses.json`, keyed by preset name.)
 2. When a mob joins the world carrying the required tag, MobWizardry:
    - equips the configured gear and sets attributes/mana,
    - attaches a real Iron's Spellbooks `WizardAttackGoal` (wrapped behind a live tag check),
@@ -55,7 +56,9 @@ The following spell addons are **not required**, but when installed their spells
 
 ## Configuration
 
-File: `config/mobwizardry/presets.json`
+Files: `config/mobwizardry/presets.json` (wizard presets) and
+`config/mobwizardry/bosses.json` (boss behavior + natural-spawn settings). Both are written on
+first launch and re-read on `/mobwizardry reload`.
 
 ### Beginner's guide to the settings
 
@@ -181,18 +184,12 @@ The `irons_spellbooks:max_mana` and `irons_spellbooks:mana_regen` attributes are
 
 ### Example config (two presets)
 
-This is the default config the mod writes on first launch, minus the `wizard_boss` example (see
-[Boss fights](#boss-fights-220) for its full config). Copy it and change the values to taste.
+This is the default config the mod writes on first launch, minus the `wizard_boss` example (its
+boss behavior now lives in `bosses.json` — see [Boss fights](#boss-fights-220) for the full
+config). Copy it and change the values to taste.
 
 ```json
 {
-  "_spawnSettings": {
-    "enabled": true,
-    "attemptIntervalSeconds": 300,
-    "maxActiveBosses": 3,
-    "minDistanceFromPlayer": 24,
-    "maxDistanceFromPlayer": 48
-  },
   "wizard": {
     "requiredTag": "wizard",
     "wizardType": "ranged",
@@ -359,11 +356,16 @@ If the addon isn't installed, that spell is logged as "not found in Iron's Spell
 
 ### Validation on load
 
-At server start (and on `/mobwizardry reload`) every entry is validated against the real registries:
+At server start (and on `/mobwizardry reload`) every entry in `presets.json` and `bosses.json` is
+validated against the real registries:
 
 - unknown spell IDs, item IDs or attribute IDs are logged and removed,
 - spell levels are clamped to the spell's max level,
-- a warning is logged when a spell's intrinsic cooldown exceeds `castInterval`.
+- a warning is logged when a spell's intrinsic cooldown exceeds `castInterval`,
+- boss config issues (unknown spawn entity, invalid name color, weights/health percents out of
+  range, phases referencing unknown spells) are logged and fixed or disabled,
+- a boss key in `bosses.json` with no matching preset, a preset with an inline `boss` block, and
+  a `_spawnSettings` left in `presets.json` are all warned about.
 
 Invalid presets fail loudly in the log instead of silently doing nothing.
 
@@ -386,13 +388,33 @@ A new entity, **`mobwizardry:wizard`**, that looks like a player and uses the sa
 
 ## Boss fights (2.2.0)
 
-Any wizard preset can become a **boss** by adding a `boss` block. When a mob with a boss preset
+Any wizard preset can become a **boss** by adding a `boss` entry for it in
+`config/mobwizardry/bosses.json` (keyed by the preset's name). When a mob with a boss preset
 joins the world (summoned, wizardified, spawned by the natural spawner, or loaded from a save):
 
 - a **lightning bolt** strikes it (visual only — the boss takes no damage from it),
 - the chat announces `NAME has arrived.`,
 - it wears a **colored name tag** (no boss bar), and
 - its first phase becomes active.
+
+The file's shape is:
+
+```json
+{
+  "_spawnSettings": { ... },
+  "bosses": {
+    "wizard_boss": {
+      "enabled": true,
+      "name": "...",
+      "phases": [ ... ]
+    }
+  }
+}
+```
+
+The `bosses` map keys are **preset names** from presets.json — a boss key with no matching preset
+is ignored (and warned in the log). A preset that still carries its `boss` block inline in
+presets.json keeps working but is warned to migrate; the bosses.json entry wins when both exist.
 
 ### The `boss` block
 
@@ -452,7 +474,7 @@ phase with the highest threshold (usually `100`) is the boss's starting kit. A b
 ### Natural spawning (`_spawnSettings`)
 
 The mod can spawn bosses in the world on a timer, controlled by the `_spawnSettings` block at the
-top of `presets.json`:
+top of `bosses.json` — configured alongside the boss definitions:
 
 ```json
 "_spawnSettings": {
@@ -474,8 +496,9 @@ with both weights at `0` never naturally spawns (summon/wizardify still work).
 ### Example boss preset
 
 The default config ships a complete three-phase example, `wizard_boss` (Aetheron, the Crimson
-Archon), with the full `phases` list. To fight one: `/mobwizardry summon wizard_boss
-mobwizardry:wizard`, or let the night spawner do its job (nightSpawnWeight 20 vs daySpawnWeight 5).
+Archon): the plain `wizard_boss` wizard preset lives in presets.json and its boss behavior in
+bosses.json. To fight one: `/mobwizardry boss wizard_boss mobwizardry:wizard`, or let the night
+spawner do its job (nightSpawnWeight 20 vs daySpawnWeight 5).
 
 ## Admin commands
 
@@ -485,9 +508,10 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
 |---|---|
 | `/mobwizardry help` | Shows this list of commands with a short explanation for each. |
 | `/mobwizardry summon <preset> <mobType> [pos]` | Spawns a mob of `<mobType>` with the preset applied (tag, equipment, attributes, wizard AI) immediately. The mob type is not restricted by the preset. |
+| `/mobwizardry boss <preset> <mobType> [pos]` | Summons a boss — like `summon`, but the preset must be boss-enabled (a `boss` entry in `bosses.json`). The boss is struck by lightning, named and announced. |
 | `/mobwizardry wizardify <preset> [radius] [pos]` | Turns every mob within `radius` (1–64, default 16) of you (or of `pos`) into wizards — tag, equipment, attributes and wizard AI. Non-mob entities in range are skipped and reported. |
 | `/mobwizardry unwizardify <preset> [radius] [pos]` | Removes the tag from all wizards in range — their AI deactivates on the next tick. |
-| `/mobwizardry reload` | Re-reads and re-validates `presets.json` without restarting. |
+| `/mobwizardry reload` | Re-reads and re-validates `presets.json` and `bosses.json` without restarting. |
 | `/mobwizardry list [page]` | Lists loaded presets in a readable, colored format — 5 per page, with clickable previous/next arrows. |
 
 ### Examples
@@ -496,6 +520,8 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
 /mobwizardry help
 /mobwizardry summon wizard minecraft:zombie
 /mobwizardry summon wizard minecraft:zombie 100 64 100
+/mobwizardry boss wizard_boss mobwizardry:wizard
+/mobwizardry boss wizard_boss mobwizardry:wizard 100 64 100
 /mobwizardry wizardify wizard 10
 /mobwizardry wizardify wizard 20 100 64 100
 /mobwizardry unwizardify wizard 10
@@ -517,11 +543,11 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - **escape** spells cast when it is critically low and recently attacked (`ranged` only),
    - a **`close`** wizard advances, casts point-blank, keeps a ~5-block standoff, and never retreats,
    - cooldowns match the spell's own configured values.
-5. For a **boss** preset (`"boss": { "enabled": true }`):
-   - summoning it strikes lightning, prints `NAME has arrived.` in chat, and shows the colored name tag,
+5. For a **boss** preset (a `boss` entry in `bosses.json`):
+   - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, and shows the colored name tag,
    - deal damage until it crosses a phase's `healthPercent` — the phase message appears and its spell kit swaps (e.g. phase 2 gains the spells you listed there),
    - with `_spawnSettings.enabled` and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher).
-6. Tweak `presets.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
+6. Tweak `presets.json` / `bosses.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
 ## Notes
 
