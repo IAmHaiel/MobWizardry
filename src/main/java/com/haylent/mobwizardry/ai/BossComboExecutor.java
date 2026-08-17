@@ -82,11 +82,20 @@ public class BossComboExecutor
         }
         if (nextStepIndex >= combo.steps.size())
         {
-            int interval = combo.castInterval > 0 ? combo.castInterval : defaultInterval;
+            int interval = combo.tickBeforeComboExecution > 0 ? combo.tickBeforeComboExecution : defaultInterval;
             nextComboTick = mob.tickCount + Math.max(1, interval);
             currentComboIndex = -1;
             LOGGER.info("[MobWizardry] Boss '{}' finished a combo, next combo in {} ticks", bossName, interval);
         }
+    }
+
+    /**
+     * Whether a combo is currently running (between "starts combo" and the final step's cast).
+     * While true, the boss's other spell categories are suspended.
+     */
+    public boolean isComboActive()
+    {
+        return currentComboIndex >= 0;
     }
 
     private void startRandomCombo()
