@@ -11,6 +11,7 @@ MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — full
    - the wizard type (`wizardType`: `ranged` or `close`), movement speed and cast cadence
    - equipment, attribute overrides and a full mana pool
    - attack / defense / movement / support / escape spell kits
+   - an optional `boss` block (name, color, health-based phases, day/night spawn weights)
 2. When a mob joins the world carrying the required tag, MobWizardry:
    - equips the configured gear and sets attributes/mana,
    - attaches a real Iron's Spellbooks `WizardAttackGoal` (wrapped behind a live tag check),
@@ -180,10 +181,18 @@ The `irons_spellbooks:max_mana` and `irons_spellbooks:mana_regen` attributes are
 
 ### Example config (two presets)
 
-This is exactly the default config the mod writes on first launch — copy it and change the values to taste.
+This is the default config the mod writes on first launch, minus the `wizard_boss` example (see
+[Boss fights](#boss-fights-220) for its full config). Copy it and change the values to taste.
 
 ```json
 {
+  "_spawnSettings": {
+    "enabled": true,
+    "attemptIntervalSeconds": 300,
+    "maxActiveBosses": 3,
+    "minDistanceFromPlayer": 24,
+    "maxDistanceFromPlayer": 48
+  },
   "wizard": {
     "requiredTag": "wizard",
     "wizardType": "ranged",
@@ -375,6 +384,99 @@ A new entity, **`mobwizardry:wizard`**, that looks like a player and uses the sa
 - **Teams** — same-team NPCs can never hurt/target each other, so you can build friendly and
   enemy groups that coexist.
 
+## Boss fights (2.2.0)
+
+Any wizard preset can become a **boss** by adding a `boss` block. When a mob with a boss preset
+joins the world (summoned, wizardified, spawned by the natural spawner, or loaded from a save):
+
+- a **lightning bolt** strikes it (visual only — the boss takes no damage from it),
+- the chat announces `NAME has arrived.`,
+- it wears a **colored name tag** (no boss bar), and
+- its first phase becomes active.
+
+### The `boss` block
+
+| Field | Meaning |
+|---|---|
+| `enabled` | set `true` to make this preset a boss. |
+| `name` | the boss's display name (used for the name tag and chat). |
+| `nameColor` | the name tag / chat color — a Minecraft color name like `red`, `dark_red`, `gold`, `aqua`, or a hex color like `#FF5555`. Default `red`. |
+| `spawnEntity` | which entity type the natural spawner uses for this boss (e.g. `mobwizardry:wizard`, `minecraft:zombie`). Commands still let you pick any mob type. |
+| `daySpawnWeight` | how likely this boss is to be naturally spawned during the day (see `_spawnSettings`). `0` = never by day. |
+| `nightSpawnWeight` | how likely this boss is to be naturally spawned at night. `0` = never by night. |
+| `phases` | the list of health-based phases (below). |
+
+### Phases
+
+A phase has a **number**, a **healthPercent** (the health ratio, as a percentage, at or below
+which the boss enters the phase), an optional **message**, and a **spells** kit in the same
+five-category format as the preset's own `spells` block. Each phase lists the **full** arsenal
+the boss should have from that point on — so phase 2's `attack` list includes phase 1's spells
+plus any new ones. When the boss's health drops to a phase's threshold, the kit is swapped in and
+`[NAME] message` is broadcast (the name in red).
+
+```json
+"phases": [
+  {
+    "number": 1,
+    "healthPercent": 100,
+    "message": "So you dare face me?",
+    "spells": {
+      "attack": [ { "id": "irons_spellbooks:fireball", "level": 1 } ],
+      "defense": [], "movement": [], "support": [], "escape": []
+    }
+  },
+  {
+    "number": 2,
+    "healthPercent": 50,
+    "message": "Fool! Now you face my true power!",
+    "spells": {
+      "attack": [
+        { "id": "irons_spellbooks:fireball", "level": 1 },
+        { "id": "irons_spellbooks:magic_missile", "level": 1 }
+      ],
+      "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
+      "movement": [ { "id": "irons_spellbooks:blood_step", "level": 1 } ],
+      "support": [ { "id": "irons_spellbooks:heal", "level": 1, "emergency": true } ],
+      "escape": []
+    }
+  }
+]
+```
+
+`healthPercent` is the threshold for *entering* the phase: phase 2 above activates the moment the
+boss is at or below 50% health. Phases are sorted by `healthPercent` descending at load, so the
+phase with the highest threshold (usually `100`) is the boss's starting kit. A boss with no
+`phases` is still a named boss (lightning + name tag + arrival) but never changes kits.
+
+### Natural spawning (`_spawnSettings`)
+
+The mod can spawn bosses in the world on a timer, controlled by the `_spawnSettings` block at the
+top of `presets.json`:
+
+```json
+"_spawnSettings": {
+  "enabled": true,
+  "attemptIntervalSeconds": 300,
+  "maxActiveBosses": 3,
+  "minDistanceFromPlayer": 24,
+  "maxDistanceFromPlayer": 48
+}
+```
+
+Every `attemptIntervalSeconds` (300 = every 5 minutes) the mod rolls for a spawn: it counts the
+bosses currently alive (it stops if `maxActiveBosses` is already reached), picks a random online
+player, and selects one boss preset at random — weighted by `daySpawnWeight` during the day and
+`nightSpawnWeight` at night (higher weight = more likely). The chosen boss is spawned at a safe
+spot between `minDistanceFromPlayer` and `maxDistanceFromPlayer` blocks from that player. A boss
+with both weights at `0` never naturally spawns (summon/wizardify still work).
+
+### Example boss preset
+
+The default config ships a complete three-phase example, `wizard_boss` (Aetheron, the Crimson
+Archon), with the full `phases` list. To fight one: `/mobwizardry summon wizard_boss
+mobwizardry:wizard`, or let the night spawner do its job (nightSpawnWeight 20 vs daySpawnWeight 5).
+
 ## Admin commands
 
 Requires permission level 2. (`help` and `list` are available to everyone.)
@@ -415,7 +517,11 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - **escape** spells cast when it is critically low and recently attacked (`ranged` only),
    - a **`close`** wizard advances, casts point-blank, keeps a ~5-block standoff, and never retreats,
    - cooldowns match the spell's own configured values.
-5. Tweak `presets.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
+5. For a **boss** preset (`"boss": { "enabled": true }`):
+   - summoning it strikes lightning, prints `NAME has arrived.` in chat, and shows the colored name tag,
+   - deal damage until it crosses a phase's `healthPercent` — the phase message appears and its spell kit swaps (e.g. phase 2 gains the spells you listed there),
+   - with `_spawnSettings.enabled` and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher).
+6. Tweak `presets.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
 ## Notes
 
