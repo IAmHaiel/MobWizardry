@@ -480,16 +480,17 @@ phase with the highest threshold (usually `100`) is the boss's starting kit. A b
 ### Combo presets (2.3.0)
 
 Think of a combo as one **prepared attack routine**: a boss that has `combos` stops casting
-attack spells at random and instead runs these routines. When it fights, it picks one combo at
-random, casts the steps **in order**, and then **pauses before it may use that combo again** —
-that pause is the `tickBeforeComboExecution`. While a combo is actually running the boss casts
-**only** the combo's steps; its normal defense/movement/support/escape spells stay silent until
-the combo finishes, then behave like any other wizard until the next combo starts.
+attack spells at random and instead runs these routines. While fighting, it **randomly picks one
+combo**, casts the steps **in order**, then **pauses** — and after the pause it **randomly picks
+another combo** (the next pick is completely independent, so it may even be the same combo again).
+While a combo is actually running the boss casts **only** the combo's steps; its normal
+defense/movement/support/escape spells stay silent until the combo finishes, then behave like any
+other wizard until the next combo starts.
 
 ```json
 "combos": [
   {
-    "tickBeforeComboExecution": 40,
+    "pauseAfterComboExecution": 40,
     "steps": [
       { "category": "attack",  "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 30 },
       { "category": "attack",  "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
@@ -502,7 +503,7 @@ the combo finishes, then behave like any other wizard until the next combo start
 
 | Field | Meaning |
 |---|---|
-| `tickBeforeComboExecution` | How long the boss **catches its breath** after finishing this combo before it may start it again. Counted in **ticks** — Minecraft runs 20 ticks per second, so `40` = 2 seconds. Smaller = the boss chains combos faster; bigger = longer pauses between combos. Set it to `0` to let the boss use its preset's normal cast interval (about 2-3 seconds). The old name for this field was `castInterval`; it still works, just renamed. |
+| `pauseAfterComboExecution` | How long the boss **catches its breath** after this combo finishes before it may pick the next random combo. Counted in **ticks** — Minecraft runs 20 ticks per second, so `40` = 2 seconds. Smaller = the boss chains combos faster; bigger = longer pauses between combos. Set it to `0` to let the boss use its preset's normal cast interval (about 2-3 seconds). If several combos have different values, each combo's own value is used for the pause that follows it. (Old names for this field were `castInterval` and `tickBeforeComboExecution`; they still work, just renamed.) |
 | `steps` | the combo, executed top-to-bottom. |
 | `step.category` | informational — `attack`/`defense`/`support`/`movement`/`escape`. |
 | `step.spell` | the spell to cast (same id format as preset spells). |

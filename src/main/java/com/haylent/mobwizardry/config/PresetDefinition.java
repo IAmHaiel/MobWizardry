@@ -160,18 +160,21 @@ public class PresetDefinition
 
     /**
      * A scripted boss attack sequence. When a boss with combos fights, it picks one combo at
-     * random, casts its steps in list order at their offsets from the combo start, then waits
-     * {@code tickBeforeComboExecution} ticks (0 = the preset's castInterval) before it may run
-     * that combo set again. Combos replace the boss's weighted attack casting, and while a combo
+     * random, casts its steps in list order at their offsets from the combo start, then pauses
+     * {@code pauseAfterComboExecution} ticks (0 = the preset's castInterval) before it may pick
+     * another random combo. Combos replace the boss's weighted attack casting, and while a combo
      * runs the boss cannot cast any other spell category (defense/movement/support/escape resume
      * after it finishes).
      */
     public static class Combo
     {
-        /** Legacy name for {@code tickBeforeComboExecution}; migrated on load (2.3.1). */
+        /** Legacy name for {@code pauseAfterComboExecution} (2.3.0); migrated on load. */
         @Deprecated
         public int castInterval = 0;
+        /** Legacy name for {@code pauseAfterComboExecution} (2.3.1); migrated on load. */
+        @Deprecated
         public int tickBeforeComboExecution = 0;
+        public int pauseAfterComboExecution = 0;
         public List<ComboStep> steps = new ArrayList<>();
     }
 

@@ -10,9 +10,9 @@ import java.util.List;
 
 /**
  * Scripted boss attack sequences. When a boss with combos is in combat, this executor picks one
- * combo at random once its interval has elapsed, casts the combo's steps in list order at their
- * offsets from the combo start, then waits the combo's {@code castInterval} (or the preset's)
- * before picking another combo.
+ * combo at random once its pause has elapsed, casts the combo's steps in list order at their
+ * offsets from the combo start, then pauses for the combo's {@code pauseAfterComboExecution}
+ * (or the preset's) before picking another random combo.
  *
  * <p>Only attack casting is affected: defense/movement/support/escape still flow through the
  * normal goal logic, and both sides respect {@code isCasting()} so a combo step waits for any
@@ -82,7 +82,7 @@ public class BossComboExecutor
         }
         if (nextStepIndex >= combo.steps.size())
         {
-            int interval = combo.tickBeforeComboExecution > 0 ? combo.tickBeforeComboExecution : defaultInterval;
+            int interval = combo.pauseAfterComboExecution > 0 ? combo.pauseAfterComboExecution : defaultInterval;
             nextComboTick = mob.tickCount + Math.max(1, interval);
             currentComboIndex = -1;
             LOGGER.info("[MobWizardry] Boss '{}' finished a combo, next combo in {} ticks", bossName, interval);

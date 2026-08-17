@@ -488,16 +488,22 @@ public class PresetManager
         }
         for (PresetDefinition.Combo combo : boss.combos)
         {
-            if (combo.tickBeforeComboExecution == 0 && combo.castInterval != 0)
+            if (combo.pauseAfterComboExecution == 0 && combo.tickBeforeComboExecution != 0)
             {
-                LOGGER.warn("[MobWizardry] Boss '{}' combo uses the old 'castInterval' field - renamed to 'tickBeforeComboExecution' (the delay before the combo set may run again)", name);
-                combo.tickBeforeComboExecution = combo.castInterval;
+                LOGGER.warn("[MobWizardry] Boss '{}' combo uses the old 'tickBeforeComboExecution' field - renamed to 'pauseAfterComboExecution' (the pause after the combo runs, before the next random combo)", name);
+                combo.pauseAfterComboExecution = combo.tickBeforeComboExecution;
+                combo.tickBeforeComboExecution = 0;
+            }
+            if (combo.pauseAfterComboExecution == 0 && combo.castInterval != 0)
+            {
+                LOGGER.warn("[MobWizardry] Boss '{}' combo uses the old 'castInterval' field - renamed to 'pauseAfterComboExecution' (the pause after the combo runs, before the next random combo)", name);
+                combo.pauseAfterComboExecution = combo.castInterval;
                 combo.castInterval = 0;
             }
-            if (combo.tickBeforeComboExecution < 0)
+            if (combo.pauseAfterComboExecution < 0)
             {
-                LOGGER.warn("[MobWizardry] Boss '{}' has a combo with a negative tickBeforeComboExecution ({}) - using 0 (preset castInterval)", name, combo.tickBeforeComboExecution);
-                combo.tickBeforeComboExecution = 0;
+                LOGGER.warn("[MobWizardry] Boss '{}' has a combo with a negative pauseAfterComboExecution ({}) - using 0 (preset castInterval)", name, combo.pauseAfterComboExecution);
+                combo.pauseAfterComboExecution = 0;
             }
             if (combo.steps == null)
             {
@@ -929,7 +935,7 @@ public class PresetManager
                       ],
                       "combos": [
                         {
-                          "tickBeforeComboExecution": 40,
+                          "pauseAfterComboExecution": 40,
                           "steps": [
                             { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
                             { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 25 },
@@ -938,7 +944,7 @@ public class PresetManager
                           ]
                         },
                         {
-                          "tickBeforeComboExecution": 60,
+                          "pauseAfterComboExecution": 60,
                           "steps": [
                             { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 20 },
                             { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 40 },
