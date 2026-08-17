@@ -363,8 +363,8 @@ validated against the real registries:
 - spell levels are clamped to the spell's max level,
 - a warning is logged when a spell's intrinsic cooldown exceeds `castInterval`,
 - boss config issues (unknown spawn entity, invalid name color, weights/health percents out of
-  range, bad spawn settings like a negative interval or overlapping distances, phases referencing
-  unknown spells) are logged and fixed or disabled,
+  range, bad spawn settings like a negative interval, overlapping distances or a negative glow
+  seconds, phases referencing unknown spells) are logged and fixed or disabled,
 - a boss key in `bosses.json` with no matching preset, a preset with an inline `boss` block, a
   leftover top-level `_spawnSettings` in `bosses.json`, and a `_spawnSettings` left in
   `presets.json` are all warned about.
@@ -485,22 +485,36 @@ through its `spawnSettings` block — there is no global setting:
   "attemptIntervalSeconds": 300,
   "maxActiveBosses": 3,
   "minDistanceFromPlayer": 24,
-  "maxDistanceFromPlayer": 48
+  "maxDistanceFromPlayer": 48,
+  "despawnOnTimeChange": true,
+  "spawnGlowSeconds": 60
 }
 ```
 
 | Field | Meaning |
 |---|---|
 | `enabled` | `false` = this boss never naturally spawns (summon/wizardify still work). |
-| `attemptIntervalSeconds` | minimum seconds between this boss's natural spawns (300 = every 5 minutes). |
+| `attemptIntervalSeconds` | minimum seconds between this boss's natural spawn attempts (300 = every 5 minutes). |
 | `maxActiveBosses` | how many of *this* boss may be alive at once before it stops rolling. |
 | `minDistanceFromPlayer` / `maxDistanceFromPlayer` | this boss spawns at a safe spot between these distances from a random online player. |
+| `despawnOnTimeChange` | `true` (default) = a boss that **naturally** spawned disappears when the day/night phase flips (a night-spawned boss vanishes at day, a day-spawned boss vanishes at night). Bosses summoned with `/mobwizardry summon`/`boss` are never affected. |
+| `spawnGlowSeconds` | how long the boss glows after arriving so players can see it (default 60; `0` disables the glow). |
 
 Each boss schedules its own spawn attempts: every tick, a boss whose `enabled` is true, whose
 day/night weight for the current time is above `0`, whose live count is below its own
 `maxActiveBosses` and whose interval has elapsed joins a weighted pool; one winner is spawned
 using that boss's own distances. A boss with `daySpawnWeight` and `nightSpawnWeight` both at `0`
 (or `spawnSettings.enabled` false) never naturally spawns.
+
+### On arrival
+
+When a boss is bossified (naturally spawned or summoned):
+
+- a **lightning bolt** strikes it (visual only), the chat announces `NAME has arrived.`, and it
+  gets its colored name tag and first phase,
+- it **immediately targets a random attackable online player** and navigates toward them
+  (multiplayer = random among them); with no attackable players it stays idle — after that it
+  fights with the exact same wizard AI as any other wizard.
 
 ### Example boss preset
 
@@ -553,9 +567,9 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - a **`close`** wizard advances, casts point-blank, keeps a ~5-block standoff, and never retreats,
    - cooldowns match the spell's own configured values.
 5. For a **boss** preset (a `boss` entry in `bosses.json`):
-   - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, and shows the colored name tag,
+   - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, shows the colored name tag, glows for `spawnGlowSeconds`, and targets a random online player (idle if none),
    - deal damage until it crosses a phase's `healthPercent` — the phase message appears and its spell kit swaps (e.g. phase 2 gains the spells you listed there),
-   - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher).
+   - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
 6. Tweak `presets.json` / `bosses.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
 ## Notes
