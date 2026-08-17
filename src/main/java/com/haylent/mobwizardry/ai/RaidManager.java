@@ -6,10 +6,15 @@ import com.haylent.mobwizardry.config.RaidDefinition;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.BossEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.PathfinderMob;
@@ -64,8 +69,28 @@ public class RaidManager
         ActiveRaid raid = new ActiveRaid(def, level, pos);
         active = raid;
         broadcast(level, def.startMessage, ChatFormatting.RED);
+        playRaidStartEffects(raid);
         LOGGER.info("[MobWizardry] Raid '{}' started in {} at {}", def.name, level.dimension().location(), pos);
         startWave(raid);
+    }
+
+    /**
+     * Audiovisual feedback when a raid starts: every player in the raid's dimension
+     * simultaneously hears the pillager horn and a loud lightning crash, and sees a
+     * "YOU ARE INVADED" subtitle.
+     */
+    private static void playRaidStartEffects(ActiveRaid raid)
+    {
+        Component subtitle = Component.literal("YOU ARE INVADED")
+                .withStyle(ChatFormatting.RED, ChatFormatting.BOLD);
+        for (ServerPlayer player : raid.level.players())
+        {
+            player.playNotifySound(SoundEvents.RAID_HORN.value(), SoundSource.HOSTILE, 2.0f, 1.0f);
+            player.playNotifySound(SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.WEATHER, 2.0f, 1.0f);
+            player.connection.send(new ClientboundSetTitleTextPacket(Component.empty()));
+            player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
+            player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 70, 20));
+        }
     }
 
     /**
