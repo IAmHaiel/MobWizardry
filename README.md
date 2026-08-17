@@ -364,7 +364,8 @@ validated against the real registries:
 - a warning is logged when a spell's intrinsic cooldown exceeds `castInterval`,
 - boss config issues (unknown spawn entity, invalid name color, weights/health percents out of
   range, bad spawn settings like a negative interval, overlapping distances or a negative glow
-  seconds, phases referencing unknown spells) are logged and fixed or disabled,
+  seconds, combo steps with unknown spells or invalid categories, phases referencing unknown
+  spells) are logged and fixed or disabled,
 - a boss key in `bosses.json` with no matching preset, a preset with an inline `boss` block, a
   leftover top-level `_spawnSettings` in `bosses.json`, and a `_spawnSettings` left in
   `presets.json` are all warned about.
@@ -430,6 +431,7 @@ presets.json keeps working but is warned to migrate; the bosses.json entry wins 
 | `daySpawnWeight` | how likely this boss is to be naturally spawned during the day. `0` = never by day. |
 | `nightSpawnWeight` | how likely this boss is to be naturally spawned at night. `0` = never by night. |
 | `phases` | the list of health-based phases (below). |
+| `combos` | the list of scripted attack sequences (below) — replaces the boss's normal random attack casting. |
 
 ### Phases
 
@@ -473,6 +475,40 @@ plus any new ones. When the boss's health drops to a phase's threshold, the kit 
 boss is at or below 50% health. Phases are sorted by `healthPercent` descending at load, so the
 phase with the highest threshold (usually `100`) is the boss's starting kit. A boss with no
 `phases` is still a named boss (lightning + name tag + arrival) but never changes kits.
+
+### Combo presets (2.3.0)
+
+A boss with `combos` replaces its **attack** casting with scripted sequences; defense, movement,
+support and escape remain the normal wizard behavior (the preset's spells, triggered as usual).
+While fighting, the boss randomly picks one combo, casts its steps **in list order** at their
+offsets from the combo start, then waits the combo's `castInterval` before starting another
+random combo.
+
+```json
+"combos": [
+  {
+    "castInterval": 40,
+    "steps": [
+      { "category": "attack",  "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 30 },
+      { "category": "attack",  "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
+      { "category": "attack",  "spell": "irons_spellbooks:fireball",      "level": 1, "castAfterTicks": 60 },
+      { "category": "escape",  "spell": "irons_spellbooks:blood_step",    "level": 1, "castAfterTicks": 120 }
+    ]
+  }
+]
+```
+
+| Field | Meaning |
+|---|---|
+| `castInterval` | ticks between this combo's repetitions (20 ticks = 1 second; `0` = the preset's `castInterval`, so 40-60 ticks ≈ 2-3 seconds). |
+| `steps` | the combo, executed top-to-bottom. |
+| `step.category` | informational — `attack`/`defense`/`support`/`movement`/`escape`. |
+| `step.spell` | the spell to cast (same id format as preset spells). |
+| `step.level` | cast level (clamped to the spell's max). |
+| `step.castAfterTicks` | how many ticks after the combo started this step casts; if the boss is still finishing an earlier cast, it casts as soon as it is free. |
+
+Steps with unknown spells are skipped at load; a combo with no usable steps ends immediately and
+the next combo follows.
 
 ### Natural spawning (per-boss `spawnSettings`)
 
@@ -569,6 +605,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
 5. For a **boss** preset (a `boss` entry in `bosses.json`):
    - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, shows the colored name tag, glows for `spawnGlowSeconds`, and targets a random online player (idle if none),
    - deal damage until it crosses a phase's `healthPercent` — the phase message appears and its spell kit swaps (e.g. phase 2 gains the spells you listed there),
+   - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets, then a gap before the next combo), while defense/movement/support/escape still trigger like a normal wizard,
    - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
 6. Tweak `presets.json` / `bosses.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
