@@ -126,7 +126,9 @@ public class PresetDefinition
 
         /**
          * Per-boss natural-spawn controls. Each boss schedules its own spawn attempts, has its
-         * own concurrent cap and spawns at its own distance from a player.
+         * own concurrent cap and spawns at its own distance from a player. Also controls the
+         * arrival behavior: whether the boss glows on arrival and whether a naturally-spawned
+         * boss disappears when the day/night phase flips.
          */
         public static class SpawnSettings
         {
@@ -135,6 +137,8 @@ public class PresetDefinition
             public int maxActiveBosses = 3;
             public double minDistanceFromPlayer = 24;
             public double maxDistanceFromPlayer = 48;
+            public boolean despawnOnTimeChange = true;
+            public int spawnGlowSeconds = 60;
         }
     }
 

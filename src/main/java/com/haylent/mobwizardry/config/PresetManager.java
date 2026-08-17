@@ -466,6 +466,11 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] Boss '{}' has maxDistanceFromPlayer ({}) below minDistanceFromPlayer ({}) - using {}", name, max, minClamped, maxClamped);
             boss.spawnSettings.maxDistanceFromPlayer = maxClamped;
         }
+        if (boss.spawnSettings.spawnGlowSeconds < 0)
+        {
+            LOGGER.warn("[MobWizardry] Boss '{}' has a negative spawnGlowSeconds ({}) - using 0 (no glow)", name, boss.spawnSettings.spawnGlowSeconds);
+            boss.spawnSettings.spawnGlowSeconds = 0;
+        }
     }
 
     private static boolean isValidNameColor(String nameColor)
@@ -774,7 +779,9 @@ public class PresetManager
                         "attemptIntervalSeconds": 300,
                         "maxActiveBosses": 3,
                         "minDistanceFromPlayer": 24,
-                        "maxDistanceFromPlayer": 48
+                        "maxDistanceFromPlayer": 48,
+                        "despawnOnTimeChange": true,
+                        "spawnGlowSeconds": 60
                       },
                       "daySpawnWeight": 5,
                       "nightSpawnWeight": 20,

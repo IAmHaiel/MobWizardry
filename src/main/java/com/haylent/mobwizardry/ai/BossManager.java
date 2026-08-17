@@ -10,10 +10,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
@@ -46,6 +50,7 @@ public class BossManager
 
     private static final String BOSSIFIED_KEY = "mobwizardry_bossified";
     private static final String PHASE_KEY = "mobwizardry_boss_phase";
+    private static final String SPAWN_PHASE_KEY = "mobwizardry_spawn_phase";
 
     /**
      * Bosses currently loaded, keyed by entity UUID so a chunk reload of the same boss re-uses
@@ -84,6 +89,9 @@ public class BossManager
         mob.getPersistentData().putBoolean(BOSSIFIED_KEY, true);
         refreshName(mob, preset);
         track(mob, preset);
+        boostFollowRange(mob);
+        targetArrivalPlayer(mob, preset);
+        applySpawnGlow(mob, preset);
         if (!preset.boss.phases.isEmpty())
         {
             activatePhase(mob, preset, preset.boss.phases.get(0));
@@ -92,6 +100,56 @@ public class BossManager
         broadcastArrival(mob, preset);
         LOGGER.info("[MobWizardry] Bossified {} ({}) at {}", preset.boss.name,
                 mob.getType().getDescriptionId(), mob.blockPosition());
+    }
+
+    /**
+     * Lets the boss chase its target from the natural-spawn distance (bosses spawn 24-48 blocks
+     * away) instead of a mob type's default follow range.
+     */
+    private static void boostFollowRange(PathfinderMob mob)
+    {
+        AttributeInstance followRange = mob.getAttribute(Attributes.FOLLOW_RANGE);
+        if (followRange != null)
+        {
+            followRange.setBaseValue(64.0);
+        }
+    }
+
+    /**
+     * On arrival the boss immediately targets a random attackable online player (multiplayer =
+     * random among them) so it navigates toward them; with no attackable players it stays idle
+     * and behaves exactly like a normal wizard (its own target goals handle everything).
+     */
+    private static void targetArrivalPlayer(PathfinderMob mob, PresetDefinition preset)
+    {
+        if (!(mob.level() instanceof ServerLevel level) || level.getServer() == null)
+        {
+            return;
+        }
+        List<ServerPlayer> attackable = level.getServer().getPlayerList().getPlayers().stream()
+                .filter(mob::canAttack)
+                .toList();
+        if (attackable.isEmpty())
+        {
+            return;
+        }
+        ServerPlayer pick = attackable.get(level.random.nextInt(attackable.size()));
+        mob.setTarget(pick);
+        LOGGER.info("[MobWizardry] Boss '{}' arrived and targets player {}",
+                preset.boss.name, pick.getName().getString());
+    }
+
+    /**
+     * Makes the freshly-arrived boss glow so players can see it, for the configured seconds
+     * (0 disables).
+     */
+    private static void applySpawnGlow(PathfinderMob mob, PresetDefinition preset)
+    {
+        int seconds = preset.boss.spawnSettings.spawnGlowSeconds;
+        if (seconds > 0)
+        {
+            mob.addEffect(new MobEffectInstance(MobEffects.GLOWING, seconds * 20));
+        }
     }
 
     private static boolean isBossified(PathfinderMob mob)
@@ -157,6 +215,13 @@ public class BossManager
             PathfinderMob mob = active.mob();
             if (mob == null || !mob.isAlive() || mob.isRemoved())
             {
+                it.remove();
+                continue;
+            }
+            if (shouldDespawnOnTimeChange(active, mob))
+            {
+                LOGGER.info("[MobWizardry] Boss '{}' despawned - the day/night phase changed since it naturally spawned", active.preset().boss.name);
+                mob.discard();
                 it.remove();
                 continue;
             }
@@ -305,6 +370,10 @@ public class BossManager
         }
         Vec3 safe = SpawnHelper.findSafeSpawn(level, pos);
         mob.moveTo(safe.x, safe.y, safe.z);
+        // Stamp the day/night phase this boss naturally spawned in, so it despawns when the
+        // time flips (see shouldDespawnOnTimeChange). Command-summoned bosses have no stamp and
+        // are unaffected.
+        mob.getPersistentData().putString(SPAWN_PHASE_KEY, level.isNight() ? "night" : "day");
         mob.addTag(preset.requiredTag);
         level.addFreshEntity(mob);
         LOGGER.info("[MobWizardry] Natural boss spawn: '{}' (tag '{}') at {}", preset.boss.name, preset.requiredTag, safe);
@@ -342,6 +411,27 @@ public class BossManager
         }
         ResourceLocation rl = ResourceLocation.tryParse(boss.spawnEntity);
         return rl != null && ForgeRegistries.ENTITY_TYPES.containsKey(rl);
+    }
+
+    /**
+     * True when a naturally-spawned boss (stamped with the day/night phase it spawned in) must
+     * vanish because the current phase no longer matches it and the boss's spawn settings enable
+     * the behavior.
+     */
+    private static boolean shouldDespawnOnTimeChange(ActiveBoss active, PathfinderMob mob)
+    {
+        PresetDefinition.Boss.SpawnSettings spawn = active.preset().boss.spawnSettings;
+        if (spawn == null || !spawn.despawnOnTimeChange)
+        {
+            return false;
+        }
+        String spawnedPhase = mob.getPersistentData().getString(SPAWN_PHASE_KEY);
+        if (spawnedPhase.isEmpty())
+        {
+            return false;
+        }
+        boolean nowNight = mob.level().isNight();
+        return ("day".equals(spawnedPhase) && nowNight) || ("night".equals(spawnedPhase) && !nowNight);
     }
 
     private static void activatePhase(PathfinderMob mob, PresetDefinition preset, PresetDefinition.BossPhase phase)
