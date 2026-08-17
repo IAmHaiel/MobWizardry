@@ -12,7 +12,8 @@ MobWizardry attaches Iron's Spellbooks spellcasting AI to existing mobs — full
    - equipment, attribute overrides and a full mana pool
    - attack / defense / movement / support / escape spell kits
    (Boss behavior — name, color, health-based phases, day/night spawn weights — is defined
-   separately in `config/mobwizardry/bosses.json`, keyed by preset name.)
+   separately in `config/mobwizardry/bosses.json`, keyed by preset name. Raids/hordes of enemy
+   wizards are defined in `config/mobwizardry/raids.json`.)
 2. When a mob joins the world carrying the required tag, MobWizardry:
    - equips the configured gear and sets attributes/mana,
    - attaches a real Iron's Spellbooks `WizardAttackGoal` (wrapped behind a live tag check),
@@ -56,9 +57,9 @@ The following spell addons are **not required**, but when installed their spells
 
 ## Configuration
 
-Files: `config/mobwizardry/presets.json` (wizard presets) and
-`config/mobwizardry/bosses.json` (boss behavior + natural-spawn settings). Both are written on
-first launch and re-read on `/mobwizardry reload`.
+Files: `config/mobwizardry/presets.json` (wizard presets), `config/mobwizardry/bosses.json`
+(boss behavior + natural-spawn settings) and `config/mobwizardry/raids.json` (raids/hordes). All
+are written on first launch and re-read on `/mobwizardry reload`.
 
 ### Beginner's guide to the settings
 
@@ -776,6 +777,25 @@ Details: [The boss block](#the-boss-block), [Phases](#phases),
 [Combo presets](#combo-presets-230), [Natural spawning](#natural-spawning-per-boss-spawnsettings),
 [On arrival](#on-arrival).
 
+### `raids.json`
+
+| Field | Type | Meaning |
+|---|---|---|
+| `raids` | object | map of **raid name** → raid definition |
+| `name` | string | the raid's display name (shown on the raid bar) |
+| `startMessage` | string | chat message when the raid starts (empty = none) |
+| `victoryMessage` | string | chat message when the players win (empty = none) |
+| `defeatMessage` | string | chat message when the enemy wins / all players die (empty = none) |
+| `waves` | list | the enemy waves, run in order |
+| wave `number` | int | wave number |
+| wave `enemies` | list | the enemy groups of this wave |
+| enemy `preset` | string | the wizard preset to spawn (e.g. `wizard`) |
+| enemy `count` | int | how many of this preset the wave contains (max) |
+| enemy `weight` | number | how likely this preset is picked per spawn (0-1+ relative) |
+| `boss` | string | the boss-enabled preset used for the final wave (empty = none) |
+
+Details and semantics: [Raid / horde](#raid--horde-300).
+
 ### Example — every `presets.json` field (one preset)
 
 One preset that uses **every** supported field, so each field's name, type and value format is
@@ -916,6 +936,67 @@ this turns that wizard into a boss):
 }
 ```
 
+## Raid / horde (3.0.0)
+
+A **raid** is a configurable horde of enemy wizards that fights the players in waves and ends
+with a **boss fight** (the existing boss system). Players win by killing **every enemy in every
+wave and the boss**; the raid is lost when **all players in the raid's dimension are dead**.
+Raids are defined in `config/mobwizardry/raids.json` and run with
+`/mobwizardry raid start <raid>`.
+
+While a raid runs, everyone in its dimension sees a **purple raid bar**:
+- during a wave it shows `Raid Name — Wave N/M` with the fill = how many of that wave's enemies
+  you've killed,
+- during the boss phase it switches to `Raid Name — Boss` with the boss's health.
+
+### `raids.json` example — full file
+
+```json
+{
+  "raids": {
+    "wizard_horde": {
+      "name": "The Wizard Horde",
+      "startMessage": "The Wizard Horde has arrived!",
+      "victoryMessage": "The Wizard Horde has been driven back!",
+      "defeatMessage": "The Wizard Horde has overrun the realm!",
+      "waves": [
+        {
+          "number": 1,
+          "enemies": [
+            { "preset": "wizard",       "count": 4, "weight": 1 },
+            { "preset": "wizard_close", "count": 2, "weight": 1 }
+          ]
+        },
+        {
+          "number": 2,
+          "enemies": [
+            { "preset": "wizard_range", "count": 6, "weight": 2 }
+          ]
+        }
+      ],
+      "boss": "wizard_boss"
+    }
+  }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `name` | shown on the raid bar (falls back to the raid's key). |
+| `startMessage` / `victoryMessage` / `defeatMessage` | chat messages when the raid starts, when the players win, and when the enemy wins (all optional, empty = silent). |
+| `waves` | the enemy waves, run in order. A wave spawns **`sum(counts)`** enemies as `mobwizardry:wizard` NPCs carrying their preset's tag (they never naturally despawn). |
+| `waves[].enemies` | each entry is `{ "preset", "count", "weight" }` — **weighted-random capped**: every spawn rolls a preset weighted by `weight`, but a preset appears at most `count` times per wave, so heavier weights make a preset more common and `count` bounds it. |
+| `boss` | the **boss-enabled preset** used for the final wave (e.g. `wizard_boss`). If empty (or not boss-enabled) the raid ends after the last wave with a player victory. |
+
+### Commands
+
+- `/mobwizardry raid start <raid> [pos]` (permission 2) — start a configured raid (near you, or
+  the `[pos]`).
+- `/mobwizardry raid stop` — end the active raid (no result message).
+- `/mobwizardry raid list` — list configured raids.
+
+Only **one raid** can be active at a time; starting a new one cancels the current raid.
+
 ## Admin commands
 
 Requires permission level 2. (`help` and `list` are available to everyone.)
@@ -925,6 +1006,9 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
 | `/mobwizardry help` | Shows this list of commands with a short explanation for each. |
 | `/mobwizardry summon <preset> <mobType> [pos]` | Spawns a mob of `<mobType>` with the preset applied (tag, equipment, attributes, wizard AI) immediately. The mob type is not restricted by the preset. |
 | `/mobwizardry boss <preset> <mobType> [pos]` | Summons a boss — like `summon`, but the preset must be boss-enabled (a `boss` entry in `bosses.json`). The boss is struck by lightning, named and announced. |
+| `/mobwizardry raid start <raid> [pos]` | Starts a configured raid from `raids.json` — waves of enemy wizards ending in a boss fight, shown on a purple raid bar. |
+| `/mobwizardry raid stop` | Ends the active raid. |
+| `/mobwizardry raid list` | Lists configured raids (waves, boss). |
 | `/mobwizardry wizardify <preset> [radius] [pos]` | Turns every mob within `radius` (1–64, default 16) of you (or of `pos`) into wizards — tag, equipment, attributes and wizard AI. Non-mob entities in range are skipped and reported. |
 | `/mobwizardry unwizardify <preset> [radius] [pos]` | Removes the tag from all wizards in range — their AI deactivates on the next tick. |
 | `/mobwizardry reload` | Re-reads and re-validates `presets.json` and `bosses.json` without restarting. |
@@ -938,6 +1022,9 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
 /mobwizardry summon wizard minecraft:zombie 100 64 100
 /mobwizardry boss wizard_boss mobwizardry:wizard
 /mobwizardry boss wizard_boss mobwizardry:wizard 100 64 100
+/mobwizardry raid start wizard_horde
+/mobwizardry raid stop
+/mobwizardry raid list
 /mobwizardry wizardify wizard 10
 /mobwizardry wizardify wizard 20 100 64 100
 /mobwizardry unwizardify wizard 10
@@ -964,7 +1051,12 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - deal damage until it crosses a phase's `healthPercent` — the phase message appears, its spell kit swaps (e.g. phase 2 gains the spells you listed there), its phase `effects` are applied (and persist into later phases), and the boss bar fill drops,
    - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets); while a combo runs it casts nothing else, and after it finishes defense/movement/support/escape trigger like a normal wizard until the next combo,
    - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
-6. Tweak `presets.json` / `bosses.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
+6. For a **raid** (a `raids` entry in `raids.json`):
+   - `/mobwizardry raid list` shows it, `/mobwizardry raid start <raid>` starts it — the start message appears and the purple raid bar shows `Raid Name — Wave 1/M`,
+   - kill every enemy in a wave — the bar fills and the next wave (or the boss) spawns,
+   - after the last wave the configured boss appears (lightning, name, its own boss bar); killing it ends the raid with the victory message,
+   - if all players die the raid ends with the defeat message.
+7. Tweak `presets.json` / `bosses.json` / `raids.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
 ## Notes
 
