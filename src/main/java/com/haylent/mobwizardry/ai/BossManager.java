@@ -1,21 +1,31 @@
 package com.haylent.mobwizardry.ai;
 
+import com.haylent.mobwizardry.config.BossSpawnSettings;
 import com.haylent.mobwizardry.config.PresetDefinition;
+import com.haylent.mobwizardry.config.PresetManager;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Boss behavior for boss-enabled presets, driven by {@code WizardAiGoal.attach} (the single
@@ -26,7 +36,9 @@ import java.util.UUID;
  *   <li>later joins / reloads (the {@code mobwizardry_bossified} flag is already set) just
  *       re-apply the name and the current phase's kit - no re-lightning, no re-announce;</li>
  *   <li>each phase (sorted by health percent descending) swaps the boss's spell kit and prints
- *       its message once the boss's health ratio drops to the phase's threshold.</li>
+ *       its message once the boss's health ratio drops to the phase's threshold;</li>
+ *   <li>a natural spawner on the {@code _spawnSettings} timer picks a boss preset weighted by its
+ *       day/night spawn weights and spawns it near a random player.</li>
  * </ul>
  */
 public class BossManager
@@ -125,12 +137,13 @@ public class BossManager
     }
 
     /**
-     * Per-tick server work for bosses: health-based phase transitions. Called from a
-     * {@code ServerTickEvent} (END phase) in {@code MobWizardryMod}.
+     * Per-tick server work for bosses: health-based phase transitions and natural spawning.
+     * Called from a {@code ServerTickEvent} (END phase) in {@code MobWizardryMod}.
      */
     public static void tickServer(MinecraftServer server)
     {
         tickPhases(server);
+        tickSpawns(server);
     }
 
     private static void tickPhases(MinecraftServer server)
@@ -159,6 +172,151 @@ public class BossManager
                 }
             }
         }
+    }
+
+    private static int nextSpawnTick = 0;
+
+    /**
+     * Natural boss spawning on the configured timer ({@code _spawnSettings}). Each attempt picks
+     * a random player, builds a weighted pool of boss presets (weight = {@code daySpawnWeight}
+     * by day, {@code nightSpawnWeight} by night) and spawns one boss at a safe spot
+     * {@code minDistanceFromPlayer..maxDistanceFromPlayer} blocks away. The spawned mob carries
+     * the preset tag, so it is bossified through the normal entity-join path.
+     */
+    private static void tickSpawns(MinecraftServer server)
+    {
+        BossSpawnSettings settings = BossSpawnSettings.get();
+        if (settings == null || !settings.enabled)
+        {
+            return;
+        }
+        int tick = server.getTickCount();
+        if (tick < nextSpawnTick)
+        {
+            return;
+        }
+        nextSpawnTick = tick + Math.max(20, settings.attemptIntervalSeconds * 20);
+        if (countActiveBosses() >= settings.maxActiveBosses)
+        {
+            return;
+        }
+        ServerPlayer player = pickRandomPlayer(server);
+        if (player == null)
+        {
+            return;
+        }
+        ServerLevel level = player.serverLevel();
+        boolean night = level.isNight();
+        PresetDefinition preset = weightedPick(level, night);
+        if (preset == null)
+        {
+            return;
+        }
+        double angle = level.random.nextDouble() * Math.PI * 2.0;
+        double minDist = Math.max(8.0, settings.minDistanceFromPlayer);
+        double maxDist = Math.max(minDist + 1.0, settings.maxDistanceFromPlayer);
+        double dist = minDist + level.random.nextDouble() * (maxDist - minDist);
+        Vec3 pos = player.position().add(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+        spawnBoss(level, preset, pos);
+    }
+
+    /**
+     * Spawns a boss-enabled preset's mob at (a safe spot near) the given position with its tag
+     * applied, so the normal entity-join handler bossifies it. Public so it can also be driven
+     * directly by tests or future commands.
+     */
+    public static void spawnBoss(ServerLevel level, PresetDefinition preset, Vec3 pos)
+    {
+        if (preset.boss == null || !preset.boss.enabled)
+        {
+            return;
+        }
+        ResourceLocation rl = ResourceLocation.tryParse(preset.boss.spawnEntity);
+        EntityType<?> type = rl == null ? null : ForgeRegistries.ENTITY_TYPES.getValue(rl);
+        if (type == null)
+        {
+            LOGGER.warn("[MobWizardry] Cannot spawn boss '{}': unknown spawnEntity '{}'", preset.boss.name, preset.boss.spawnEntity);
+            return;
+        }
+        Entity entity = type.create(level);
+        if (!(entity instanceof PathfinderMob mob))
+        {
+            LOGGER.warn("[MobWizardry] Cannot spawn boss '{}': spawnEntity '{}' is not a PathfinderMob", preset.boss.name, preset.boss.spawnEntity);
+            return;
+        }
+        Vec3 safe = SpawnHelper.findSafeSpawn(level, pos);
+        mob.moveTo(safe.x, safe.y, safe.z);
+        mob.addTag(preset.requiredTag);
+        level.addFreshEntity(mob);
+        LOGGER.info("[MobWizardry] Natural boss spawn: '{}' (tag '{}') at {}", preset.boss.name, preset.requiredTag, safe);
+    }
+
+    private static int countActiveBosses()
+    {
+        int count = 0;
+        for (ActiveBoss active : BOSSES.values())
+        {
+            PathfinderMob mob = active.mob();
+            if (mob != null && mob.isAlive() && !mob.isRemoved())
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static ServerPlayer pickRandomPlayer(MinecraftServer server)
+    {
+        List<ServerPlayer> players = server.getPlayerList().getPlayers();
+        if (players.isEmpty())
+        {
+            return null;
+        }
+        return players.get(ThreadLocalRandom.current().nextInt(players.size()));
+    }
+
+    private static PresetDefinition weightedPick(ServerLevel level, boolean night)
+    {
+        double total = 0;
+        List<WeightedPreset> pool = new ArrayList<>();
+        for (PresetDefinition preset : PresetManager.getPresets().values())
+        {
+            if (preset.boss == null || !preset.boss.enabled || !hasSpawnEntity(preset))
+            {
+                continue;
+            }
+            double weight = night ? preset.boss.nightSpawnWeight : preset.boss.daySpawnWeight;
+            if (weight <= 0)
+            {
+                continue;
+            }
+            pool.add(new WeightedPreset(preset, weight));
+            total += weight;
+        }
+        if (pool.isEmpty())
+        {
+            return null;
+        }
+        double roll = level.random.nextDouble() * total;
+        for (WeightedPreset candidate : pool)
+        {
+            roll -= candidate.weight;
+            if (roll <= 0)
+            {
+                return candidate.preset;
+            }
+        }
+        return pool.get(pool.size() - 1).preset;
+    }
+
+    private static boolean hasSpawnEntity(PresetDefinition preset)
+    {
+        if (preset.boss.spawnEntity == null || preset.boss.spawnEntity.isBlank())
+        {
+            return false;
+        }
+        ResourceLocation rl = ResourceLocation.tryParse(preset.boss.spawnEntity);
+        return rl != null && ForgeRegistries.ENTITY_TYPES.containsKey(rl);
     }
 
     private static void activatePhase(PathfinderMob mob, PresetDefinition preset, PresetDefinition.BossPhase phase)
@@ -224,6 +382,13 @@ public class BossManager
      * handler can consult the latest phase list without a registry search per tick).
      */
     private record ActiveBoss(PathfinderMob mob, PresetDefinition preset)
+    {
+    }
+
+    /**
+     * A boss preset entered into the natural-spawn weighted pool.
+     */
+    private record WeightedPreset(PresetDefinition preset, double weight)
     {
     }
 }
