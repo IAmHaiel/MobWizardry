@@ -112,6 +112,7 @@ public class PresetDefinition
      * visual lightning, announced in chat, given a colored name tag, and run through the
      * configured health-based {@link BossPhase}s. {@link #spawnSettings} controls how (and
      * whether) this boss is naturally spawned; the day/night spawn weights bias the roll.
+     * {@link #combos} replace the boss's attack casting with scripted sequences.
      */
     public static class Boss
     {
@@ -123,6 +124,7 @@ public class PresetDefinition
         public double nightSpawnWeight = 0;
         public SpawnSettings spawnSettings = new SpawnSettings();
         public List<BossPhase> phases = new ArrayList<>();
+        public List<Combo> combos = new ArrayList<>();
 
         /**
          * Per-boss natural-spawn controls. Each boss schedules its own spawn attempts, has its
@@ -154,6 +156,50 @@ public class PresetDefinition
         public double healthPercent = 100;
         public String message = "";
         public Spells spells = new Spells();
+    }
+
+    /**
+     * A scripted boss attack sequence. When a boss with combos fights, it picks one combo at
+     * random, casts its steps in list order at their offsets from the combo start, then waits
+     * {@code castInterval} ticks (0 = the preset's castInterval) before starting another combo.
+     * Combos replace the boss's weighted attack casting; defense/movement/support/escape stay
+     * the normal wizard behavior.
+     */
+    public static class Combo
+    {
+        public int castInterval = 0;
+        public List<ComboStep> steps = new ArrayList<>();
+    }
+
+    /**
+     * One combo step: cast {@code spell} at level {@code level} after {@code castAfterTicks}
+     * ticks from the combo start. {@code category} is informational (attack/defense/support/
+     * movement/escape) - every step is cast the same way.
+     */
+    public static class ComboStep
+    {
+        public String category = "attack";
+        public String spell = "";
+        public int level = 1;
+        public int castAfterTicks = 0;
+
+        /**
+         * Resolves this step's spell from the registry, or null if the id is invalid/unknown.
+         */
+        public AbstractSpell resolveSpell()
+        {
+            ResourceLocation rl = ResourceLocation.tryParse(spell);
+            if (rl == null)
+            {
+                return null;
+            }
+            AbstractSpell resolved = SpellRegistry.getSpell(rl);
+            if (resolved == null || resolved == SpellRegistry.none())
+            {
+                return null;
+            }
+            return resolved;
+        }
     }
 
     /**

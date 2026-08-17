@@ -389,6 +389,7 @@ public class PresetManager
             boss.nightSpawnWeight = 0;
         }
         validateSpawnSettings(name, boss);
+        validateCombos(name, boss);
         if (boss.phases == null)
         {
             boss.phases = new ArrayList<>();
@@ -471,6 +472,78 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] Boss '{}' has a negative spawnGlowSeconds ({}) - using 0 (no glow)", name, boss.spawnSettings.spawnGlowSeconds);
             boss.spawnSettings.spawnGlowSeconds = 0;
         }
+    }
+
+    private static void validateCombos(String name, PresetDefinition.Boss boss)
+    {
+        if (boss.combos == null)
+        {
+            boss.combos = new ArrayList<>();
+            return;
+        }
+        boss.combos.removeIf(combo -> combo == null);
+        if (boss.combos.isEmpty())
+        {
+            return;
+        }
+        for (PresetDefinition.Combo combo : boss.combos)
+        {
+            if (combo.castInterval < 0)
+            {
+                LOGGER.warn("[MobWizardry] Boss '{}' has a combo with a negative castInterval ({}) - using 0 (preset castInterval)", name, combo.castInterval);
+                combo.castInterval = 0;
+            }
+            if (combo.steps == null)
+            {
+                combo.steps = new ArrayList<>();
+            }
+            combo.steps.removeIf(step -> step == null);
+            if (combo.steps.isEmpty())
+            {
+                LOGGER.warn("[MobWizardry] Boss '{}' has a combo with no steps - it is skipped when selected", name);
+                continue;
+            }
+            for (PresetDefinition.ComboStep step : combo.steps)
+            {
+                if (!isValidComboCategory(step.category))
+                {
+                    LOGGER.warn("[MobWizardry] Boss '{}' combo step '{}' has an invalid category '{}' - using 'attack'", name, step.spell, step.category);
+                    step.category = "attack";
+                }
+                if (step.spell == null || step.spell.isBlank() || step.resolveSpell() == null)
+                {
+                    LOGGER.warn("[MobWizardry] Boss '{}' has a combo step with an unknown spell '{}' - the step is skipped", name, step.spell);
+                }
+                if (step.level < 1)
+                {
+                    step.level = 1;
+                }
+                AbstractSpell resolved = step.resolveSpell();
+                if (resolved != null && step.level > resolved.getMaxLevel())
+                {
+                    LOGGER.warn("[MobWizardry] Boss '{}' combo step '{}' has level {} above the spell's max ({}) - clamping", name, step.spell, step.level, resolved.getMaxLevel());
+                    step.level = resolved.getMaxLevel();
+                }
+                if (step.castAfterTicks < 0)
+                {
+                    LOGGER.warn("[MobWizardry] Boss '{}' combo step '{}' has a negative castAfterTicks ({}) - using 0", name, step.spell, step.castAfterTicks);
+                    step.castAfterTicks = 0;
+                }
+            }
+        }
+    }
+
+    private static boolean isValidComboCategory(String category)
+    {
+        if (category == null)
+        {
+            return false;
+        }
+        return switch (category.trim().toLowerCase())
+        {
+            case "attack", "defense", "support", "movement", "escape" -> true;
+            default -> false;
+        };
     }
 
     private static boolean isValidNameColor(String nameColor)
@@ -846,6 +919,25 @@ public class PresetManager
                               { "id": "irons_spellbooks:teleport", "level": 1 }
                             ]
                           }
+                        }
+                      ],
+                      "combos": [
+                        {
+                          "castInterval": 40,
+                          "steps": [
+                            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
+                            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 25 },
+                            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 50 },
+                            { "category": "movement", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 80 }
+                          ]
+                        },
+                        {
+                          "castInterval": 60,
+                          "steps": [
+                            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 20 },
+                            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 40 },
+                            { "category": "escape", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 120 }
+                          ]
                         }
                       ]
                     }
