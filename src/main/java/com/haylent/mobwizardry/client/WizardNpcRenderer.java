@@ -4,6 +4,7 @@ import com.haylent.mobwizardry.MobWizardryMod;
 import com.haylent.mobwizardry.entity.WizardNpc;
 import com.haylent.mobwizardry.entity.WizardSkins;
 import com.haylent.mobwizardry.client.WizardNpcCastAnimator;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.kosmx.playerAnim.api.layered.KeyframeAnimationPlayer;
 import dev.kosmx.playerAnim.api.layered.ModifierLayer;
@@ -23,8 +24,13 @@ import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -32,8 +38,8 @@ import java.util.Optional;
 /**
  * Renders {@link WizardNpc} with a player-shaped {@link PlayerModel} (classic arms) plus armor and
  * held-item layers, using the NPC's chosen skin texture from
- * {@code assets/mobwizardry/textures/entity/wizard/skins/}. Unknown skins fall back to the vanilla
- * Steve texture. While the NPC casts, it plays the same per-spell player casting animation a player
+ * {@code config/mobwizardry/wizard-skins/}. Unknown/missing skins fall back to the vanilla Steve
+ * texture. While the NPC casts, it plays the same per-spell player casting animation a player
  * would (via playerAnimator + Iron's Spells animation data).
  */
 public class WizardNpcRenderer extends HumanoidMobRenderer<WizardNpc, PlayerModel<WizardNpc>>
@@ -126,11 +132,30 @@ public class WizardNpcRenderer extends HumanoidMobRenderer<WizardNpc, PlayerMode
         {
             return DEFAULT_TEXTURE;
         }
-        return skinCache.computeIfAbsent(skin, s -> {
-            ResourceLocation loc = ResourceLocation.fromNamespaceAndPath(
-                    MobWizardryMod.MODID, WizardSkins.SKIN_FOLDER + "/" + s + ".png");
-            return Minecraft.getInstance().getResourceManager().getResource(loc).isPresent()
-                    ? loc : DEFAULT_TEXTURE;
-        });
+        return skinCache.computeIfAbsent(skin, this::loadSkinTexture);
+    }
+
+    /**
+     * Loads a skin's {@code .png} from {@code config/mobwizardry/wizard-skins} into a dynamic
+     * texture (registered once per skin), falling back to the vanilla Steve texture when the file
+     * is missing.
+     */
+    private ResourceLocation loadSkinTexture(String skin)
+    {
+        Path path = WizardSkins.skinDirectory().resolve(skin + ".png");
+        if (!Files.exists(path))
+        {
+            return DEFAULT_TEXTURE;
+        }
+        try (InputStream in = Files.newInputStream(path))
+        {
+            NativeImage image = NativeImage.read(in);
+            DynamicTexture texture = new DynamicTexture(image);
+            return Minecraft.getInstance().getTextureManager().register("mobwizardry_skin_" + skin, texture);
+        }
+        catch (IOException e)
+        {
+            return DEFAULT_TEXTURE;
+        }
     }
 }

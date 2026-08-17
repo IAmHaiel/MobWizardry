@@ -1,25 +1,52 @@
 package com.haylent.mobwizardry.entity;
 
 import com.haylent.mobwizardry.MobWizardryMod;
-import net.minecraft.resources.ResourceLocation;
+import com.mojang.logging.LogUtils;
 import net.minecraft.server.MinecraftServer;
+import net.minecraftforge.fml.loading.FMLPaths;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
- * Chooses a skin for a {@link WizardNpc} from the resource-pack folder
- * {@code assets/mobwizardry/textures/entity/wizard/skins/}. The server enumerates that folder
- * (so there is no separate config list to maintain) and stores the picked name in the NPC's
- * synced skin data, which the renderer turns into a texture. Skins must be visible to the server
- * (shipped with the mod or in a server-installed resource pack) so every client agrees.
+ * Chooses a skin for a {@link WizardNpc} from the config folder
+ * {@code config/mobwizardry/wizard-skins/} (each skin is a {@code .png} file there). The server
+ * enumerates that folder (so there is no separate config list to maintain) and stores the picked
+ * name in the NPC's synced skin data; the renderer loads the matching file from the same folder.
+ * Skins must be present on both the server (for picking) and every client (for rendering); a
+ * missing file falls back to the vanilla Steve texture.
  */
 public class WizardSkins
 {
-    public static final String SKIN_FOLDER = "textures/entity/wizard/skins";
-
     private WizardSkins()
     {
+    }
+
+    /**
+     * The folder skins are loaded from: {@code config/mobwizardry/wizard-skins}.
+     */
+    public static Path skinDirectory()
+    {
+        return FMLPaths.CONFIGDIR.get().resolve(MobWizardryMod.MODID).resolve("wizard-skins");
+    }
+
+    /**
+     * Creates the skin folder so players know where to drop skin files.
+     */
+    public static void createSkinDirectory()
+    {
+        try
+        {
+            Files.createDirectories(skinDirectory());
+        }
+        catch (IOException e)
+        {
+            LogUtils.getLogger().error("[MobWizardry] Could not create the wizard skins folder", e);
+        }
     }
 
     /**
@@ -38,22 +65,34 @@ public class WizardSkins
             return;
         }
         List<String> names = new ArrayList<>();
-        server.getResourceManager()
-                .listResources(SKIN_FOLDER, loc -> loc.getNamespace().equals(MobWizardryMod.MODID)
-                        && loc.getPath().endsWith(".png"))
-                .keySet()
-                .forEach(loc -> {
-                    String path = loc.getPath();
-                    String name = path.substring(path.lastIndexOf('/') + 1, path.length() - 4);
-                    if (!name.isEmpty())
-                    {
-                        names.add(name);
-                    }
-                });
+        Path dir = skinDirectory();
+        if (Files.isDirectory(dir))
+        {
+            try (Stream<Path> files = Files.list(dir))
+            {
+                files.filter(path -> path.getFileName().toString().endsWith(".png"))
+                        .forEach(path -> {
+                            String name = stripPngExtension(path.getFileName().toString());
+                            if (!name.isEmpty())
+                            {
+                                names.add(name);
+                            }
+                        });
+            }
+            catch (IOException e)
+            {
+                LogUtils.getLogger().warn("[MobWizardry] Could not list wizard skins in {}", dir, e);
+            }
+        }
         if (names.isEmpty())
         {
             names.add("default");
         }
         npc.setSkin(names.get(npc.getRandom().nextInt(names.size())));
+    }
+
+    private static String stripPngExtension(String fileName)
+    {
+        return fileName.endsWith(".png") ? fileName.substring(0, fileName.length() - 4) : fileName;
     }
 }
