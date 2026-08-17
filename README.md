@@ -73,6 +73,7 @@ Here is a plain-English explanation of every setting:
 - **`skin`** — *optional* skin name for the Wizard NPC (a file in the skins folder, e.g. `"skin": "alex"`). Leave it out to get a random skin per spawned NPC.
 - **`speed`** — how fast the mob moves while casting. `1.0` is normal walking speed; bigger = faster.
 - **`castInterval`** — the minimum number of ticks between cast attempts (20 ticks = 1 second). Smaller = casts more often.
+- **`castIntervalMax`** — *optional* upper bound for the cast interval. If set above `0`, the actual interval is randomized between `castInterval` and `castIntervalMax` each cast (keeps the timing unpredictable). `0` (default) = always exactly `castInterval`. If it is set lower than `castInterval`, it is ignored.
 - **`movementDistanceOffset`** — how much *earlier* the wizard uses its movement spell (the teleport/dash spells like `blood_step`) to jump closer to its target. Measured in blocks; it is subtracted from the spell's range. Default `5.0`.
   - Example with spells that reach 20 blocks: old behavior = the wizard only jumps when the target is **20+ blocks** away; with `5.0` it jumps when the target is **15+ blocks** away (5 blocks sooner).
   - A **bigger** number = the wizard repositions sooner (the target can't get as far away before the wizard jumps). `0` = the old "wait until out of range" behavior.
@@ -129,7 +130,9 @@ The three movement distances work on one line of target distance:
 - **`spells`** — its spell kit, split into five categories (see below). Each spell is written as `{ "id": "mod:spell_id", "level": 1 }`. A support spell may also set `"emergency": true` — see the support category.
 
 Spell categories:
-- **`attack`** — cast in combat against the target.
+- **`attack`** — cast in combat against the target. **For bosses this category is ignored** — a
+  boss's attack spells are its `combos` (see [Boss fights](#boss-fights-220)), so boss presets and
+  phases only use defense/movement/support/escape.
 - **`defense`** — cast only while the caster is actually **being attacked** (recently hurt). Tip: any spell works here — put `irons_spellbooks:shield` for a classic barrier, or put an offensive spell like `irons_spellbooks:fireball` to make the caster retaliate when it gets hit.
 - **`movement`** — cast when the target is **far away / out of spell range** to close the gap (e.g. `irons_spellbooks:blood_step`, `irons_spellbooks:teleport`).
 - **`support`** — self-aid spells, cast when the caster is hurt or below half health. Good options: `irons_spellbooks:heal`, `irons_spellbooks:greater_heal` (health), `irons_spellbooks:fortify` (armor), `irons_spellbooks:charge` (speed), `irons_spellbooks:heartstop`. Note: there is no "mana regen" spell in Iron's Spells 'n Spellbooks — mana recovery is the `irons_spellbooks:mana_regen` attribute, so give a support caster that attribute as well. Balance: support casts are **chance-gated** (up to ~55% per cast attempt, scaling with missing health) and **cooldown-limited** (at most once every 7 seconds), so a dying caster can't heal-spam itself to immortality. Smart healing: mark a support spell `"emergency": true` (e.g. on `heal`/`greater_heal`) and, when the caster drops below 30% health, support casts will always pick one of those emergency heals instead of randomly wasting the cast on a buff like `fortify`.
@@ -696,6 +699,82 @@ default `bosses.json` the mod writes on first launch. To fight one:
   }
 }
 ```
+
+## Full config reference (every field)
+
+This index lists **every** field accepted by the two config files so nothing is missed. Each row
+points to the section that explains it in detail.
+
+### `presets.json`
+
+| Field | Type | Meaning |
+|---|---|---|
+| `requiredTag` | string | the tag that activates this preset on a mob |
+| `wizardType` | string | `ranged` or `close` (see [Wizard types](#wizard-types)) |
+| `team` | string | same-team wizards never fight each other (optional) |
+| `faction` | string | `enemy` or `friendly` (optional) |
+| `skin` | string | Wizard NPC skin name (optional) |
+| `speed` | number | movement speed while casting |
+| `castInterval` | int | minimum ticks between cast attempts (20 = 1 s) |
+| `castIntervalMax` | int | optional random upper bound for the cast interval (`0` = fixed) |
+| `movementStartDistance` | number | start of the "far" movement zone (`0` = derived) |
+| `movementFarDistance` | number | beyond this → strong movement-spell desire (`0` = derived) |
+| `movementDistanceOffset` | number | how much earlier the movement spell triggers |
+| `movementTooCloseDistance` | number | closer than this → back away / reposition |
+| `retaliationChance` | number | 0-1 chance to switch to a new attacker |
+| `equipment` | object | slot → item id (all six slots) |
+| `attributes` | object | attribute id → value (Iron's Spellbooks + `minecraft:generic.*`) |
+| `spells` | object | the spell kit (five categories below) |
+| `spells.attack` | list | attack spells (**ignored for bosses** — combos are their attack) |
+| `spells.defense` | list | cast while being attacked |
+| `spells.movement` | list | cast to close the distance |
+| `spells.support` | list | self-aid spells (hurt / below half health) |
+| `spells.escape` | list | retreat spells (critically low + recently attacked) |
+| spell entry `id` | string | the spell id (e.g. `irons_spellbooks:fireball`) |
+| spell entry `level` | int | cast level |
+| spell entry `emergency` | bool | support-only: always pick this heal below 30% health |
+
+All of the above are explained in the [Beginner's guide](#beginners-guide-to-the-settings);
+spell categories in the [spells](#beginners-guide-to-the-settings) bullet.
+
+### `bosses.json`
+
+| Field | Type | Meaning |
+|---|---|---|
+| `bosses` | object | map of **preset name** → boss definition |
+| `enabled` | bool | make this preset a boss |
+| `name` | string | the boss's display name |
+| `nameColor` | string | name tag / chat color (named or hex, e.g. `red`, `#FF5555`) |
+| `spawnEntity` | string | entity type the natural spawner uses |
+| `spawnSettings.enabled` | bool | allow this boss to naturally spawn |
+| `spawnSettings.spawnAttemptIntervalSeconds` | int | seconds between natural-spawn attempts |
+| `spawnSettings.maxActiveBosses` | int | how many of this boss may be alive at once |
+| `spawnSettings.minDistanceFromPlayer` | number | min spawn distance from a player |
+| `spawnSettings.maxDistanceFromPlayer` | number | max spawn distance from a player |
+| `spawnSettings.despawnOnTimeChange` | bool | naturally-spawned boss vanishes when day/night flips |
+| `spawnSettings.spawnGlowSeconds` | int | arrival glow duration (0 = off) |
+| `daySpawnWeight` | number | natural-spawn weight during the day (`0` = never by day) |
+| `nightSpawnWeight` | number | natural-spawn weight at night (`0` = never by night) |
+| `phases` | list | the health-based phases |
+| phase `number` | int | phase number |
+| phase `healthPercent` | number | entry threshold, percent of the boss's actual max health |
+| phase `message` | string | broadcast when the phase is entered |
+| phase `effects` | list | MobEffects applied when the phase is entered |
+| effect `id` | string | the effect id (e.g. `minecraft:resistance`) |
+| effect `amplifier` | int | effect level minus one (0 = level I) |
+| effect `duration` | int | ticks; `-1` = infinite (persists across all phases) |
+| phase `spells` | object | defense / movement / support / escape (bosses have no attack) |
+| `combos` | list | the scripted attack sequences (a boss's attack) |
+| combo `pauseAfterComboExecution` | int | pause after this combo before the next random pick |
+| combo `steps` | list | the combo, executed top-to-bottom |
+| step `category` | string | `attack`/`defense`/`support`/`movement`/`escape` |
+| step `spell` | string | the spell id |
+| step `level` | int | cast level |
+| step `castAfterTicks` | int | ticks after the combo starts before this step fires |
+
+Details: [The boss block](#the-boss-block), [Phases](#phases),
+[Combo presets](#combo-presets-230), [Natural spawning](#natural-spawning-per-boss-spawnsettings),
+[On arrival](#on-arrival).
 
 ## Admin commands
 
