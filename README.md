@@ -182,11 +182,12 @@ Example close preset:
 
 The `irons_spellbooks:max_mana` and `irons_spellbooks:mana_regen` attributes are still accepted under `attributes` — they control the mana pool size and regeneration for anything that does read mana, but they never gate casting.
 
-### Example config (two presets)
+### Example config — full `presets.json`
 
-This is the default config the mod writes on first launch, minus the `wizard_boss` example (its
-boss behavior now lives in `bosses.json` — see [Boss fights](#boss-fights-220) for the full
-config). Copy it and change the values to taste.
+This is the full default `presets.json` the mod writes on first launch, with all five presets.
+The boss's **behavior** (name, color, phases, combos, spawn settings) lives separately in
+`bosses.json` — see the [full example](#example-config--full-bossesjson) below. Copy it and
+change the values to taste.
 
 ```json
 {
@@ -336,6 +337,45 @@ config). Copy it and change the values to taste.
       ],
       "escape": []
     }
+  },
+  "wizard_boss": {
+    "requiredTag": "wizard_boss",
+    "wizardType": "ranged",
+    "team": "undead",
+    "faction": "enemy",
+    "skin": "steve",
+    "speed": 1.2,
+    "castInterval": 40,
+    "castIntervalMax": 0,
+    "movementStartDistance": 0,
+    "movementFarDistance": 0,
+    "movementDistanceOffset": 5.0,
+    "movementTooCloseDistance": 5.0,
+    "retaliationChance": 0.6,
+    "equipment": {
+      "mainhand": "irons_spellbooks:blood_staff",
+      "head": "minecraft:netherite_helmet",
+      "chest": "minecraft:netherite_chestplate",
+      "legs": "minecraft:netherite_leggings",
+      "feet": "minecraft:netherite_boots"
+    },
+    "attributes": {
+      "irons_spellbooks:max_mana": 200,
+      "irons_spellbooks:mana_regen": 4,
+      "irons_spellbooks:spell_power": 2.5,
+      "minecraft:generic.max_health": 200,
+      "minecraft:generic.armor": 10,
+      "minecraft:generic.knockback_resistance": 0.8
+    },
+    "spells": {
+      "attack": [
+        { "id": "irons_spellbooks:fireball", "level": 1 }
+      ],
+      "defense": [],
+      "movement": [],
+      "support": [],
+      "escape": []
+    }
   }
 }
 ```
@@ -364,8 +404,9 @@ validated against the real registries:
 - a warning is logged when a spell's intrinsic cooldown exceeds `castInterval`,
 - boss config issues (unknown spawn entity, invalid name color, weights/health percents out of
   range, bad spawn settings like a negative interval, overlapping distances or a negative glow
-  seconds, combo steps with unknown spells or invalid categories, phases referencing unknown
-  spells) are logged and fixed or disabled,
+  seconds, combo steps with unknown spells or invalid categories, phases with unknown effects or
+  out-of-range amplifiers/durations, phases referencing unknown spells) are logged and fixed or
+  disabled,
 - a boss key in `bosses.json` with no matching preset, a preset with an inline `boss` block, a
   leftover top-level `_spawnSettings` in `bosses.json`, and a `_spawnSettings` left in
   `presets.json` are all warned about.
@@ -437,11 +478,13 @@ presets.json keeps working but is warned to migrate; the bosses.json entry wins 
 ### Phases
 
 A phase has a **number**, a **healthPercent** (the health ratio, as a percentage, at or below
-which the boss enters the phase), an optional **message**, and a **spells** kit in the same
-five-category format as the preset's own `spells` block. Each phase lists the **full** arsenal
-the boss should have from that point on — so phase 2's `attack` list includes phase 1's spells
-plus any new ones. When the boss's health drops to a phase's threshold, the kit is swapped in and
-`[NAME] message` is broadcast (the name in red).
+which the boss enters the phase — a true ratio of the boss's actual max health, so 50% of a
+500-health boss triggers at 250), an optional **message**, a **spells** kit in the same
+five-category format as the preset's own `spells` block, and optional **effects**. Each phase
+lists the **full** arsenal the boss should have from that point on — so phase 2's `attack` list
+includes phase 1's spells plus any new ones. When the boss's health drops to a phase's threshold,
+the kit is swapped in, the phase's effects are applied, and `[NAME] message` is broadcast (the
+name in red).
 
 ```json
 "phases": [
@@ -458,6 +501,9 @@ plus any new ones. When the boss's health drops to a phase's threshold, the kit 
     "number": 2,
     "healthPercent": 50,
     "message": "Fool! Now you face my true power!",
+    "effects": [
+      { "id": "minecraft:resistance", "amplifier": 1, "duration": -1 }
+    ],
     "spells": {
       "attack": [
         { "id": "irons_spellbooks:fireball", "level": 1 },
@@ -476,6 +522,14 @@ plus any new ones. When the boss's health drops to a phase's threshold, the kit 
 boss is at or below 50% health. Phases are sorted by `healthPercent` descending at load, so the
 phase with the highest threshold (usually `100`) is the boss's starting kit. A boss with no
 `phases` is still a named boss (lightning + name tag + arrival) but never changes kits.
+
+**Phase effects (2.3.3):** each phase can apply MobEffects when it activates. `id` is a vanilla
+effect id like `minecraft:resistance`, `minecraft:speed` or `minecraft:strength`;
+`amplifier` is the effect level minus one (0 = level I, 1 = level II); `duration` is in ticks,
+with **`-1` = infinite (the default)** — so an effect granted in phase 2 **persists through all
+later phases** (they accumulate: a phase 3 boss keeps phase 2's resistance *and* gains its own
+speed). Unknown effect ids are skipped with a warning; effects are re-applied on `/mobwizardry
+reload` so config changes take effect.
 
 ### Combo presets (2.3.0)
 
@@ -555,12 +609,111 @@ When a boss is bossified (naturally spawned or summoned):
   (multiplayer = random among them); with no attackable players it stays idle — after that it
   fights with the exact same wizard AI as any other wizard.
 
-### Example boss preset
+### Example config — full `bosses.json`
 
 The default config ships a complete three-phase example, `wizard_boss` (Aetheron, the Crimson
-Archon): the plain `wizard_boss` wizard preset lives in presets.json and its boss behavior in
-bosses.json. To fight one: `/mobwizardry boss wizard_boss mobwizardry:wizard`, or let the night
-spawner do its job (nightSpawnWeight 20 vs daySpawnWeight 5).
+Archon): the plain `wizard_boss` wizard preset lives in presets.json (see the [full presets.json
+example](#example-config--full-presetsjson)) and its boss behavior below. This is the full
+default `bosses.json` the mod writes on first launch. To fight one:
+`/mobwizardry boss wizard_boss mobwizardry:wizard`, or let the night spawner do its job
+(nightSpawnWeight 20 vs daySpawnWeight 5).
+
+```json
+{
+  "bosses": {
+    "wizard_boss": {
+      "enabled": true,
+      "name": "Aetheron, the Crimson Archon",
+      "nameColor": "dark_red",
+      "spawnEntity": "mobwizardry:wizard",
+      "spawnSettings": {
+        "enabled": true,
+        "attemptIntervalSeconds": 300,
+        "maxActiveBosses": 3,
+        "minDistanceFromPlayer": 24,
+        "maxDistanceFromPlayer": 48,
+        "despawnOnTimeChange": true,
+        "spawnGlowSeconds": 60
+      },
+      "daySpawnWeight": 5,
+      "nightSpawnWeight": 20,
+      "phases": [
+        {
+          "number": 1,
+          "healthPercent": 100,
+          "message": "So you dare face me?",
+          "spells": {
+            "attack": [ { "id": "irons_spellbooks:fireball", "level": 1 } ],
+            "defense": [], "movement": [], "support": [], "escape": []
+          }
+        },
+        {
+          "number": 2,
+          "healthPercent": 50,
+          "message": "Fool! Now you face my true power!",
+          "effects": [
+            { "id": "minecraft:resistance", "amplifier": 1, "duration": -1 }
+          ],
+          "spells": {
+            "attack": [
+              { "id": "irons_spellbooks:fireball", "level": 1 },
+              { "id": "irons_spellbooks:magic_missile", "level": 1 }
+            ],
+            "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
+            "movement": [ { "id": "irons_spellbooks:blood_step", "level": 1 } ],
+            "support": [ { "id": "irons_spellbooks:heal", "level": 1, "emergency": true } ],
+            "escape": []
+          }
+        },
+        {
+          "number": 3,
+          "healthPercent": 25,
+          "message": "This is not over! The archon's fury knows no end!",
+          "effects": [
+            { "id": "minecraft:speed", "amplifier": 1, "duration": -1 }
+          ],
+          "spells": {
+            "attack": [
+              { "id": "irons_spellbooks:fireball", "level": 2 },
+              { "id": "irons_spellbooks:magic_missile", "level": 2 },
+              { "id": "irons_spellbooks:ray_of_siphoning", "level": 1 }
+            ],
+            "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
+            "movement": [
+              { "id": "irons_spellbooks:teleport", "level": 1 },
+              { "id": "irons_spellbooks:blood_step", "level": 1 }
+            ],
+            "support": [
+              { "id": "irons_spellbooks:heal", "level": 2, "emergency": true },
+              { "id": "irons_spellbooks:fortify", "level": 1 }
+            ],
+            "escape": [ { "id": "irons_spellbooks:teleport", "level": 1 } ]
+          }
+        }
+      ],
+      "combos": [
+        {
+          "pauseAfterComboExecution": 40,
+          "steps": [
+            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
+            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 25 },
+            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 50 },
+            { "category": "movement", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 80 }
+          ]
+        },
+        {
+          "pauseAfterComboExecution": 60,
+          "steps": [
+            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 20 },
+            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 40 },
+            { "category": "escape", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 120 }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 
 ## Admin commands
 
@@ -607,7 +760,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - cooldowns match the spell's own configured values.
 5. For a **boss** preset (a `boss` entry in `bosses.json`):
    - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, shows the colored name tag and a red boss bar, glows for `spawnGlowSeconds`, and targets a random online player (idle if none),
-   - deal damage until it crosses a phase's `healthPercent` — the phase message appears, its spell kit swaps (e.g. phase 2 gains the spells you listed there), and the boss bar fill drops,
+   - deal damage until it crosses a phase's `healthPercent` — the phase message appears, its spell kit swaps (e.g. phase 2 gains the spells you listed there), its phase `effects` are applied (and persist into later phases), and the boss bar fill drops,
    - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets); while a combo runs it casts nothing else, and after it finishes defense/movement/support/escape trigger like a normal wizard until the next combo,
    - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
 6. Tweak `presets.json` / `bosses.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
