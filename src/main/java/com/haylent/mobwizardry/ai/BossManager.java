@@ -391,37 +391,41 @@ public class BossManager
 
     /**
      * Spawns a boss-enabled preset's mob at (a safe spot near) the given position with its tag
-     * applied, so the normal entity-join handler bossifies it. Public so it can also be driven
-     * directly by tests or future commands.
+     * applied, so the normal entity-join handler bossifies it. Returns the spawned boss (or null
+     * if it could not be spawned) so callers like the raid system can track it. The boss is
+     * stamped as naturally spawned (day/night despawn applies).
      */
-    public static void spawnBoss(ServerLevel level, PresetDefinition preset, Vec3 pos)
+    public static PathfinderMob spawnBoss(ServerLevel level, PresetDefinition preset, Vec3 pos)
+    {
+        return spawnBoss(level, preset, pos, true);
+    }
+
+    /**
+     * As {@link #spawnBoss(ServerLevel, PresetDefinition, Vec3)}, but with control over whether
+     * the boss is stamped as naturally spawned (and therefore despawns when the day/night phase
+     * flips). Raid bosses pass {@code false} so they persist for the whole fight.
+     */
+    public static PathfinderMob spawnBoss(ServerLevel level, PresetDefinition preset, Vec3 pos, boolean naturalSpawn)
     {
         if (preset.boss == null || !preset.boss.enabled)
         {
-            return;
+            return null;
         }
-        ResourceLocation rl = ResourceLocation.tryParse(preset.boss.spawnEntity);
-        EntityType<?> type = rl == null ? null : ForgeRegistries.ENTITY_TYPES.getValue(rl);
-        if (type == null)
+        PathfinderMob mob = SpawnHelper.spawnTaggedMob(level, preset.boss.spawnEntity, preset, pos);
+        if (mob == null)
         {
             LOGGER.warn("[MobWizardry] Cannot spawn boss '{}': unknown spawnEntity '{}'", preset.boss.name, preset.boss.spawnEntity);
-            return;
+            return null;
         }
-        Entity entity = type.create(level);
-        if (!(entity instanceof PathfinderMob mob))
+        if (naturalSpawn)
         {
-            LOGGER.warn("[MobWizardry] Cannot spawn boss '{}': spawnEntity '{}' is not a PathfinderMob", preset.boss.name, preset.boss.spawnEntity);
-            return;
+            // Stamp the day/night phase this boss naturally spawned in, so it despawns when the
+            // time flips (see shouldDespawnOnTimeChange). Command-summoned bosses have no stamp
+            // and are unaffected.
+            mob.getPersistentData().putString(SPAWN_PHASE_KEY, level.isNight() ? "night" : "day");
         }
-        Vec3 safe = SpawnHelper.findSafeSpawn(level, pos);
-        mob.moveTo(safe.x, safe.y, safe.z);
-        // Stamp the day/night phase this boss naturally spawned in, so it despawns when the
-        // time flips (see shouldDespawnOnTimeChange). Command-summoned bosses have no stamp and
-        // are unaffected.
-        mob.getPersistentData().putString(SPAWN_PHASE_KEY, level.isNight() ? "night" : "day");
-        mob.addTag(preset.requiredTag);
-        level.addFreshEntity(mob);
-        LOGGER.info("[MobWizardry] Natural boss spawn: '{}' (tag '{}') at {}", preset.boss.name, preset.requiredTag, safe);
+        LOGGER.info("[MobWizardry] Natural boss spawn: '{}' (tag '{}') at {}", preset.boss.name, preset.requiredTag, mob.blockPosition());
+        return mob;
     }
 
     private static int countActiveBossesOf(PresetDefinition preset)

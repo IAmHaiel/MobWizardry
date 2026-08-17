@@ -1,0 +1,367 @@
+package com.haylent.mobwizardry.ai;
+
+import com.haylent.mobwizardry.config.PresetDefinition;
+import com.haylent.mobwizardry.config.PresetManager;
+import com.haylent.mobwizardry.config.RaidDefinition;
+import com.mojang.logging.LogUtils;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerBossEvent;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.BossEvent;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * The raid / horde system: a configurable sequence of waves of enemy wizards (weighted-random
+ * capped per wave) ending with a boss fight. Players win by killing every enemy in every wave and
+ * the boss; the raid is lost when all players in the raid level are dead. One active raid at a
+ * time, shown on a purple raid bar (wave progress, then the boss's health).
+ */
+public class RaidManager
+{
+    private static final Logger LOGGER = LogUtils.getLogger();
+
+    private static final String WIZARD_NPC = "mobwizardry:wizard";
+
+    private static ActiveRaid active;
+
+    private RaidManager()
+    {
+    }
+
+    public static boolean isRaidActive()
+    {
+        return active != null;
+    }
+
+    /**
+     * Starts a configured raid in the given level near the given position. Any active raid is
+     * cancelled first. Broadcasts the raid's start message and spawns wave 1.
+     */
+    public static void startRaid(String raidName, ServerLevel level, Vec3 pos)
+    {
+        RaidDefinition def = PresetManager.getRaid(raidName);
+        if (def == null)
+        {
+            LOGGER.warn("[MobWizardry] Raid '{}' not found", raidName);
+            return;
+        }
+        if (active != null)
+        {
+            cancelRaid(active);
+        }
+        ActiveRaid raid = new ActiveRaid(def, level, pos);
+        active = raid;
+        broadcast(level, def.startMessage, ChatFormatting.RED);
+        LOGGER.info("[MobWizardry] Raid '{}' started in {} at {}", def.name, level.dimension().location(), pos);
+        startWave(raid);
+    }
+
+    /**
+     * Immediately ends the active raid without broadcasting a result.
+     */
+    public static void stopRaid()
+    {
+        if (active == null)
+        {
+            return;
+        }
+        LOGGER.info("[MobWizardry] Raid '{}' stopped", active.def.name);
+        cancelRaid(active);
+    }
+
+    /**
+     * Per-tick raid progress: lose check, boss tracking or wave enemy pruning + advancement.
+     * Called from a ServerTickEvent (END phase) in {@code MobWizardryMod}.
+     */
+    public static void tickServer(MinecraftServer server)
+    {
+        if (active == null)
+        {
+            return;
+        }
+        ActiveRaid raid = active;
+        ServerLevel level = raid.level;
+
+        // Lose: the raid level has players and all of them are dead.
+        List<ServerPlayer> players = level.players();
+        if (!players.isEmpty() && players.stream().allMatch(p -> !p.isAlive() || p.isRemoved()))
+        {
+            endRaid(raid, false);
+            return;
+        }
+
+        if (raid.bossPhase)
+        {
+            Entity boss = level.getEntity(raid.bossUuid);
+            if (boss == null || !boss.isAlive() || boss.isRemoved())
+            {
+                endRaid(raid, true);
+                return;
+            }
+            updateBossBar(raid, boss);
+            return;
+        }
+
+        raid.waveEnemies.removeIf(uuid -> {
+            Entity e = level.getEntity(uuid);
+            return e == null || !e.isAlive() || e.isRemoved();
+        });
+        updateWaveBar(raid);
+        if (raid.waveEnemies.isEmpty())
+        {
+            raid.waveIndex++;
+            if (raid.waveIndex >= raid.def.waves.size())
+            {
+                startBossPhase(raid);
+            }
+            else
+            {
+                startWave(raid);
+            }
+        }
+    }
+
+    private static void startWave(ActiveRaid raid)
+    {
+        RaidDefinition.RaidWave wave = raid.def.waves.get(raid.waveIndex);
+        raid.waveEnemies.clear();
+
+        // Weighted-random capped: the wave spawns sum(counts) enemies; each pick is weighted by
+        // the group's weight among groups that have not yet reached their count.
+        List<GroupRemaining> pool = new ArrayList<>();
+        int total = 0;
+        for (RaidDefinition.RaidEnemy enemy : wave.enemies)
+        {
+            PresetDefinition preset = PresetManager.getPreset(enemy.preset);
+            if (preset == null)
+            {
+                continue;
+            }
+            pool.add(new GroupRemaining(enemy, preset));
+            total += enemy.count;
+        }
+        raid.waveTotal = total;
+        Vec3 origin = spawnOrigin(raid);
+        int spawned = 0;
+        for (int i = 0; i < total; i++)
+        {
+            GroupRemaining pick = weightedPick(raid.level, pool);
+            if (pick == null)
+            {
+                break;
+            }
+            pick.remaining--;
+            if (spawnEnemy(raid, pick.preset, origin))
+            {
+                spawned++;
+            }
+        }
+        LOGGER.info("[MobWizardry] Raid '{}' wave {} spawned {} enemies", raid.def.name, wave.number, spawned);
+        updateWaveBar(raid);
+    }
+
+    private static GroupRemaining weightedPick(ServerLevel level, List<GroupRemaining> pool)
+    {
+        double totalWeight = 0;
+        for (GroupRemaining group : pool)
+        {
+            if (group.remaining > 0 && group.weight() > 0)
+            {
+                totalWeight += group.weight();
+            }
+        }
+        if (totalWeight > 0)
+        {
+            double roll = level.random.nextDouble() * totalWeight;
+            for (GroupRemaining group : pool)
+            {
+                if (group.remaining <= 0 || group.weight() <= 0)
+                {
+                    continue;
+                }
+                roll -= group.weight();
+                if (roll <= 0)
+                {
+                    return group;
+                }
+            }
+        }
+        for (GroupRemaining group : pool)
+        {
+            if (group.remaining > 0)
+            {
+                return group;
+            }
+        }
+        return null;
+    }
+
+    private static boolean spawnEnemy(ActiveRaid raid, PresetDefinition preset, Vec3 origin)
+    {
+        Vec3 pos = origin.add(raid.level.random.nextDouble() * 12.0 - 6.0, 0,
+                raid.level.random.nextDouble() * 12.0 - 6.0);
+        PathfinderMob mob = SpawnHelper.spawnTaggedMob(raid.level, WIZARD_NPC, preset, pos);
+        if (mob == null)
+        {
+            return false;
+        }
+        raid.waveEnemies.add(mob.getUUID());
+        return true;
+    }
+
+    private static void startBossPhase(ActiveRaid raid)
+    {
+        raid.bossPhase = true;
+        if (raid.def.boss == null || raid.def.boss.isBlank())
+        {
+            LOGGER.info("[MobWizardry] Raid '{}' has no boss - victory after the last wave", raid.def.name);
+            endRaid(raid, true);
+            return;
+        }
+        PresetDefinition bossPreset = PresetManager.getPreset(raid.def.boss);
+        if (bossPreset == null || bossPreset.boss == null || !bossPreset.boss.enabled)
+        {
+            endRaid(raid, true);
+            return;
+        }
+        PathfinderMob boss = BossManager.spawnBoss(raid.level, bossPreset, spawnOrigin(raid), false);
+        if (boss == null)
+        {
+            endRaid(raid, true);
+            return;
+        }
+        raid.bossUuid = boss.getUUID();
+        LOGGER.info("[MobWizardry] Raid '{}' boss '{}' has arrived", raid.def.name, bossPreset.boss.name);
+        updateBossBar(raid, boss);
+    }
+
+    private static void endRaid(ActiveRaid raid, boolean victory)
+    {
+        if (victory)
+        {
+            broadcast(raid.level, raid.def.victoryMessage, ChatFormatting.GOLD);
+            LOGGER.info("[MobWizardry] Raid '{}' ended in victory", raid.def.name);
+        }
+        else
+        {
+            broadcast(raid.level, raid.def.defeatMessage, ChatFormatting.RED);
+            LOGGER.info("[MobWizardry] Raid '{}' ended in defeat", raid.def.name);
+        }
+        cancelRaid(raid);
+    }
+
+    private static void cancelRaid(ActiveRaid raid)
+    {
+        raid.bar.removeAllPlayers();
+        raid.bar.setVisible(false);
+        if (active == raid)
+        {
+            active = null;
+        }
+    }
+
+    private static void updateWaveBar(ActiveRaid raid)
+    {
+        ServerBossEvent bar = raid.bar;
+        int killed = Math.max(0, raid.waveTotal - raid.waveEnemies.size());
+        float progress = raid.waveTotal <= 0 ? 0.0f
+                : Math.max(0.0f, Math.min(1.0f, (float) killed / raid.waveTotal));
+        bar.setName(Component.literal(raid.def.name + " - Wave " + (raid.waveIndex + 1) + "/" + raid.def.waves.size()));
+        bar.setProgress(progress);
+        bar.setVisible(true);
+        reconcilePlayers(raid);
+    }
+
+    private static void updateBossBar(ActiveRaid raid, Entity boss)
+    {
+        ServerBossEvent bar = raid.bar;
+        float progress = 0.0f;
+        if (boss instanceof PathfinderMob mob && mob.getMaxHealth() > 0)
+        {
+            progress = Math.max(0.0f, Math.min(1.0f, mob.getHealth() / mob.getMaxHealth()));
+        }
+        bar.setName(Component.literal(raid.def.name + " - Boss"));
+        bar.setProgress(progress);
+        bar.setVisible(true);
+        reconcilePlayers(raid);
+    }
+
+    private static void reconcilePlayers(ActiveRaid raid)
+    {
+        for (ServerPlayer player : raid.level.players())
+        {
+            raid.bar.addPlayer(player);
+        }
+    }
+
+    private static Vec3 spawnOrigin(ActiveRaid raid)
+    {
+        List<ServerPlayer> players = raid.level.players();
+        if (!players.isEmpty())
+        {
+            return players.get(raid.level.random.nextInt(players.size())).position();
+        }
+        return raid.startPos;
+    }
+
+    private static void broadcast(ServerLevel level, String message, ChatFormatting color)
+    {
+        if (message == null || message.isBlank() || level.getServer() == null)
+        {
+            return;
+        }
+        level.getServer().getPlayerList().broadcastSystemMessage(Component.literal(message).withStyle(color), false);
+    }
+
+    private static class GroupRemaining
+    {
+        final RaidDefinition.RaidEnemy enemy;
+        final PresetDefinition preset;
+        int remaining;
+
+        GroupRemaining(RaidDefinition.RaidEnemy enemy, PresetDefinition preset)
+        {
+            this.enemy = enemy;
+            this.preset = preset;
+            this.remaining = enemy.count;
+        }
+
+        double weight()
+        {
+            return enemy.weight;
+        }
+    }
+
+    private static class ActiveRaid
+    {
+        final RaidDefinition def;
+        final ServerLevel level;
+        final Vec3 startPos;
+        final Set<UUID> waveEnemies = new HashSet<>();
+        final ServerBossEvent bar = new ServerBossEvent(Component.empty(),
+                BossEvent.BossBarColor.PURPLE, BossEvent.BossBarOverlay.PROGRESS);
+        int waveIndex = 0;
+        int waveTotal = 0;
+        boolean bossPhase = false;
+        UUID bossUuid = null;
+
+        ActiveRaid(RaidDefinition def, ServerLevel level, Vec3 startPos)
+        {
+            this.def = def;
+            this.level = level;
+            this.startPos = startPos;
+        }
+    }
+}

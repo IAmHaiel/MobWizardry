@@ -1,9 +1,15 @@
 package com.haylent.mobwizardry.ai;
 
+import com.haylent.mobwizardry.config.PresetDefinition;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.registries.ForgeRegistries;
 
 /**
  * Finds a safe, spawnable position for the summon command: prefers the exact spot, then the
@@ -13,6 +19,32 @@ public final class SpawnHelper
 {
     private SpawnHelper()
     {
+    }
+
+    /**
+     * Creates a mob of {@code entityTypeId}, tags it with the preset's required tag and adds it
+     * to the level at a safe spot near {@code pos} (the join handler attaches the wizard AI).
+     * Shared by the boss spawner and the raid system. Returns the spawned mob, or null if the
+     * entity type is unknown or not a {@link PathfinderMob}.
+     */
+    public static PathfinderMob spawnTaggedMob(ServerLevel level, String entityTypeId, PresetDefinition preset, Vec3 pos)
+    {
+        ResourceLocation rl = ResourceLocation.tryParse(entityTypeId);
+        EntityType<?> type = rl == null ? null : ForgeRegistries.ENTITY_TYPES.getValue(rl);
+        if (type == null)
+        {
+            return null;
+        }
+        Entity entity = type.create(level);
+        if (!(entity instanceof PathfinderMob mob))
+        {
+            return null;
+        }
+        Vec3 safe = findSafeSpawn(level, pos);
+        mob.moveTo(safe.x, safe.y, safe.z);
+        mob.addTag(preset.requiredTag);
+        level.addFreshEntity(mob);
+        return mob;
     }
 
     public static Vec3 findSafeSpawn(ServerLevel level, Vec3 pos)

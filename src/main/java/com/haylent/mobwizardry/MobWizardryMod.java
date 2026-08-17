@@ -1,6 +1,7 @@
 package com.haylent.mobwizardry;
 
 import com.haylent.mobwizardry.ai.BossManager;
+import com.haylent.mobwizardry.ai.RaidManager;
 import com.haylent.mobwizardry.command.MobWizardryCommands;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.haylent.mobwizardry.event.MobWizardryEvents;
@@ -50,6 +51,7 @@ public class MobWizardryMod
         if (event.phase == TickEvent.Phase.END)
         {
             BossManager.tickServer(event.getServer());
+            RaidManager.tickServer(event.getServer());
         }
     }
 }
