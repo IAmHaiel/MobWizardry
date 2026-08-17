@@ -479,12 +479,12 @@ phase with the highest threshold (usually `100`) is the boss's starting kit. A b
 
 ### Combo presets (2.3.0)
 
-A boss with `combos` replaces its **attack** casting with scripted sequences; defense, movement,
-support and escape remain the normal wizard behavior (the preset's spells, triggered as usual)
-**between** combos. While a combo is actually running the boss casts **only** the combo's steps —
-no defense/support/movement/escape casts until the combo finishes. The boss randomly picks one
-combo, casts its steps **in list order** at their offsets from the combo start, then waits the
-combo's `tickBeforeComboExecution` before it may run that combo set again.
+Think of a combo as one **prepared attack routine**: a boss that has `combos` stops casting
+attack spells at random and instead runs these routines. When it fights, it picks one combo at
+random, casts the steps **in order**, and then **pauses before it may use that combo again** —
+that pause is the `tickBeforeComboExecution`. While a combo is actually running the boss casts
+**only** the combo's steps; its normal defense/movement/support/escape spells stay silent until
+the combo finishes, then behave like any other wizard until the next combo starts.
 
 ```json
 "combos": [
@@ -502,12 +502,12 @@ combo's `tickBeforeComboExecution` before it may run that combo set again.
 
 | Field | Meaning |
 |---|---|
-| `tickBeforeComboExecution` | ticks before the boss may run this combo set again after it finishes (20 ticks = 1 second; `0` = the preset's `castInterval`, so 40-60 ticks ≈ 2-3 seconds). The old `castInterval` key still works but is renamed. |
+| `tickBeforeComboExecution` | How long the boss **catches its breath** after finishing this combo before it may start it again. Counted in **ticks** — Minecraft runs 20 ticks per second, so `40` = 2 seconds. Smaller = the boss chains combos faster; bigger = longer pauses between combos. Set it to `0` to let the boss use its preset's normal cast interval (about 2-3 seconds). The old name for this field was `castInterval`; it still works, just renamed. |
 | `steps` | the combo, executed top-to-bottom. |
 | `step.category` | informational — `attack`/`defense`/`support`/`movement`/`escape`. |
 | `step.spell` | the spell to cast (same id format as preset spells). |
 | `step.level` | cast level (clamped to the spell's max). |
-| `step.castAfterTicks` | how many ticks after the combo started this step casts; if the boss is still finishing an earlier cast, it casts as soon as it is free. |
+| `step.castAfterTicks` | when this step fires, in ticks after the combo started; if the boss is still finishing an earlier cast, it casts as soon as it is free. |
 
 Steps with unknown spells are skipped at load; a combo with no usable steps ends immediately and
 the next combo follows.
