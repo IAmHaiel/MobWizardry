@@ -791,10 +791,10 @@ Details: [The boss block](#the-boss-block), [Phases](#phases),
 | wave `enemies` | list | the enemy groups of this wave |
 | enemy `preset` | string | the wizard preset to spawn (e.g. `wizard`) |
 | enemy `count` | int | how many of this preset the wave contains (max) |
-| enemy `weight` | number | how likely this preset is picked per spawn (0-1+ relative) |
+| enemy `weight` | number | relative chance this preset is picked per spawn (higher = more common, capped by `count`) |
 | `boss` | string | the boss-enabled preset used for the final wave (empty = none) |
 
-Details and semantics: [Raid / horde](#raid--horde-300).
+Details and semantics (including "Why is there a weight?"): [Raid / horde](#raid--horde-300).
 
 ### Example — every `presets.json` field (one preset)
 
@@ -980,13 +980,32 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
 }
 ```
 
-| Field | Meaning |
+| Field | What it does |
 |---|---|
-| `name` | shown on the raid bar (falls back to the raid's key). |
-| `startMessage` / `victoryMessage` / `defeatMessage` | chat messages when the raid starts, when the players win, and when the enemy wins (all optional, empty = silent). |
-| `waves` | the enemy waves, run in order. A wave spawns **`sum(counts)`** enemies as `mobwizardry:wizard` NPCs carrying their preset's tag (they never naturally despawn). |
-| `waves[].enemies` | each entry is `{ "preset", "count", "weight" }` — **weighted-random capped**: every spawn rolls a preset weighted by `weight`, but a preset appears at most `count` times per wave, so heavier weights make a preset more common and `count` bounds it. |
-| `boss` | the **boss-enabled preset** used for the final wave (e.g. `wizard_boss`). If empty (or not boss-enabled) the raid ends after the last wave with a player victory. |
+| `name` | The raid's display name, shown on the raid bar (and in `/mobwizardry raid list`). Falls back to the raid's key if empty. |
+| `startMessage` | Chat message broadcast to everyone when the raid starts (e.g. `"The Wizard Horde has arrived!"`). Empty = no message. |
+| `victoryMessage` | Chat message when the players win (all waves and the boss defeated). Empty = silent. |
+| `defeatMessage` | Chat message when the enemy wins (all players in the raid's dimension die). Empty = silent. |
+| `waves` | The enemy waves, run in order. Once all of a wave's enemies are dead, the next wave — or the boss — begins. |
+| `waves[].number` | The wave's number (1, 2, 3...). Shown on the raid bar as `Wave N/M`. |
+| `waves[].enemies` | The enemy groups of this wave. A wave spawns **`sum(counts)`** enemies in total. |
+| `enemy.preset` | Which wizard preset to spawn (e.g. `wizard`, `wizard_close`). Must exist in presets.json. Enemies are `mobwizardry:wizard` NPCs carrying the preset's tag (they never naturally despawn). |
+| `enemy.count` | How many mobs of this preset the wave may contain (the cap). The wave's total = the sum of all `count`s. |
+| `enemy.weight` | How likely this preset is picked for each spawn. Every spawn rolls a preset **weighted by `weight`** among the presets that haven't reached their `count` yet. A higher weight = that preset appears more often; `count` bounds how many of it can spawn. See "Why is there a weight?" below. |
+| `boss` | The **boss-enabled preset** used for the final wave (e.g. `wizard_boss`). If empty — or not a boss-enabled preset — the raid ends with a player victory right after the last wave. |
+
+**Why is there a `weight`?** Without it, every preset in a wave would always spawn exactly its
+`count` and the mix would never vary. With `weight`, the composition is randomized: for each of
+the wave's `sum(counts)` spawn slots the raid rolls a preset, weighted by `weight`, skipping
+presets that already hit their `count`. Example: `{ preset: wizard, count: 4, weight: 3 }, { preset:
+wizard_close, count: 2, weight: 1 }` spawns 6 enemies where each roll picks `wizard` 3× as often
+as `wizard_close` (still capped at 4/2), so the wave usually has a strong `wizard` majority. Equal
+weights give a balanced random mix; all-zero weights just spawn each preset's `count` in order.
+
+### Raid start effects (3.1.0)
+
+When a raid starts, every player in its dimension simultaneously hears the **pillager horn** and
+a **loud lightning crash**, and a red **"YOU ARE INVADED"** subtitle appears.
 
 ### Commands
 
@@ -1052,7 +1071,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets); while a combo runs it casts nothing else, and after it finishes defense/movement/support/escape trigger like a normal wizard until the next combo,
    - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
 6. For a **raid** (a `raids` entry in `raids.json`):
-   - `/mobwizardry raid list` shows it, `/mobwizardry raid start <raid>` starts it — the start message appears and the purple raid bar shows `Raid Name — Wave 1/M`,
+   - `/mobwizardry raid list` shows it, `/mobwizardry raid start <raid>` starts it — the start message appears, the pillager horn + lightning crash play and the `YOU ARE INVADED` subtitle shows, and the purple raid bar shows `Raid Name — Wave 1/M`,
    - kill every enemy in a wave — the bar fills and the next wave (or the boss) spawns,
    - after the last wave the configured boss appears (lightning, name, its own boss bar); killing it ends the raid with the victory message,
    - if all players die the raid ends with the defeat message.
