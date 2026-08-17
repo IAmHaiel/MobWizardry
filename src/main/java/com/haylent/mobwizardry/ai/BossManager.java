@@ -8,8 +8,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.BossEvent;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -57,6 +59,12 @@ public class BossManager
      * the entry. Pruned by {@link #tickServer} when the boss dies or unloads.
      */
     private static final Map<UUID, ActiveBoss> BOSSES = new HashMap<>();
+
+    /**
+     * The boss bar shown for each bossified mob, keyed by entity UUID. Created on track, updated
+     * every tick with the boss's health ratio, removed when the boss dies or despawns.
+     */
+    private static final Map<UUID, ServerBossEvent> BOSS_BARS = new HashMap<>();
 
     private BossManager()
     {
@@ -160,6 +168,39 @@ public class BossManager
     private static void track(PathfinderMob mob, PresetDefinition preset)
     {
         BOSSES.put(mob.getUUID(), new ActiveBoss(mob, preset));
+        updateBossBar(mob, preset);
+    }
+
+    /**
+     * Creates or updates the boss's boss bar: name in the preset's name color, progress = the
+     * current health ratio, visible to every player in the boss's dimension (addPlayer is
+     * idempotent). Called on track and every tick while the boss is alive.
+     */
+    private static void updateBossBar(PathfinderMob mob, PresetDefinition preset)
+    {
+        ServerBossEvent bar = BOSS_BARS.computeIfAbsent(mob.getUUID(),
+                id -> new ServerBossEvent(Component.empty(), BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.PROGRESS));
+        bar.setName(Component.literal(preset.boss.name).withStyle(PresetDefinition.nameColorStyle(preset.boss.nameColor)));
+        float progress = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 0.0f;
+        bar.setProgress(Math.max(0.0f, Math.min(1.0f, progress)));
+        bar.setVisible(true);
+        if (mob.level() instanceof ServerLevel level)
+        {
+            for (ServerPlayer player : level.players())
+            {
+                bar.addPlayer(player);
+            }
+        }
+    }
+
+    private static void removeBossBar(PathfinderMob mob)
+    {
+        ServerBossEvent bar = BOSS_BARS.remove(mob.getUUID());
+        if (bar != null)
+        {
+            bar.removeAllPlayers();
+            bar.setVisible(false);
+        }
     }
 
     /**
@@ -215,17 +256,20 @@ public class BossManager
             PathfinderMob mob = active.mob();
             if (mob == null || !mob.isAlive() || mob.isRemoved())
             {
-                it.remove();
-                continue;
-            }
-            if (shouldDespawnOnTimeChange(active, mob))
-            {
-                LOGGER.info("[MobWizardry] Boss '{}' despawned - the day/night phase changed since it naturally spawned", active.preset().boss.name);
-                mob.discard();
+                removeBossBar(mob);
                 it.remove();
                 continue;
             }
             PresetDefinition preset = active.preset();
+            updateBossBar(mob, preset);
+            if (shouldDespawnOnTimeChange(active, mob))
+            {
+                LOGGER.info("[MobWizardry] Boss '{}' despawned - the day/night phase changed since it naturally spawned", active.preset().boss.name);
+                mob.discard();
+                removeBossBar(mob);
+                it.remove();
+                continue;
+            }
             int activePhase = mob.getPersistentData().getInt(PHASE_KEY);
             float hpRatio = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 1.0f;
             for (PresetDefinition.BossPhase phase : preset.boss.phases)
