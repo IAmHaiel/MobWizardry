@@ -1,5 +1,6 @@
 package com.haylent.mobwizardry.mixin;
 
+import com.haylent.mobwizardry.client.WizardNpcCastAnimator;
 import com.haylent.mobwizardry.entity.WizardNpc;
 import dev.kosmx.playerAnim.api.layered.AnimationStack;
 import dev.kosmx.playerAnim.api.layered.IAnimation;

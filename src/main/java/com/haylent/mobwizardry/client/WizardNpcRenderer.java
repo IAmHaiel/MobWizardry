@@ -3,7 +3,7 @@ package com.haylent.mobwizardry.client;
 import com.haylent.mobwizardry.MobWizardryMod;
 import com.haylent.mobwizardry.entity.WizardNpc;
 import com.haylent.mobwizardry.entity.WizardSkins;
-import com.haylent.mobwizardry.mixin.WizardNpcCastAnimator;
+import com.haylent.mobwizardry.client.WizardNpcCastAnimator;
 import com.mojang.blaze3d.vertex.PoseStack;
 import dev.kosmx.playerAnim.api.layered.KeyframeAnimationPlayer;
 import dev.kosmx.playerAnim.api.layered.ModifierLayer;
