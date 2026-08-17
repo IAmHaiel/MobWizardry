@@ -60,7 +60,6 @@ public class PresetManager
     {
         PRESETS.clear();
         BOSS_CONFIGS.clear();
-        BossSpawnSettings.set(new BossSpawnSettings());
         Path configDir = FMLPaths.CONFIGDIR.get().resolve(MobWizardryMod.MODID);
 
         loadPresetsFile(configDir);
@@ -105,8 +104,7 @@ public class PresetManager
                 JsonElement spawnSettings = root.get("_spawnSettings");
                 if (spawnSettings != null && spawnSettings.isJsonObject())
                 {
-                    BossSpawnSettings parsed = GSON.fromJson(spawnSettings, BossSpawnSettings.class);
-                    BossSpawnSettings.set(parsed != null ? parsed : new BossSpawnSettings());
+                    LOGGER.warn("[MobWizardry] Top-level '_spawnSettings' in bosses.json is ignored - it moved into each boss's \"spawnSettings\" block");
                 }
 
                 JsonElement bosses = root.get("bosses");
@@ -390,6 +388,7 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] Boss '{}' has a negative nightSpawnWeight ({}) - using 0", name, boss.nightSpawnWeight);
             boss.nightSpawnWeight = 0;
         }
+        validateSpawnSettings(name, boss);
         if (boss.phases == null)
         {
             boss.phases = new ArrayList<>();
@@ -434,6 +433,39 @@ public class PresetManager
             int cmp = Double.compare(b.healthPercent, a.healthPercent);
             return cmp != 0 ? cmp : Integer.compare(order.get(a), order.get(b));
         });
+    }
+
+    private static void validateSpawnSettings(String name, PresetDefinition.Boss boss)
+    {
+        if (boss.spawnSettings == null)
+        {
+            boss.spawnSettings = new PresetDefinition.Boss.SpawnSettings();
+            return;
+        }
+        if (boss.spawnSettings.attemptIntervalSeconds < 1)
+        {
+            LOGGER.warn("[MobWizardry] Boss '{}' has attemptIntervalSeconds ({}) below 1 - using 1", name, boss.spawnSettings.attemptIntervalSeconds);
+            boss.spawnSettings.attemptIntervalSeconds = 1;
+        }
+        if (boss.spawnSettings.maxActiveBosses < 0)
+        {
+            LOGGER.warn("[MobWizardry] Boss '{}' has a negative maxActiveBosses ({}) - using 0", name, boss.spawnSettings.maxActiveBosses);
+            boss.spawnSettings.maxActiveBosses = 0;
+        }
+        double min = boss.spawnSettings.minDistanceFromPlayer;
+        double max = boss.spawnSettings.maxDistanceFromPlayer;
+        double minClamped = Math.max(1.0, min);
+        double maxClamped = Math.max(minClamped, max);
+        if (min != minClamped)
+        {
+            LOGGER.warn("[MobWizardry] Boss '{}' has minDistanceFromPlayer ({}) below 1 - using 1", name, min);
+            boss.spawnSettings.minDistanceFromPlayer = minClamped;
+        }
+        if (max != maxClamped)
+        {
+            LOGGER.warn("[MobWizardry] Boss '{}' has maxDistanceFromPlayer ({}) below minDistanceFromPlayer ({}) - using {}", name, max, minClamped, maxClamped);
+            boss.spawnSettings.maxDistanceFromPlayer = maxClamped;
+        }
     }
 
     private static boolean isValidNameColor(String nameColor)
@@ -731,19 +763,19 @@ public class PresetManager
     {
         return """
                 {
-                  "_spawnSettings": {
-                    "enabled": true,
-                    "attemptIntervalSeconds": 300,
-                    "maxActiveBosses": 3,
-                    "minDistanceFromPlayer": 24,
-                    "maxDistanceFromPlayer": 48
-                  },
                   "bosses": {
                     "wizard_boss": {
                       "enabled": true,
                       "name": "Aetheron, the Crimson Archon",
                       "nameColor": "dark_red",
                       "spawnEntity": "mobwizardry:wizard",
+                      "spawnSettings": {
+                        "enabled": true,
+                        "attemptIntervalSeconds": 300,
+                        "maxActiveBosses": 3,
+                        "minDistanceFromPlayer": 24,
+                        "maxDistanceFromPlayer": 48
+                      },
                       "daySpawnWeight": 5,
                       "nightSpawnWeight": 20,
                       "phases": [

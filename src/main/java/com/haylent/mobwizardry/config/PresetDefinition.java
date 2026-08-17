@@ -110,8 +110,8 @@ public class PresetDefinition
     /**
      * Boss settings for a preset. When {@code enabled} the mob is bossified on attach: struck by
      * visual lightning, announced in chat, given a colored name tag, and run through the
-     * configured health-based {@link BossPhase}s. The day/night spawn weights feed the natural
-     * boss spawner (see {@code _spawnSettings}).
+     * configured health-based {@link BossPhase}s. {@link #spawnSettings} controls how (and
+     * whether) this boss is naturally spawned; the day/night spawn weights bias the roll.
      */
     public static class Boss
     {
@@ -121,7 +121,21 @@ public class PresetDefinition
         public String spawnEntity = "mobwizardry:wizard";
         public double daySpawnWeight = 0;
         public double nightSpawnWeight = 0;
+        public SpawnSettings spawnSettings = new SpawnSettings();
         public List<BossPhase> phases = new ArrayList<>();
+
+        /**
+         * Per-boss natural-spawn controls. Each boss schedules its own spawn attempts, has its
+         * own concurrent cap and spawns at its own distance from a player.
+         */
+        public static class SpawnSettings
+        {
+            public boolean enabled = true;
+            public int attemptIntervalSeconds = 300;
+            public int maxActiveBosses = 3;
+            public double minDistanceFromPlayer = 24;
+            public double maxDistanceFromPlayer = 48;
+        }
     }
 
     /**

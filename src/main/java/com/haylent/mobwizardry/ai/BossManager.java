@@ -1,6 +1,5 @@
 package com.haylent.mobwizardry.ai;
 
-import com.haylent.mobwizardry.config.BossSpawnSettings;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.mojang.logging.LogUtils;
@@ -174,38 +173,26 @@ public class BossManager
         }
     }
 
-    private static int nextSpawnTick = 0;
+    /**
+     * Next natural-spawn attempt tick per boss preset (keyed by preset name). A boss's timer is
+     * armed on first sight (one interval after that) and reset to {@code tick + interval} each
+     * time the boss wins a roll, so every boss schedules its own spawn frequency.
+     */
+    private static final Map<String, Integer> NEXT_SPAWN_TICK = new HashMap<>();
 
     /**
-     * Natural boss spawning on the configured timer ({@code _spawnSettings}). Each attempt picks
-     * a random player, builds a weighted pool of boss presets (weight = {@code daySpawnWeight}
-     * by day, {@code nightSpawnWeight} by night) and spawns one boss at a safe spot
-     * {@code minDistanceFromPlayer..maxDistanceFromPlayer} blocks away. The spawned mob carries
-     * the preset tag, so it is bossified through the normal entity-join path.
+     * Natural boss spawning driven by each boss's own {@code spawnSettings} (per-preset):
+     * bosses whose timer has elapsed, whose live count is below their own cap and whose
+     * day/night weight is above 0 enter a weighted pool; one is picked and spawned at that
+     * boss's own {@code minDistanceFromPlayer..maxDistanceFromPlayer} from a random player. The
+     * spawned mob carries the preset tag, so it is bossified through the normal entity-join path.
      */
     private static void tickSpawns(MinecraftServer server)
     {
-        BossSpawnSettings settings = BossSpawnSettings.get();
-        if (settings == null || !settings.enabled)
-        {
-            return;
-        }
-        int tick = server.getTickCount();
-        if (nextSpawnTick == 0)
-        {
-            // First attempt happens one full interval after server start, not on tick 0.
-            nextSpawnTick = tick + Math.max(20, settings.attemptIntervalSeconds * 20);
-            return;
-        }
-        if (tick < nextSpawnTick)
-        {
-            return;
-        }
-        nextSpawnTick = tick + Math.max(20, settings.attemptIntervalSeconds * 20);
-        if (countActiveBosses() >= settings.maxActiveBosses)
-        {
-            return;
-        }
+        NEXT_SPAWN_TICK.keySet().removeIf(key -> {
+            PresetDefinition preset = PresetManager.getPreset(key);
+            return preset == null || preset.boss == null || !preset.boss.enabled;
+        });
         ServerPlayer player = pickRandomPlayer(server);
         if (player == null)
         {
@@ -213,17 +200,83 @@ public class BossManager
         }
         ServerLevel level = player.serverLevel();
         boolean night = level.isNight();
-        PresetDefinition preset = weightedPick(level, night);
-        if (preset == null)
+        int tick = server.getTickCount();
+
+        double total = 0;
+        List<WeightedPreset> pool = new ArrayList<>();
+        for (Map.Entry<String, PresetDefinition> entry : PresetManager.getPresets().entrySet())
+        {
+            if (isSpawnEligible(entry.getValue(), entry.getKey(), level, night, tick))
+            {
+                double weight = night ? entry.getValue().boss.nightSpawnWeight : entry.getValue().boss.daySpawnWeight;
+                pool.add(new WeightedPreset(entry.getKey(), entry.getValue(), weight));
+                total += weight;
+            }
+        }
+        if (pool.isEmpty())
         {
             return;
         }
+
+        double roll = level.random.nextDouble() * total;
+        WeightedPreset picked = pool.get(pool.size() - 1);
+        for (WeightedPreset candidate : pool)
+        {
+            roll -= candidate.weight;
+            if (roll <= 0)
+            {
+                picked = candidate;
+                break;
+            }
+        }
+        PresetDefinition preset = picked.preset();
+        PresetDefinition.Boss.SpawnSettings spawn = preset.boss.spawnSettings;
         double angle = level.random.nextDouble() * Math.PI * 2.0;
-        double minDist = Math.max(8.0, settings.minDistanceFromPlayer);
-        double maxDist = Math.max(minDist + 1.0, settings.maxDistanceFromPlayer);
+        double minDist = Math.max(8.0, spawn.minDistanceFromPlayer);
+        double maxDist = Math.max(minDist + 1.0, spawn.maxDistanceFromPlayer);
         double dist = minDist + level.random.nextDouble() * (maxDist - minDist);
         Vec3 pos = player.position().add(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
         spawnBoss(level, preset, pos);
+        NEXT_SPAWN_TICK.put(picked.key(), tick + Math.max(20, spawn.attemptIntervalSeconds * 20));
+    }
+
+    /**
+     * Whether this boss may be picked for a natural spawn right now: boss enabled, per-boss
+     * spawn settings enabled, a known spawn entity, a positive day/night weight for the current
+     * time, below its own live cap, and its own spawn timer elapsed (first sight arms the timer
+     * one interval out instead of spawning immediately).
+     */
+    private static boolean isSpawnEligible(PresetDefinition preset, String key, ServerLevel level, boolean night, int tick)
+    {
+        PresetDefinition.Boss boss = preset.boss;
+        if (boss == null || !boss.enabled)
+        {
+            return false;
+        }
+        PresetDefinition.Boss.SpawnSettings spawn = boss.spawnSettings;
+        if (spawn == null || !spawn.enabled)
+        {
+            return false;
+        }
+        if (!hasSpawnEntity(boss))
+        {
+            return false;
+        }
+        if (night ? boss.nightSpawnWeight <= 0 : boss.daySpawnWeight <= 0)
+        {
+            return false;
+        }
+        if (countActiveBossesOf(preset) >= spawn.maxActiveBosses)
+        {
+            return false;
+        }
+        Integer next = NEXT_SPAWN_TICK.get(key);
+        if (next == null)
+        {
+            NEXT_SPAWN_TICK.put(key, tick + Math.max(20, spawn.attemptIntervalSeconds * 20));
+            return false;
+        }
+        return tick >= next;
     }
 
     /**
@@ -257,13 +310,13 @@ public class BossManager
         LOGGER.info("[MobWizardry] Natural boss spawn: '{}' (tag '{}') at {}", preset.boss.name, preset.requiredTag, safe);
     }
 
-    private static int countActiveBosses()
+    private static int countActiveBossesOf(PresetDefinition preset)
     {
         int count = 0;
         for (ActiveBoss active : BOSSES.values())
         {
             PathfinderMob mob = active.mob();
-            if (mob != null && mob.isAlive() && !mob.isRemoved())
+            if (mob != null && mob.isAlive() && !mob.isRemoved() && active.preset() == preset)
             {
                 count++;
             }
@@ -281,47 +334,13 @@ public class BossManager
         return players.get(ThreadLocalRandom.current().nextInt(players.size()));
     }
 
-    private static PresetDefinition weightedPick(ServerLevel level, boolean night)
+    private static boolean hasSpawnEntity(PresetDefinition.Boss boss)
     {
-        double total = 0;
-        List<WeightedPreset> pool = new ArrayList<>();
-        for (PresetDefinition preset : PresetManager.getPresets().values())
-        {
-            if (preset.boss == null || !preset.boss.enabled || !hasSpawnEntity(preset))
-            {
-                continue;
-            }
-            double weight = night ? preset.boss.nightSpawnWeight : preset.boss.daySpawnWeight;
-            if (weight <= 0)
-            {
-                continue;
-            }
-            pool.add(new WeightedPreset(preset, weight));
-            total += weight;
-        }
-        if (pool.isEmpty())
-        {
-            return null;
-        }
-        double roll = level.random.nextDouble() * total;
-        for (WeightedPreset candidate : pool)
-        {
-            roll -= candidate.weight;
-            if (roll <= 0)
-            {
-                return candidate.preset;
-            }
-        }
-        return pool.get(pool.size() - 1).preset;
-    }
-
-    private static boolean hasSpawnEntity(PresetDefinition preset)
-    {
-        if (preset.boss.spawnEntity == null || preset.boss.spawnEntity.isBlank())
+        if (boss.spawnEntity == null || boss.spawnEntity.isBlank())
         {
             return false;
         }
-        ResourceLocation rl = ResourceLocation.tryParse(preset.boss.spawnEntity);
+        ResourceLocation rl = ResourceLocation.tryParse(boss.spawnEntity);
         return rl != null && ForgeRegistries.ENTITY_TYPES.containsKey(rl);
     }
 
@@ -392,9 +411,10 @@ public class BossManager
     }
 
     /**
-     * A boss preset entered into the natural-spawn weighted pool.
+     * A boss preset entered into the natural-spawn weighted pool, carrying its preset-name key
+     * so the winner's spawn timer can be reset.
      */
-    private record WeightedPreset(PresetDefinition preset, double weight)
+    private record WeightedPreset(String key, PresetDefinition preset, double weight)
     {
     }
 }
