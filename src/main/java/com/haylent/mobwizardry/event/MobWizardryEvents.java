@@ -29,14 +29,14 @@ public class MobWizardryEvents
         }
 
         boolean matched = false;
-        for (PresetDefinition preset : PresetManager.getPresets().values())
+        for (String tag : mob.getTags())
         {
-            if (!mob.getTags().contains(preset.requiredTag))
+            PresetDefinition preset = PresetManager.getPresetByTag(tag);
+            if (preset != null)
             {
-                continue;
+                WizardAiGoal.attach(mob, preset);
+                matched = true;
             }
-            WizardAiGoal.attach(mob, preset);
-            matched = true;
         }
         if (mob instanceof WizardNpc npc)
         {

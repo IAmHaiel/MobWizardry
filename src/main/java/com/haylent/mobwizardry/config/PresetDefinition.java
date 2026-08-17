@@ -3,6 +3,7 @@ package com.haylent.mobwizardry.config;
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
@@ -73,6 +74,25 @@ public class PresetDefinition
         return castIntervalMax > castInterval ? castIntervalMax : castInterval * 2;
     }
 
+    /**
+     * Resolves a spell id from the registry, or null if it is missing/invalid. Shared by the
+     * preset spell entries and the boss combo steps so spell resolution lives in one place.
+     */
+    public static AbstractSpell resolveSpell(String id)
+    {
+        ResourceLocation rl = ResourceLocation.tryParse(id);
+        if (rl == null)
+        {
+            return null;
+        }
+        AbstractSpell spell = SpellRegistry.getSpell(rl);
+        if (spell == null || spell == SpellRegistry.none())
+        {
+            return null;
+        }
+        return spell;
+    }
+
     public static class Spells
     {
         public List<SpellEntry> attack = new ArrayList<>();
@@ -93,17 +113,7 @@ public class PresetDefinition
          */
         public AbstractSpell resolveSpell()
         {
-            ResourceLocation rl = ResourceLocation.tryParse(id);
-            if (rl == null)
-            {
-                return null;
-            }
-            AbstractSpell spell = SpellRegistry.getSpell(rl);
-            if (spell == null || spell == SpellRegistry.none())
-            {
-                return null;
-            }
-            return spell;
+            return PresetDefinition.resolveSpell(id);
         }
     }
 
@@ -195,26 +205,16 @@ public class PresetDefinition
          */
         public AbstractSpell resolveSpell()
         {
-            ResourceLocation rl = ResourceLocation.tryParse(spell);
-            if (rl == null)
-            {
-                return null;
-            }
-            AbstractSpell resolved = SpellRegistry.getSpell(rl);
-            if (resolved == null || resolved == SpellRegistry.none())
-            {
-                return null;
-            }
-            return resolved;
+            return PresetDefinition.resolveSpell(spell);
         }
     }
 
     /**
-     * Parses a preset's {@code boss.nameColor} into a chat {@link Style}. Accepts a named
-     * {@link ChatFormatting} color (e.g. {@code red}, {@code dark_red}, {@code gold}) or a hex
-     * code ({@code #FF5555}); anything else falls back to red.
+     * Parses a {@code nameColor} string into a chat {@link Style}, or null when it is invalid.
+     * Accepts a named {@link ChatFormatting} color (e.g. {@code red}, {@code dark_red},
+     * {@code gold}) or a hex code ({@code #FF5555}).
      */
-    public static Style nameColorStyle(String nameColor)
+    public static Style parseNameColor(String nameColor)
     {
         if (nameColor != null)
         {
@@ -232,6 +232,24 @@ public class PresetDefinition
                 }
             }
         }
-        return Style.EMPTY.withColor(ChatFormatting.RED);
+        return null;
+    }
+
+    /**
+     * The chat style for a boss's {@code nameColor}, falling back to red on invalid input.
+     */
+    public static Style nameColorStyle(String nameColor)
+    {
+        Style parsed = parseNameColor(nameColor);
+        return parsed != null ? parsed : Style.EMPTY.withColor(ChatFormatting.RED);
+    }
+
+    /**
+     * The boss's display name as a colored chat component (its {@code nameColor}). Shared by the
+     * name tag, boss bar and chat announcements so the boss's name looks the same everywhere.
+     */
+    public static Component bossNameComponent(Boss boss)
+    {
+        return Component.literal(boss.name).withStyle(nameColorStyle(boss.nameColor));
     }
 }

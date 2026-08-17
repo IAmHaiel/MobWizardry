@@ -180,7 +180,7 @@ public class BossManager
     {
         ServerBossEvent bar = BOSS_BARS.computeIfAbsent(mob.getUUID(),
                 id -> new ServerBossEvent(Component.empty(), BossEvent.BossBarColor.RED, BossEvent.BossBarOverlay.PROGRESS));
-        bar.setName(Component.literal(preset.boss.name).withStyle(PresetDefinition.nameColorStyle(preset.boss.nameColor)));
+        bar.setName(PresetDefinition.bossNameComponent(preset.boss));
         float progress = mob.getMaxHealth() > 0 ? mob.getHealth() / mob.getMaxHealth() : 0.0f;
         bar.setProgress(Math.max(0.0f, Math.min(1.0f, progress)));
         bar.setVisible(true);
@@ -208,8 +208,7 @@ public class BossManager
      */
     private static void refreshName(PathfinderMob mob, PresetDefinition preset)
     {
-        Style color = PresetDefinition.nameColorStyle(preset.boss.nameColor);
-        mob.setCustomName(Component.literal(preset.boss.name).withStyle(color));
+        mob.setCustomName(PresetDefinition.bossNameComponent(preset.boss));
         mob.setCustomNameVisible(true);
     }
 
@@ -509,8 +508,8 @@ public class BossManager
 
     private static void broadcastArrival(PathfinderMob mob, PresetDefinition preset)
     {
-        Style color = PresetDefinition.nameColorStyle(preset.boss.nameColor);
-        Component message = Component.literal(preset.boss.name).withStyle(color)
+        Component message = PresetDefinition.bossNameComponent(preset.boss)
+                .copy()
                 .append(Component.literal(" has arrived.").withStyle(ChatFormatting.GOLD));
         broadcast(mob, message);
     }
@@ -523,7 +522,9 @@ public class BossManager
             return;
         }
         Style color = PresetDefinition.nameColorStyle(preset.boss.nameColor);
-        Component message = Component.literal("[" + preset.boss.name + "] ").withStyle(color)
+        Component message = Component.literal("[").withStyle(color)
+                .append(PresetDefinition.bossNameComponent(preset.boss))
+                .append(Component.literal("] ").withStyle(color))
                 .append(Component.literal(phase.message).withStyle(ChatFormatting.GOLD));
         broadcast(mob, message);
     }

@@ -9,8 +9,6 @@ import com.google.gson.JsonSyntaxException;
 import com.haylent.mobwizardry.MobWizardryMod;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import com.mojang.logging.LogUtils;
-import net.minecraft.ChatFormatting;
-import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -40,6 +38,13 @@ public class PresetManager
      */
     private static final Map<String, PresetDefinition.Boss> BOSS_CONFIGS = new LinkedHashMap<>();
 
+    /**
+     * requiredTag → preset index built at load so the entity-join handler finds the preset for a
+     * mob's tag with a map lookup instead of scanning every preset. One preset per tag is
+     * expected; a duplicate tag is warned about and the last preset wins.
+     */
+    private static final Map<String, PresetDefinition> BY_TAG = new LinkedHashMap<>();
+
     public static Map<String, PresetDefinition> getPresets()
     {
         return PRESETS_VIEW;
@@ -48,6 +53,11 @@ public class PresetManager
     public static PresetDefinition getPreset(String name)
     {
         return PRESETS.get(name);
+    }
+
+    public static PresetDefinition getPresetByTag(String tag)
+    {
+        return BY_TAG.get(tag);
     }
 
     /**
@@ -60,6 +70,7 @@ public class PresetManager
     {
         PRESETS.clear();
         BOSS_CONFIGS.clear();
+        BY_TAG.clear();
         Path configDir = FMLPaths.CONFIGDIR.get().resolve(MobWizardryMod.MODID);
 
         loadPresetsFile(configDir);
@@ -70,11 +81,32 @@ public class PresetManager
             applyBossConfig(entry.getKey(), entry.getValue());
             logLoadedPreset(entry.getKey(), entry.getValue());
         }
+        rebuildTagIndex();
         for (String bossKey : BOSS_CONFIGS.keySet())
         {
             if (!PRESETS.containsKey(bossKey))
             {
                 LOGGER.warn("[MobWizardry] Boss '{}' in bosses.json has no matching preset in presets.json - it is ignored", bossKey);
+            }
+        }
+    }
+
+    /**
+     * Builds the requiredTag → preset index. A tag used by more than one preset is warned about
+     * and the last preset wins (the mod assumes one preset per tag).
+     */
+    private static void rebuildTagIndex()
+    {
+        for (Map.Entry<String, PresetDefinition> entry : PRESETS.entrySet())
+        {
+            String tag = entry.getValue().requiredTag;
+            if (tag == null || tag.isBlank())
+            {
+                continue;
+            }
+            if (BY_TAG.put(tag, entry.getValue()) != null)
+            {
+                LOGGER.warn("[MobWizardry] Preset '{}' reuses the requiredTag '{}' of an earlier preset - only '{}' applies to mobs carrying that tag", entry.getKey(), tag, entry.getKey());
             }
         }
     }
@@ -560,17 +592,7 @@ public class PresetManager
 
     private static boolean isValidNameColor(String nameColor)
     {
-        if (nameColor == null || nameColor.isBlank())
-        {
-            return false;
-        }
-        String trimmed = nameColor.trim();
-        ChatFormatting named = ChatFormatting.getByName(trimmed.toLowerCase());
-        if (named != null && named.isColor())
-        {
-            return true;
-        }
-        return trimmed.startsWith("#") && TextColor.parseColor(trimmed) != null;
+        return PresetDefinition.parseNameColor(nameColor) != null;
     }
 
     private static void validateEquipment(String presetName, PresetDefinition preset)
