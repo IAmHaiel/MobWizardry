@@ -397,7 +397,8 @@ joins the world (summoned, wizardified, spawned by the natural spawner, or loade
 
 - a **lightning bolt** strikes it (visual only — the boss takes no damage from it),
 - the chat announces `NAME has arrived.`,
-- it wears a **colored name tag** (no boss bar), and
+- it wears a **colored name tag**, shows a **red boss bar** (name in its color, health as the
+  bar fill) to everyone in its dimension, and
 - its first phase becomes active.
 
 The file's shape is:
@@ -479,15 +480,16 @@ phase with the highest threshold (usually `100`) is the boss's starting kit. A b
 ### Combo presets (2.3.0)
 
 A boss with `combos` replaces its **attack** casting with scripted sequences; defense, movement,
-support and escape remain the normal wizard behavior (the preset's spells, triggered as usual).
-While fighting, the boss randomly picks one combo, casts its steps **in list order** at their
-offsets from the combo start, then waits the combo's `castInterval` before starting another
-random combo.
+support and escape remain the normal wizard behavior (the preset's spells, triggered as usual)
+**between** combos. While a combo is actually running the boss casts **only** the combo's steps —
+no defense/support/movement/escape casts until the combo finishes. The boss randomly picks one
+combo, casts its steps **in list order** at their offsets from the combo start, then waits the
+combo's `tickBeforeComboExecution` before it may run that combo set again.
 
 ```json
 "combos": [
   {
-    "castInterval": 40,
+    "tickBeforeComboExecution": 40,
     "steps": [
       { "category": "attack",  "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 30 },
       { "category": "attack",  "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
@@ -500,7 +502,7 @@ random combo.
 
 | Field | Meaning |
 |---|---|
-| `castInterval` | ticks between this combo's repetitions (20 ticks = 1 second; `0` = the preset's `castInterval`, so 40-60 ticks ≈ 2-3 seconds). |
+| `tickBeforeComboExecution` | ticks before the boss may run this combo set again after it finishes (20 ticks = 1 second; `0` = the preset's `castInterval`, so 40-60 ticks ≈ 2-3 seconds). The old `castInterval` key still works but is renamed. |
 | `steps` | the combo, executed top-to-bottom. |
 | `step.category` | informational — `attack`/`defense`/`support`/`movement`/`escape`. |
 | `step.spell` | the spell to cast (same id format as preset spells). |
@@ -603,9 +605,9 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - a **`close`** wizard advances, casts point-blank, keeps a ~5-block standoff, and never retreats,
    - cooldowns match the spell's own configured values.
 5. For a **boss** preset (a `boss` entry in `bosses.json`):
-   - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, shows the colored name tag, glows for `spawnGlowSeconds`, and targets a random online player (idle if none),
-   - deal damage until it crosses a phase's `healthPercent` — the phase message appears and its spell kit swaps (e.g. phase 2 gains the spells you listed there),
-   - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets, then a gap before the next combo), while defense/movement/support/escape still trigger like a normal wizard,
+   - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, shows the colored name tag and a red boss bar, glows for `spawnGlowSeconds`, and targets a random online player (idle if none),
+   - deal damage until it crosses a phase's `healthPercent` — the phase message appears, its spell kit swaps (e.g. phase 2 gains the spells you listed there), and the boss bar fill drops,
+   - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets); while a combo runs it casts nothing else, and after it finishes defense/movement/support/escape trigger like a normal wizard until the next combo,
    - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
 6. Tweak `presets.json` / `bosses.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
