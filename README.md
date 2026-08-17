@@ -368,9 +368,6 @@ change the values to taste.
       "minecraft:generic.knockback_resistance": 0.8
     },
     "spells": {
-      "attack": [
-        { "id": "irons_spellbooks:fireball", "level": 1 }
-      ],
       "defense": [],
       "movement": [],
       "support": [],
@@ -406,7 +403,8 @@ validated against the real registries:
   range, bad spawn settings like a negative interval, overlapping distances or a negative glow
   seconds, combo steps with unknown spells or invalid categories, phases with unknown effects or
   out-of-range amplifiers/durations, phases referencing unknown spells) are logged and fixed or
-  disabled,
+  disabled, and **attack spells defined on a boss are ignored** (a boss's attack comes from its
+  combos),
 - a boss key in `bosses.json` with no matching preset, a preset with an inline `boss` block, a
   leftover top-level `_spawnSettings` in `bosses.json`, and a `_spawnSettings` left in
   `presets.json` are all warned about.
@@ -479,12 +477,11 @@ presets.json keeps working but is warned to migrate; the bosses.json entry wins 
 
 A phase has a **number**, a **healthPercent** (the health ratio, as a percentage, at or below
 which the boss enters the phase — a true ratio of the boss's actual max health, so 50% of a
-500-health boss triggers at 250), an optional **message**, a **spells** kit in the same
-five-category format as the preset's own `spells` block, and optional **effects**. Each phase
-lists the **full** arsenal the boss should have from that point on — so phase 2's `attack` list
-includes phase 1's spells plus any new ones. When the boss's health drops to a phase's threshold,
-the kit is swapped in, the phase's effects are applied, and `[NAME] message` is broadcast (the
-name in red).
+500-health boss triggers at 250), an optional **message**, a **spells** kit, and optional
+**effects**. **Boss spells only use the defense, movement, support and escape categories —
+attack comes entirely from `combos`** (any attack list on a boss is ignored with a warning).
+When the boss's health drops to a phase's threshold, the kit is swapped in, the phase's effects
+are applied, and `[NAME] message` is broadcast (the name in red).
 
 ```json
 "phases": [
@@ -493,7 +490,6 @@ name in red).
     "healthPercent": 100,
     "message": "So you dare face me?",
     "spells": {
-      "attack": [ { "id": "irons_spellbooks:fireball", "level": 1 } ],
       "defense": [], "movement": [], "support": [], "escape": []
     }
   },
@@ -505,10 +501,6 @@ name in red).
       { "id": "minecraft:resistance", "amplifier": 1, "duration": -1 }
     ],
     "spells": {
-      "attack": [
-        { "id": "irons_spellbooks:fireball", "level": 1 },
-        { "id": "irons_spellbooks:magic_missile", "level": 1 }
-      ],
       "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
       "movement": [ { "id": "irons_spellbooks:blood_step", "level": 1 } ],
       "support": [ { "id": "irons_spellbooks:heal", "level": 1, "emergency": true } ],
@@ -533,13 +525,13 @@ reload` so config changes take effect.
 
 ### Combo presets (2.3.0)
 
-Think of a combo as one **prepared attack routine**: a boss that has `combos` stops casting
-attack spells at random and instead runs these routines. While fighting, it **randomly picks one
-combo**, casts the steps **in order**, then **pauses** — and after the pause it **randomly picks
-another combo** (the next pick is completely independent, so it may even be the same combo again).
-While a combo is actually running the boss casts **only** the combo's steps; its normal
-defense/movement/support/escape spells stay silent until the combo finishes, then behave like any
-other wizard until the next combo starts.
+Think of a combo as one **prepared attack routine**: a boss's **attack spells ARE its combos** —
+bosses don't define `attack` spells at all (see Phases above). While fighting, it **randomly
+picks one combo**, casts the steps **in order**, then **pauses** — and after the pause it
+**randomly picks another combo** (the next pick is completely independent, so it may even be the
+same combo again). While a combo is actually running the boss casts **only** the combo's steps;
+its normal defense/movement/support/escape spells stay silent until the combo finishes, then
+behave like any other wizard until the next combo starts.
 
 ```json
 "combos": [
@@ -575,7 +567,7 @@ through its `spawnSettings` block — there is no global setting:
 ```json
 "spawnSettings": {
   "enabled": true,
-  "attemptIntervalSeconds": 300,
+  "spawnAttemptIntervalSeconds": 300,
   "maxActiveBosses": 3,
   "minDistanceFromPlayer": 24,
   "maxDistanceFromPlayer": 48,
@@ -587,7 +579,7 @@ through its `spawnSettings` block — there is no global setting:
 | Field | Meaning |
 |---|---|
 | `enabled` | `false` = this boss never naturally spawns (summon/wizardify still work). |
-| `attemptIntervalSeconds` | minimum seconds between this boss's natural spawn attempts (300 = every 5 minutes). |
+| `spawnAttemptIntervalSeconds` | the **time between natural-spawn attempts** for this boss (300 = one attempt every 5 minutes). The chance itself is the day/night weighted roll — this is just how often the roll happens. (Old name: `attemptIntervalSeconds`, still works.) |
 | `maxActiveBosses` | how many of *this* boss may be alive at once before it stops rolling. |
 | `minDistanceFromPlayer` / `maxDistanceFromPlayer` | this boss spawns at a safe spot between these distances from a random online player. |
 | `despawnOnTimeChange` | `true` (default) = a boss that **naturally** spawned disappears when the day/night phase flips (a night-spawned boss vanishes at day, a day-spawned boss vanishes at night). Bosses summoned with `/mobwizardry summon`/`boss` are never affected. |
@@ -628,7 +620,7 @@ default `bosses.json` the mod writes on first launch. To fight one:
       "spawnEntity": "mobwizardry:wizard",
       "spawnSettings": {
         "enabled": true,
-        "attemptIntervalSeconds": 300,
+        "spawnAttemptIntervalSeconds": 300,
         "maxActiveBosses": 3,
         "minDistanceFromPlayer": 24,
         "maxDistanceFromPlayer": 48,
@@ -643,7 +635,6 @@ default `bosses.json` the mod writes on first launch. To fight one:
           "healthPercent": 100,
           "message": "So you dare face me?",
           "spells": {
-            "attack": [ { "id": "irons_spellbooks:fireball", "level": 1 } ],
             "defense": [], "movement": [], "support": [], "escape": []
           }
         },
@@ -655,10 +646,6 @@ default `bosses.json` the mod writes on first launch. To fight one:
             { "id": "minecraft:resistance", "amplifier": 1, "duration": -1 }
           ],
           "spells": {
-            "attack": [
-              { "id": "irons_spellbooks:fireball", "level": 1 },
-              { "id": "irons_spellbooks:magic_missile", "level": 1 }
-            ],
             "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
             "movement": [ { "id": "irons_spellbooks:blood_step", "level": 1 } ],
             "support": [ { "id": "irons_spellbooks:heal", "level": 1, "emergency": true } ],
@@ -673,11 +660,6 @@ default `bosses.json` the mod writes on first launch. To fight one:
             { "id": "minecraft:speed", "amplifier": 1, "duration": -1 }
           ],
           "spells": {
-            "attack": [
-              { "id": "irons_spellbooks:fireball", "level": 2 },
-              { "id": "irons_spellbooks:magic_missile", "level": 2 },
-              { "id": "irons_spellbooks:ray_of_siphoning", "level": 1 }
-            ],
             "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
             "movement": [
               { "id": "irons_spellbooks:teleport", "level": 1 },
