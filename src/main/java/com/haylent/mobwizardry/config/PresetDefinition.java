@@ -2,6 +2,9 @@ package com.haylent.mobwizardry.config;
 
 import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -31,6 +34,7 @@ public class PresetDefinition
     public Map<String, String> equipment = new HashMap<>();
     public Map<String, Double> attributes = new HashMap<>();
     public Spells spells = new Spells();
+    public Boss boss = new Boss();
 
     public static EquipmentSlot parseSlot(String name)
     {
@@ -101,5 +105,62 @@ public class PresetDefinition
             }
             return spell;
         }
+    }
+
+    /**
+     * Boss settings for a preset. When {@code enabled} the mob is bossified on attach: struck by
+     * visual lightning, announced in chat, given a colored name tag, and run through the
+     * configured health-based {@link BossPhase}s. The day/night spawn weights feed the natural
+     * boss spawner (see {@code _spawnSettings}).
+     */
+    public static class Boss
+    {
+        public boolean enabled = false;
+        public String name = "";
+        public String nameColor = "red";
+        public String spawnEntity = "mobwizardry:wizard";
+        public double daySpawnWeight = 0;
+        public double nightSpawnWeight = 0;
+        public List<BossPhase> phases = new ArrayList<>();
+    }
+
+    /**
+     * One boss phase. The boss enters it once its health ratio drops to
+     * {@code healthPercent} or below, at which point the phase's spell kit replaces the boss's
+     * current kit and the phase message is broadcast. Phases are sorted by {@code healthPercent}
+     * descending at load, so phase 1 (usually 100) is the boss's starting kit.
+     */
+    public static class BossPhase
+    {
+        public int number = 1;
+        public double healthPercent = 100;
+        public String message = "";
+        public Spells spells = new Spells();
+    }
+
+    /**
+     * Parses a preset's {@code boss.nameColor} into a chat {@link Style}. Accepts a named
+     * {@link ChatFormatting} color (e.g. {@code red}, {@code dark_red}, {@code gold}) or a hex
+     * code ({@code #FF5555}); anything else falls back to red.
+     */
+    public static Style nameColorStyle(String nameColor)
+    {
+        if (nameColor != null)
+        {
+            ChatFormatting named = ChatFormatting.getByName(nameColor.trim().toLowerCase());
+            if (named != null && named.isColor())
+            {
+                return Style.EMPTY.withColor(named);
+            }
+            if (nameColor.startsWith("#"))
+            {
+                TextColor hex = TextColor.parseColor(nameColor.trim());
+                if (hex != null)
+                {
+                    return Style.EMPTY.withColor(hex);
+                }
+            }
+        }
+        return Style.EMPTY.withColor(ChatFormatting.RED);
     }
 }

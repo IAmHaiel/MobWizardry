@@ -2,10 +2,15 @@ package com.haylent.mobwizardry.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.haylent.mobwizardry.MobWizardryMod;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import com.mojang.logging.LogUtils;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -15,6 +20,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,6 +47,7 @@ public class PresetManager
     public static void reload()
     {
         PRESETS.clear();
+        BossSpawnSettings.set(new BossSpawnSettings());
         Path configPath = FMLPaths.CONFIGDIR.get().resolve(MobWizardryMod.MODID).resolve("presets.json");
         Path configDir = configPath.getParent();
 
@@ -56,16 +63,32 @@ public class PresetManager
 
             try (Reader reader = Files.newBufferedReader(configPath))
             {
-                Map<String, PresetDefinition> parsed = GSON.fromJson(reader, new com.google.gson.reflect.TypeToken<Map<String, PresetDefinition>>() {}.getType());
-                if (parsed == null)
+                JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
+                if (root == null || !root.isJsonObject())
                 {
                     LOGGER.error("[MobWizardry] presets.json is empty or invalid - no presets loaded");
                     return;
                 }
 
-                for (Map.Entry<String, PresetDefinition> entry : parsed.entrySet())
+                for (Map.Entry<String, JsonElement> entry : root.entrySet())
                 {
-                    validatePreset(entry.getKey(), entry.getValue());
+                    String presetName = entry.getKey();
+                    if (presetName.startsWith("_"))
+                    {
+                        if ("_spawnSettings".equals(presetName))
+                        {
+                            BossSpawnSettings parsed = GSON.fromJson(entry.getValue(), BossSpawnSettings.class);
+                            BossSpawnSettings.set(parsed != null ? parsed : new BossSpawnSettings());
+                        }
+                        continue;
+                    }
+                    PresetDefinition preset = GSON.fromJson(entry.getValue(), PresetDefinition.class);
+                    if (preset == null)
+                    {
+                        LOGGER.error("[MobWizardry] Preset '{}' could not be parsed - skipped", presetName);
+                        continue;
+                    }
+                    validatePreset(presetName, preset);
                 }
             }
         }
@@ -92,6 +115,7 @@ public class PresetManager
         validateFaction(name, preset);
         validateMovement(name, preset);
         validateRetaliation(name, preset);
+        validateBoss(name, preset);
 
         validateSpellList(name, "attack", preset.spells.attack, preset.castInterval);
         validateSpellList(name, "defense", preset.spells.defense, preset.castInterval);
@@ -134,8 +158,16 @@ public class PresetManager
                 ? ", movement=" + (preset.movementStartDistance > 0 ? preset.movementStartDistance : "range*0.75") + "-" + (preset.movementFarDistance > 0 ? preset.movementFarDistance : "range") : "";
         String movementOffsetInfo = preset.movementDistanceOffset > 0 ? ", movementOffset=" + preset.movementDistanceOffset : "";
         String movementTooCloseInfo = preset.movementTooCloseDistance > 0 ? ", tooClose=" + preset.movementTooCloseDistance : "";
+        String bossInfo = "";
+        if (preset.boss != null && preset.boss.enabled)
+        {
+            bossInfo = ", boss=" + preset.boss.name
+                    + ", phases=" + preset.boss.phases.size()
+                    + ", dayW=" + preset.boss.daySpawnWeight
+                    + ", nightW=" + preset.boss.nightSpawnWeight;
+        }
         PRESETS.put(name, preset);
-        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{}{}{}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, teamInfo, factionInfo, skinInfo, castInfo, movementInfo, movementOffsetInfo, movementTooCloseInfo, manaInfo, maxHealthInfo, emergencyInfo, escapeInfo, retaliationInfo);
+        LOGGER.info("[MobWizardry] Loaded preset '{}' (tag={}, type={}{}{}{}{}{}{}{}{}{}{}{}{}{})", name, preset.requiredTag, preset.wizardType, teamInfo, factionInfo, skinInfo, castInfo, movementInfo, movementOffsetInfo, movementTooCloseInfo, manaInfo, maxHealthInfo, emergencyInfo, escapeInfo, retaliationInfo, bossInfo);
     }
 
     private static void validateWizardType(String name, PresetDefinition preset)
@@ -194,6 +226,113 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] Preset '{}' has retaliationChance ({}) outside 0-1 - clamping", name, preset.retaliationChance);
             preset.retaliationChance = Math.max(0.0, Math.min(1.0, preset.retaliationChance));
         }
+    }
+
+    private static void validateBoss(String name, PresetDefinition preset)
+    {
+        PresetDefinition.Boss boss = preset.boss;
+        if (boss == null)
+        {
+            preset.boss = new PresetDefinition.Boss();
+            return;
+        }
+        if (!boss.enabled)
+        {
+            return;
+        }
+        if (boss.name == null || boss.name.isBlank())
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' is boss-enabled with a blank name - using the preset name", name);
+            boss.name = name;
+        }
+        if (!isValidNameColor(boss.nameColor))
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has an invalid boss nameColor '{}' - using 'red'", name, boss.nameColor);
+            boss.nameColor = "red";
+        }
+        if (boss.spawnEntity == null || boss.spawnEntity.isBlank())
+        {
+            boss.spawnEntity = "mobwizardry:wizard";
+        }
+        ResourceLocation spawnRl = ResourceLocation.tryParse(boss.spawnEntity.trim());
+        if (spawnRl == null || !ForgeRegistries.ENTITY_TYPES.containsKey(spawnRl))
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' boss spawnEntity '{}' is not a known entity - natural spawning is disabled for this boss (commands still work)", name, boss.spawnEntity);
+            boss.spawnEntity = "";
+        }
+        else
+        {
+            boss.spawnEntity = spawnRl.toString();
+        }
+        if (boss.daySpawnWeight < 0)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has a negative boss daySpawnWeight ({}) - using 0", name, boss.daySpawnWeight);
+            boss.daySpawnWeight = 0;
+        }
+        if (boss.nightSpawnWeight < 0)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' has a negative boss nightSpawnWeight ({}) - using 0", name, boss.nightSpawnWeight);
+            boss.nightSpawnWeight = 0;
+        }
+        if (boss.phases == null)
+        {
+            boss.phases = new ArrayList<>();
+        }
+        boss.phases.removeIf(phase -> phase == null);
+        if (boss.phases.isEmpty())
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' is boss-enabled but has no phases - it will just be a named boss with no phase behavior", name);
+            return;
+        }
+        for (PresetDefinition.BossPhase phase : boss.phases)
+        {
+            if (phase.number < 1)
+            {
+                LOGGER.warn("[MobWizardry] Preset '{}' has a boss phase with number {} (must be >= 1) - using 1", name, phase.number);
+                phase.number = 1;
+            }
+            if (phase.healthPercent < 0 || phase.healthPercent > 100)
+            {
+                LOGGER.warn("[MobWizardry] Preset '{}' boss phase {} has healthPercent {} outside 0-100 - clamping", name, phase.number, phase.healthPercent);
+                phase.healthPercent = Math.max(0.0, Math.min(100.0, phase.healthPercent));
+            }
+            if (phase.spells == null)
+            {
+                phase.spells = new PresetDefinition.Spells();
+            }
+            String phaseLabel = "boss phase " + phase.number;
+            validateSpellList(name, phaseLabel + " attack", phase.spells.attack, preset.castInterval);
+            validateSpellList(name, phaseLabel + " defense", phase.spells.defense, preset.castInterval);
+            validateSpellList(name, phaseLabel + " movement", phase.spells.movement, preset.castInterval);
+            validateSpellList(name, phaseLabel + " support", phase.spells.support, preset.castInterval);
+            validateSpellList(name, phaseLabel + " escape", phase.spells.escape, preset.castInterval);
+        }
+        // Highest healthPercent first so phase 1 (usually 100) is the boss's starting kit; ties
+        // keep the file order via the original index.
+        Map<PresetDefinition.BossPhase, Integer> order = new java.util.HashMap<>();
+        for (int i = 0; i < boss.phases.size(); i++)
+        {
+            order.put(boss.phases.get(i), i);
+        }
+        boss.phases.sort((a, b) -> {
+            int cmp = Double.compare(b.healthPercent, a.healthPercent);
+            return cmp != 0 ? cmp : Integer.compare(order.get(a), order.get(b));
+        });
+    }
+
+    private static boolean isValidNameColor(String nameColor)
+    {
+        if (nameColor == null || nameColor.isBlank())
+        {
+            return false;
+        }
+        String trimmed = nameColor.trim();
+        ChatFormatting named = ChatFormatting.getByName(trimmed.toLowerCase());
+        if (named != null && named.isColor())
+        {
+            return true;
+        }
+        return trimmed.startsWith("#") && TextColor.parseColor(trimmed) != null;
     }
 
     private static void validateEquipment(String presetName, PresetDefinition preset)
@@ -270,6 +409,13 @@ public class PresetManager
     {
         return """
                 {
+                  "_spawnSettings": {
+                    "enabled": true,
+                    "attemptIntervalSeconds": 300,
+                    "maxActiveBosses": 3,
+                    "minDistanceFromPlayer": 24,
+                    "maxDistanceFromPlayer": 48
+                  },
                   "wizard": {
                     "requiredTag": "wizard",
                     "wizardType": "ranged",
@@ -427,6 +573,116 @@ public class PresetManager
                         { "id": "irons_spellbooks:charge", "level": 1 }
                       ],
                       "escape": []
+                    }
+                  },
+                  "wizard_boss": {
+                    "requiredTag": "wizard_boss",
+                    "wizardType": "ranged",
+                    "team": "undead",
+                    "faction": "enemy",
+                    "skin": "steve",
+                    "speed": 1.2,
+                    "castInterval": 40,
+                    "castIntervalMax": 0,
+                    "movementStartDistance": 0,
+                    "movementFarDistance": 0,
+                    "movementDistanceOffset": 5.0,
+                    "movementTooCloseDistance": 5.0,
+                    "retaliationChance": 0.6,
+                    "equipment": {
+                      "mainhand": "irons_spellbooks:blood_staff",
+                      "head": "minecraft:netherite_helmet",
+                      "chest": "minecraft:netherite_chestplate",
+                      "legs": "minecraft:netherite_leggings",
+                      "feet": "minecraft:netherite_boots"
+                    },
+                    "attributes": {
+                      "irons_spellbooks:max_mana": 200,
+                      "irons_spellbooks:mana_regen": 4,
+                      "irons_spellbooks:spell_power": 2.5,
+                      "minecraft:generic.max_health": 200,
+                      "minecraft:generic.armor": 10,
+                      "minecraft:generic.knockback_resistance": 0.8
+                    },
+                    "spells": {
+                      "attack": [
+                        { "id": "irons_spellbooks:fireball", "level": 1 }
+                      ],
+                      "defense": [],
+                      "movement": [],
+                      "support": [],
+                      "escape": []
+                    },
+                    "boss": {
+                      "enabled": true,
+                      "name": "Aetheron, the Crimson Archon",
+                      "nameColor": "dark_red",
+                      "spawnEntity": "mobwizardry:wizard",
+                      "daySpawnWeight": 5,
+                      "nightSpawnWeight": 20,
+                      "phases": [
+                        {
+                          "number": 1,
+                          "healthPercent": 100,
+                          "message": "So you dare face me?",
+                          "spells": {
+                            "attack": [
+                              { "id": "irons_spellbooks:fireball", "level": 1 }
+                            ],
+                            "defense": [],
+                            "movement": [],
+                            "support": [],
+                            "escape": []
+                          }
+                        },
+                        {
+                          "number": 2,
+                          "healthPercent": 50,
+                          "message": "Fool! Now you face my true power!",
+                          "spells": {
+                            "attack": [
+                              { "id": "irons_spellbooks:fireball", "level": 1 },
+                              { "id": "irons_spellbooks:magic_missile", "level": 1 }
+                            ],
+                            "defense": [
+                              { "id": "irons_spellbooks:shield", "level": 1 }
+                            ],
+                            "movement": [
+                              { "id": "irons_spellbooks:blood_step", "level": 1 }
+                            ],
+                            "support": [
+                              { "id": "irons_spellbooks:heal", "level": 1, "emergency": true }
+                            ],
+                            "escape": []
+                          }
+                        },
+                        {
+                          "number": 3,
+                          "healthPercent": 25,
+                          "message": "This is not over! The archon's fury knows no end!",
+                          "spells": {
+                            "attack": [
+                              { "id": "irons_spellbooks:fireball", "level": 2 },
+                              { "id": "irons_spellbooks:magic_missile", "level": 2 },
+                              { "id": "irons_spellbooks:ray_of_siphoning", "level": 1 }
+                            ],
+                            "defense": [
+                              { "id": "irons_spellbooks:shield", "level": 1 }
+                            ],
+                            "movement": [
+                              { "id": "irons_spellbooks:teleport", "level": 1 },
+                              { "id": "irons_spellbooks:blood_step", "level": 1 }
+                            ],
+                            "support": [
+                              { "id": "irons_spellbooks:heal", "level": 2, "emergency": true },
+                              { "id": "irons_spellbooks:fortify", "level": 1 }
+                            ],
+                            "escape": [
+                              { "id": "irons_spellbooks:teleport", "level": 1 }
+                            ]
+                          }
+                        }
+                      ]
                     }
                   }
                 }
