@@ -36,23 +36,34 @@ public class WizardAiGoal extends Goal
     {
         this.mob = mob;
         this.preset = preset;
-        float[] qualityRange = {1.0f, 0.0f};
-        List<AbstractSpell> emergencyHeals = new ArrayList<>();
-        List<AbstractSpell> attack = resolveSpells(preset.spells.attack, null, qualityRange);
-        List<AbstractSpell> defense = resolveSpells(preset.spells.defense, null, qualityRange);
-        List<AbstractSpell> movement = resolveSpells(preset.spells.movement, null, qualityRange);
-        List<AbstractSpell> support = resolveSpells(preset.spells.support, emergencyHeals, qualityRange);
-        List<AbstractSpell> escape = resolveSpells(preset.spells.escape, null, null);
+        PhaseKit kit = resolveKit(preset.spells);
 
         MobWizardryAttackGoal goal = new MobWizardryAttackGoal((IMagicEntity) mob, preset.speed, preset.castInterval, preset.effectiveCastIntervalMax());
-        goal.setSpells(attack, defense, movement, support)
-                .setSpellQuality(Math.max(0.0f, qualityRange[0]), Math.min(1.0f, qualityRange[1]));
+        goal.setSpells(kit.attack, kit.defense, kit.movement, kit.support)
+                .setSpellQuality(kit.minQuality, kit.maxQuality);
         goal.setWizardType(WizardType.fromName(preset.wizardType));
-        goal.setEmergencyHealSpells(emergencyHeals);
-        goal.setEscapeSpells(escape);
+        goal.setEmergencyHealSpells(kit.emergencyHeals);
+        goal.setEscapeSpells(kit.escape);
         goal.setMovementDistances(preset.movementStartDistance, preset.movementFarDistance, preset.movementDistanceOffset, preset.movementTooCloseDistance);
         this.inner = goal;
         setFlags(inner.getFlags());
+    }
+
+    /**
+     * Resolves a preset (or boss-phase) spell kit once into the lists the goal consumes, plus
+     * the emergency-heal list and the min/max spell quality derived from the entries.
+     */
+    private static PhaseKit resolveKit(PresetDefinition.Spells spells)
+    {
+        float[] qualityRange = {1.0f, 0.0f};
+        List<AbstractSpell> emergencyHeals = new ArrayList<>();
+        List<AbstractSpell> attack = resolveSpells(spells.attack, null, qualityRange);
+        List<AbstractSpell> defense = resolveSpells(spells.defense, null, qualityRange);
+        List<AbstractSpell> movement = resolveSpells(spells.movement, null, qualityRange);
+        List<AbstractSpell> support = resolveSpells(spells.support, emergencyHeals, qualityRange);
+        List<AbstractSpell> escape = resolveSpells(spells.escape, null, null);
+        return new PhaseKit(attack, defense, movement, support, escape, emergencyHeals,
+                Math.max(0.0f, qualityRange[0]), Math.min(1.0f, qualityRange[1]));
     }
 
     /**
@@ -100,20 +111,14 @@ public class WizardAiGoal extends Goal
      */
     public void applyPhaseSpells(PresetDefinition.BossPhase phase)
     {
-        float[] qualityRange = {1.0f, 0.0f};
-        List<AbstractSpell> emergencyHeals = new ArrayList<>();
-        List<AbstractSpell> attack = resolveSpells(phase.spells.attack, null, qualityRange);
-        List<AbstractSpell> defense = resolveSpells(phase.spells.defense, null, qualityRange);
-        List<AbstractSpell> movement = resolveSpells(phase.spells.movement, null, qualityRange);
-        List<AbstractSpell> support = resolveSpells(phase.spells.support, emergencyHeals, qualityRange);
-        List<AbstractSpell> escape = resolveSpells(phase.spells.escape, null, null);
-        inner.setSpells(attack, defense, movement, support)
-                .setSpellQuality(Math.max(0.0f, qualityRange[0]), Math.min(1.0f, qualityRange[1]));
-        inner.setEmergencyHealSpells(emergencyHeals);
-        inner.setEscapeSpells(escape);
+        PhaseKit kit = resolveKit(phase.spells);
+        inner.setSpells(kit.attack, kit.defense, kit.movement, kit.support)
+                .setSpellQuality(kit.minQuality, kit.maxQuality);
+        inner.setEmergencyHealSpells(kit.emergencyHeals);
+        inner.setEscapeSpells(kit.escape);
         LOGGER.info("[MobWizardry] Boss phase {} kit applied to {} at {} (attack={}, defense={}, movement={}, support={}, escape={})",
                 phase.number, mob.getType().getDescriptionId(), mob.blockPosition(),
-                attack.size(), defense.size(), movement.size(), support.size(), escape.size());
+                kit.attack.size(), kit.defense.size(), kit.movement.size(), kit.support.size(), kit.escape.size());
     }
 
     /**
@@ -129,6 +134,16 @@ public class WizardAiGoal extends Goal
             }
         }
         return null;
+    }
+
+    /**
+     * A fully-resolved spell kit ready to hand to the inner goal.
+     */
+    private record PhaseKit(List<AbstractSpell> attack, List<AbstractSpell> defense,
+                            List<AbstractSpell> movement, List<AbstractSpell> support,
+                            List<AbstractSpell> escape, List<AbstractSpell> emergencyHeals,
+                            float minQuality, float maxQuality)
+    {
     }
 
     @Override

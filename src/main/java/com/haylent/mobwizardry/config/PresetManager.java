@@ -63,12 +63,13 @@ public class PresetManager
 
             try (Reader reader = Files.newBufferedReader(configPath))
             {
-                JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
-                if (root == null || !root.isJsonObject())
+                JsonElement rootElement = JsonParser.parseReader(reader);
+                if (rootElement == null || !rootElement.isJsonObject())
                 {
                     LOGGER.error("[MobWizardry] presets.json is empty or invalid - no presets loaded");
                     return;
                 }
+                JsonObject root = rootElement.getAsJsonObject();
 
                 for (Map.Entry<String, JsonElement> entry : root.entrySet())
                 {

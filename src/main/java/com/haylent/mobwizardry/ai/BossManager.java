@@ -142,11 +142,11 @@ public class BossManager
      */
     public static void tickServer(MinecraftServer server)
     {
-        tickPhases(server);
+        tickPhases();
         tickSpawns(server);
     }
 
-    private static void tickPhases(MinecraftServer server)
+    private static void tickPhases()
     {
         if (BOSSES.isEmpty())
         {
@@ -191,6 +191,12 @@ public class BossManager
             return;
         }
         int tick = server.getTickCount();
+        if (nextSpawnTick == 0)
+        {
+            // First attempt happens one full interval after server start, not on tick 0.
+            nextSpawnTick = tick + Math.max(20, settings.attemptIntervalSeconds * 20);
+            return;
+        }
         if (tick < nextSpawnTick)
         {
             return;
