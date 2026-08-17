@@ -115,6 +115,22 @@ public class MobWizardryAttackGoal extends WizardAttackGoal
         super.tick();
     }
 
+    /**
+     * While a combo is running the boss casts only the combo's steps - the base logic's other
+     * spell categories (defense/movement/support/escape and emergency heals) are suspended until
+     * the combo finishes. Movement/orbiting is unaffected: the base tick calls
+     * {@code doMovement} separately from {@code handleAttackLogic}.
+     */
+    @Override
+    protected void handleAttackLogic(double distanceSqr)
+    {
+        if (mobwizardry$comboExecutor != null && mobwizardry$comboExecutor.isComboActive())
+        {
+            return;
+        }
+        super.handleAttackLogic(distanceSqr);
+    }
+
     @Override
     protected int getAttackWeight()
     {
