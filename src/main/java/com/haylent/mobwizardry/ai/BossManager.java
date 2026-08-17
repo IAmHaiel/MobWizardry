@@ -347,7 +347,7 @@ public class BossManager
         double dist = minDist + level.random.nextDouble() * (maxDist - minDist);
         Vec3 pos = player.position().add(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
         spawnBoss(level, preset, pos);
-        NEXT_SPAWN_TICK.put(picked.key(), tick + Math.max(20, spawn.attemptIntervalSeconds * 20));
+        NEXT_SPAWN_TICK.put(picked.key(), tick + Math.max(20, spawn.spawnAttemptIntervalSeconds * 20));
     }
 
     /**
@@ -383,7 +383,7 @@ public class BossManager
         Integer next = NEXT_SPAWN_TICK.get(key);
         if (next == null)
         {
-            NEXT_SPAWN_TICK.put(key, tick + Math.max(20, spawn.attemptIntervalSeconds * 20));
+            NEXT_SPAWN_TICK.put(key, tick + Math.max(20, spawn.spawnAttemptIntervalSeconds * 20));
             return false;
         }
         return tick >= next;

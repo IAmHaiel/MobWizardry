@@ -234,11 +234,35 @@ public class PresetManager
         if (configured != null)
         {
             preset.boss = configured;
-            return;
+        }
+        else if (preset.boss != null && preset.boss.enabled)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' defines its boss inline in presets.json - move it to config/mobwizardry/bosses.json (it still works for now)", presetName);
         }
         if (preset.boss != null && preset.boss.enabled)
         {
-            LOGGER.warn("[MobWizardry] Preset '{}' defines its boss inline in presets.json - move it to config/mobwizardry/bosses.json (it still works for now)", presetName);
+            clearBossAttackSpells(presetName, preset);
+        }
+    }
+
+    /**
+     * A boss's attack spells are driven entirely by its combos, so any attack list on the boss
+     * preset or its phases is ignored (warned once at load).
+     */
+    private static void clearBossAttackSpells(String presetName, PresetDefinition preset)
+    {
+        if (!preset.spells.attack.isEmpty())
+        {
+            LOGGER.warn("[MobWizardry] Boss preset '{}' defines attack spells - a boss's attack is driven by its combos, the attack spells are ignored", presetName);
+            preset.spells.attack.clear();
+        }
+        for (PresetDefinition.BossPhase phase : preset.boss.phases)
+        {
+            if (!phase.spells.attack.isEmpty())
+            {
+                LOGGER.warn("[MobWizardry] Boss preset '{}' phase {} defines attack spells - a boss's attack is driven by its combos, the attack spells are ignored", presetName, phase.number);
+                phase.spells.attack.clear();
+            }
         }
     }
 
@@ -476,10 +500,16 @@ public class PresetManager
             boss.spawnSettings = new PresetDefinition.Boss.SpawnSettings();
             return;
         }
-        if (boss.spawnSettings.attemptIntervalSeconds < 1)
+        if (boss.spawnSettings.spawnAttemptIntervalSeconds == 300 && boss.spawnSettings.attemptIntervalSeconds != 0)
         {
-            LOGGER.warn("[MobWizardry] Boss '{}' has attemptIntervalSeconds ({}) below 1 - using 1", name, boss.spawnSettings.attemptIntervalSeconds);
-            boss.spawnSettings.attemptIntervalSeconds = 1;
+            LOGGER.warn("[MobWizardry] Boss '{}' uses the old 'attemptIntervalSeconds' field - renamed to 'spawnAttemptIntervalSeconds' (the seconds between natural-spawn attempts)", name);
+            boss.spawnSettings.spawnAttemptIntervalSeconds = boss.spawnSettings.attemptIntervalSeconds;
+            boss.spawnSettings.attemptIntervalSeconds = 0;
+        }
+        if (boss.spawnSettings.spawnAttemptIntervalSeconds < 1)
+        {
+            LOGGER.warn("[MobWizardry] Boss '{}' has spawnAttemptIntervalSeconds ({}) below 1 - using 1", name, boss.spawnSettings.spawnAttemptIntervalSeconds);
+            boss.spawnSettings.spawnAttemptIntervalSeconds = 1;
         }
         if (boss.spawnSettings.maxActiveBosses < 0)
         {
@@ -887,9 +917,6 @@ public class PresetManager
                       "minecraft:generic.knockback_resistance": 0.8
                     },
                     "spells": {
-                      "attack": [
-                        { "id": "irons_spellbooks:fireball", "level": 1 }
-                      ],
                       "defense": [],
                       "movement": [],
                       "support": [],
@@ -912,7 +939,7 @@ public class PresetManager
                       "spawnEntity": "mobwizardry:wizard",
                       "spawnSettings": {
                         "enabled": true,
-                        "attemptIntervalSeconds": 300,
+                        "spawnAttemptIntervalSeconds": 300,
                         "maxActiveBosses": 3,
                         "minDistanceFromPlayer": 24,
                         "maxDistanceFromPlayer": 48,
@@ -927,9 +954,6 @@ public class PresetManager
                           "healthPercent": 100,
                           "message": "So you dare face me?",
                           "spells": {
-                            "attack": [
-                              { "id": "irons_spellbooks:fireball", "level": 1 }
-                            ],
                             "defense": [],
                             "movement": [],
                             "support": [],
@@ -944,10 +968,6 @@ public class PresetManager
                             { "id": "minecraft:resistance", "amplifier": 1, "duration": -1 }
                           ],
                           "spells": {
-                            "attack": [
-                              { "id": "irons_spellbooks:fireball", "level": 1 },
-                              { "id": "irons_spellbooks:magic_missile", "level": 1 }
-                            ],
                             "defense": [
                               { "id": "irons_spellbooks:shield", "level": 1 }
                             ],
@@ -968,11 +988,6 @@ public class PresetManager
                             { "id": "minecraft:speed", "amplifier": 1, "duration": -1 }
                           ],
                           "spells": {
-                            "attack": [
-                              { "id": "irons_spellbooks:fireball", "level": 2 },
-                              { "id": "irons_spellbooks:magic_missile", "level": 2 },
-                              { "id": "irons_spellbooks:ray_of_siphoning", "level": 1 }
-                            ],
                             "defense": [
                               { "id": "irons_spellbooks:shield", "level": 1 }
                             ],

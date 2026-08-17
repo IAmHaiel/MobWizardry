@@ -145,8 +145,11 @@ public class PresetDefinition
          */
         public static class SpawnSettings
         {
+            /** Legacy name for {@code spawnAttemptIntervalSeconds}; migrated on load (2.3.4). */
+            @Deprecated
+            public int attemptIntervalSeconds = 0;
             public boolean enabled = true;
-            public int attemptIntervalSeconds = 300;
+            public int spawnAttemptIntervalSeconds = 300;
             public int maxActiveBosses = 3;
             public double minDistanceFromPlayer = 24;
             public double maxDistanceFromPlayer = 48;
