@@ -52,6 +52,15 @@ public class WizardNpc extends PathfinderMob
     }
 
     @Override
+    public void tick()
+    {
+        // Declared so the client-side WizardNpcAnimationMixin's @Inject(method = "tick",
+        // at = @At("TAIL")) has a concrete target - inherited methods don't get a refmap entry,
+        // which made the injection fail and the client crash. Behavior is unchanged.
+        super.tick();
+    }
+
+    @Override
     protected void defineSynchedData()
     {
         super.defineSynchedData();
