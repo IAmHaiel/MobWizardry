@@ -47,6 +47,7 @@ public class MobWizardryCommands
     private static final SimpleCommandExceptionType UNKNOWN_PRESET = new SimpleCommandExceptionType(Component.literal("Unknown MobWizardry preset. Use /mobwizardry list to see available presets."));
     private static final SimpleCommandExceptionType UNKNOWN_MOB = new SimpleCommandExceptionType(Component.literal("Unknown mob type."));
     private static final SimpleCommandExceptionType NOT_A_MOB = new SimpleCommandExceptionType(Component.literal("That entity type cannot cast spells or use equipment - it must be a PathfinderMob (zombie, skeleton, etc.)."));
+    private static final SimpleCommandExceptionType NOT_A_BOSS = new SimpleCommandExceptionType(Component.literal("That preset is not boss-enabled. Define a \"boss\" entry for it in config/mobwizardry/bosses.json."));
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher)
     {
@@ -60,6 +61,15 @@ public class MobWizardryCommands
                                         .executes(ctx -> summon(ctx, StringArgumentType.getString(ctx, "preset"), ResourceLocationArgument.getId(ctx, "mobType").toString(), ctx.getSource().getPosition()))
                                         .then(Commands.argument("pos", Vec3Argument.vec3())
                                                 .executes(ctx -> summon(ctx, StringArgumentType.getString(ctx, "preset"), ResourceLocationArgument.getId(ctx, "mobType").toString(), Vec3Argument.getVec3(ctx, "pos")))))))
+                .then(Commands.literal("boss")
+                        .requires(src -> src.hasPermission(2))
+                        .then(Commands.argument("preset", StringArgumentType.word())
+                                .suggests(MobWizardryCommands::suggestPresets)
+                                .then(Commands.argument("mobType", ResourceLocationArgument.id())
+                                        .suggests(MobWizardryCommands::suggestMobTypes)
+                                        .executes(ctx -> boss(ctx, StringArgumentType.getString(ctx, "preset"), ResourceLocationArgument.getId(ctx, "mobType").toString(), ctx.getSource().getPosition()))
+                                        .then(Commands.argument("pos", Vec3Argument.vec3())
+                                                .executes(ctx -> boss(ctx, StringArgumentType.getString(ctx, "preset"), ResourceLocationArgument.getId(ctx, "mobType").toString(), Vec3Argument.getVec3(ctx, "pos")))))))
                 .then(Commands.literal("wizardify")
                         .requires(src -> src.hasPermission(2))
                         .then(Commands.argument("preset", StringArgumentType.word())
@@ -129,14 +139,48 @@ public class MobWizardryCommands
     private static int summon(CommandContext<CommandSourceStack> ctx, String presetName, String mobTypeId, Vec3 pos) throws CommandSyntaxException
     {
         PresetDefinition preset = requirePreset(ctx, presetName);
+        MobSpawnResult result = spawnMob(ctx, preset, mobTypeId, pos);
+        final boolean moved = !result.pos().equals(pos);
+        final Vec3 safePos = result.pos();
+        ctx.getSource().sendSuccess(() -> Component.literal("Summoned " + mobTypeId + " with preset '" + presetName + "' (tag: " + preset.requiredTag + ")" + (moved ? " at safe position " + safePos : " at " + safePos)), true);
+        LOGGER.info("[MobWizardry] /mobwizardry summon {} {} at {} by {}", presetName, mobTypeId, safePos, ctx.getSource().getTextName());
+        return 1;
+    }
+
+    /**
+     * Spawns a boss-enabled preset's mob at the given position - identical to {@code summon}
+     * but the preset must be a boss (see config/mobwizardry/bosses.json). The bossification
+     * (lightning, name tag, arrival, phases) happens through the normal entity-join path.
+     */
+    private static int boss(CommandContext<CommandSourceStack> ctx, String presetName, String mobTypeId, Vec3 pos) throws CommandSyntaxException
+    {
+        PresetDefinition preset = requirePreset(ctx, presetName);
+        if (preset.boss == null || !preset.boss.enabled)
+        {
+            throw NOT_A_BOSS.create();
+        }
+        MobSpawnResult result = spawnMob(ctx, preset, mobTypeId, pos);
+        final String bossName = preset.boss.name;
+        final Vec3 safePos = result.pos();
+        ctx.getSource().sendSuccess(() -> Component.literal("Summoned boss '" + bossName + "' (" + mobTypeId + ") with preset '" + presetName + "' (tag: " + preset.requiredTag + ") at " + safePos), true);
+        LOGGER.info("[MobWizardry] /mobwizardry boss {} {} at {} by {}", presetName, mobTypeId, safePos, ctx.getSource().getTextName());
+        return 1;
+    }
+
+    /**
+     * Creates the mob, finds a safe spawn, equips preset gear, tags it and adds it to the level,
+     * then attaches the wizard AI (the join handler also runs and is idempotent). Shared by the
+     * {@code summon} and {@code boss} commands.
+     */
+    private static MobSpawnResult spawnMob(CommandContext<CommandSourceStack> ctx, PresetDefinition preset, String mobTypeId, Vec3 pos) throws CommandSyntaxException
+    {
+        ServerLevel level = ctx.getSource().getLevel();
         ResourceLocation rl = ResourceLocation.tryParse(mobTypeId);
         if (rl == null || !ForgeRegistries.ENTITY_TYPES.containsKey(rl))
         {
             throw UNKNOWN_MOB.create();
         }
         EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(rl);
-
-        ServerLevel level = ctx.getSource().getLevel();
         Entity entity = type.create(level);
         if (entity == null)
         {
@@ -148,19 +192,12 @@ public class MobWizardryCommands
         }
 
         Vec3 safePos = SpawnHelper.findSafeSpawn(level, pos);
-        boolean moved = !safePos.equals(pos);
         mob.moveTo(safePos.x, safePos.y, safePos.z, ctx.getSource().getRotation().y, 0);
         warnOnEquipmentMismatch(ctx, preset, mob);
         mob.addTag(preset.requiredTag);
         level.addFreshEntity(mob);
-
         WizardAiGoal.attach(mob, preset);
-
-        final boolean finalMoved = moved;
-        final Vec3 finalSafePos = safePos;
-        ctx.getSource().sendSuccess(() -> Component.literal("Summoned " + mobTypeId + " with preset '" + presetName + "' (tag: " + preset.requiredTag + ")" + (finalMoved ? " at safe position " + finalSafePos : " at " + finalSafePos)), true);
-        LOGGER.info("[MobWizardry] /mobwizardry summon {} {} at {} by {}", presetName, mobTypeId, safePos, ctx.getSource().getTextName());
-        return 1;
+        return new MobSpawnResult(mob, safePos);
     }
 
     private static void warnOnEquipmentMismatch(CommandContext<CommandSourceStack> ctx, PresetDefinition preset, PathfinderMob mob)
@@ -276,9 +313,10 @@ public class MobWizardryCommands
         ctx.getSource().sendSuccess(() -> header, false);
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "help", "Show this help.");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "summon <preset> <mobType> [pos]", "Summon a new mob as a wizard using a preset's equipment, attributes and spells.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "boss <preset> <mobType> [pos]", "Summon a boss - like summon, but the preset must be boss-enabled (config/mobwizardry/bosses.json).");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "wizardify <preset> [radius] [pos]", "Turn nearby mobs into wizards - adds the preset tag and applies equipment and wizard AI.");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "unwizardify <preset> [radius] [pos]", "Remove wizard status from nearby mobs - removes the preset tag and strips wizard equipment.");
-        MobWizardryCommandOutput.helpLine(ctx.getSource(), "reload", "Reload presets.json from the config folder.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "reload", "Reload presets.json and bosses.json from the config folder.");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "list [page]", "List all loaded presets and their spell setups.");
         return 1;
     }
@@ -297,5 +335,13 @@ public class MobWizardryCommands
     {
         MobWizardryCommandOutput.sendPresetsPage(ctx.getSource(), PresetManager.getPresets(), page);
         return PresetManager.getPresets().size();
+    }
+
+    /**
+     * The mob spawned by {@link #spawnMob} plus the (possibly adjusted) safe position it landed
+     * at, so the caller can report it.
+     */
+    private record MobSpawnResult(PathfinderMob mob, Vec3 pos)
+    {
     }
 }
