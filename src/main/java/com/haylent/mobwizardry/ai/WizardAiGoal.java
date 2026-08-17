@@ -30,7 +30,7 @@ public class WizardAiGoal extends Goal
 
     private final PathfinderMob mob;
     private final PresetDefinition preset;
-    private final WizardAttackGoal inner;
+    private final MobWizardryAttackGoal inner;
 
     public WizardAiGoal(PathfinderMob mob, PresetDefinition preset)
     {
@@ -92,6 +92,45 @@ public class WizardAiGoal extends Goal
         return spells;
     }
 
+    /**
+     * Swaps the wizard's spell kit to the given boss phase's kit (attack/defense/movement/
+     * support/escape plus emergency heals and spell quality), so a boss gains its phase spells
+     * when the phase activates. The base goal's category lists are cleared and refilled in
+     * place, so an in-flight cast is unaffected.
+     */
+    public void applyPhaseSpells(PresetDefinition.BossPhase phase)
+    {
+        float[] qualityRange = {1.0f, 0.0f};
+        List<AbstractSpell> emergencyHeals = new ArrayList<>();
+        List<AbstractSpell> attack = resolveSpells(phase.spells.attack, null, qualityRange);
+        List<AbstractSpell> defense = resolveSpells(phase.spells.defense, null, qualityRange);
+        List<AbstractSpell> movement = resolveSpells(phase.spells.movement, null, qualityRange);
+        List<AbstractSpell> support = resolveSpells(phase.spells.support, emergencyHeals, qualityRange);
+        List<AbstractSpell> escape = resolveSpells(phase.spells.escape, null, null);
+        inner.setSpells(attack, defense, movement, support)
+                .setSpellQuality(Math.max(0.0f, qualityRange[0]), Math.min(1.0f, qualityRange[1]));
+        inner.setEmergencyHealSpells(emergencyHeals);
+        inner.setEscapeSpells(escape);
+        LOGGER.info("[MobWizardry] Boss phase {} kit applied to {} at {} (attack={}, defense={}, movement={}, support={}, escape={})",
+                phase.number, mob.getType().getDescriptionId(), mob.blockPosition(),
+                attack.size(), defense.size(), movement.size(), support.size(), escape.size());
+    }
+
+    /**
+     * The wizard AI goal currently attached to the mob, or null when the mob has none.
+     */
+    public static WizardAiGoal find(PathfinderMob mob)
+    {
+        for (WrappedGoal goal : mob.goalSelector.getAvailableGoals())
+        {
+            if (goal.getGoal() instanceof WizardAiGoal wizard)
+            {
+                return wizard;
+            }
+        }
+        return null;
+    }
+
     @Override
     public boolean canUse()
     {
@@ -151,6 +190,7 @@ public class WizardAiGoal extends Goal
         {
             npc.setSkin(preset.skin.trim());
         }
+        BossManager.sync(mob, preset);
     }
 
     /**
@@ -247,6 +287,7 @@ public class WizardAiGoal extends Goal
         {
             npc.setSkin(preset.skin.trim());
         }
+        BossManager.sync(mob, preset);
         LOGGER.info("[MobWizardry] Re-applied preset '{}' to {} at {}",
                 preset.requiredTag, mob.getType().getDescriptionId(), mob.blockPosition());
     }
