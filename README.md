@@ -195,6 +195,14 @@ change the values to taste.
 
 ```json
 {
+  "_wizardDisplay": {
+    "nameColor": "white",
+    "teamColor": "gray",
+    "names": [
+      "Vodyaniski", "Alech", "Mordecai", "Seraphine", "Kael",
+      "Ilyana", "Draven", "Elysia", "Rowan", "Zephyr"
+    ]
+  },
   "wizard": {
     "requiredTag": "wizard",
     "wizardType": "ranged",
@@ -380,6 +388,39 @@ change the values to taste.
   }
 }
 ```
+
+### Wizard name tags (`_wizardDisplay`)
+
+Every wizard wears a name tag showing its **name** with its **team** beneath it — e.g.:
+
+```
+Vodyaniski
+< Undead >
+```
+
+Normal wizards get a **random name** from a configurable pool; bosses keep their configured boss
+name. The team line is the preset's `team` with the first letter capitalized (`undead` → `Undead`).
+Both lines' colors are set by the `_wizardDisplay` block at the top of `presets.json`:
+
+```json
+"_wizardDisplay": {
+  "nameColor": "white",
+  "teamColor": "gray",
+  "names": [
+    "Vodyaniski", "Alech", "Mordecai", "Seraphine", "Kael",
+    "Ilyana", "Draven", "Elysia", "Rowan", "Zephyr"
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `nameColor` | color of the name line (named or hex, e.g. `white`, `gold`, `#FF5555`). Default `white`. |
+| `teamColor` | color of the `< Team >` line. Default `gray`. |
+| `names` | the random-name pool for normal (non-boss) wizards; empty = normal wizards get no name tag. |
+
+A wizard with no team shows just its name. (Vanilla name tags render all lines at one fixed
+size, so the team line is a dimmer second line rather than a smaller font.)
 
 ### Using spells from addon mods
 
@@ -710,6 +751,7 @@ points to the section that explains it in detail.
 
 | Field | Type | Meaning |
 |---|---|---|
+| `_wizardDisplay` | object | name-tag display settings (see [Wizard name tags](#wizard-name-tags-_wizarddisplay)) — `nameColor`, `teamColor`, `names` |
 | `requiredTag` | string | the tag that activates this preset on a mob |
 | `wizardType` | string | `ranged` or `close` (see [Wizard types](#wizard-types)) |
 | `team` | string | same-team wizards never fight each other (optional) |
