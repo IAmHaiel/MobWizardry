@@ -158,7 +158,8 @@ public class WizardNpcRenderer extends HumanoidMobRenderer<WizardNpc, PlayerMode
         int backgroundColor = (int) (opacity * 255.0F) << 24;
         int nameColor = colorOf(displayName.getStyle().getColor(), 0xFFFFFFFF);
         int teamColor = teamColorOf(displayName);
-        boolean outline = !entity.isDiscrete();
+        boolean flag = !entity.isDiscrete();
+        Font.DisplayMode mode = flag ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
 
         poseStack.pushPose();
         poseStack.translate(0.0D, entity.getBbHeight() + 0.5D, 0.0D);
@@ -166,16 +167,16 @@ public class WizardNpcRenderer extends HumanoidMobRenderer<WizardNpc, PlayerMode
         poseStack.scale(-0.025F, -0.025F, 0.025F);
         Matrix4f matrix = poseStack.last().pose();
 
-        font.drawInBatch(nameLine, -font.width(nameLine) / 2.0F, 0.0F, nameColor, outline,
-                matrix, buffer, Font.DisplayMode.NORMAL, packedLight, backgroundColor);
+        font.drawInBatch(nameLine, -font.width(nameLine) / 2.0F, 0.0F, nameColor, flag,
+                matrix, buffer, mode, packedLight, backgroundColor);
 
         if (teamLine != null)
         {
             poseStack.pushPose();
             poseStack.scale(0.6F, 0.6F, 1.0F);
             Matrix4f teamMatrix = poseStack.last().pose();
-            font.drawInBatch(teamLine, -font.width(teamLine) / 2.0F, 18.0F, teamColor, outline,
-                    teamMatrix, buffer, Font.DisplayMode.NORMAL, packedLight, backgroundColor);
+            font.drawInBatch(teamLine, -font.width(teamLine) / 2.0F, 18.0F, teamColor, flag,
+                    teamMatrix, buffer, mode, packedLight, backgroundColor);
             poseStack.popPose();
         }
         poseStack.popPose();
