@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -278,7 +279,7 @@ public class BossManager
             return;
         }
         int tick = server.getTickCount();
-        for (Iterator<SkyStorm> it = SKY_STORMS.iterator(); it.hasNext();)
+        for (ListIterator<SkyStorm> it = SKY_STORMS.listIterator(); it.hasNext();)
         {
             SkyStorm storm = it.next();
             if (storm.level().isClientSide() || storm.level().getServer() == null)
