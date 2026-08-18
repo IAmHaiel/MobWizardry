@@ -6,6 +6,10 @@ import com.haylent.mobwizardry.entity.WizardSkins;
 import com.haylent.mobwizardry.client.WizardNpcCastAnimator;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
+import org.joml.Matrix4f;
+import net.minecraft.client.gui.Font;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 import dev.kosmx.playerAnim.api.layered.KeyframeAnimationPlayer;
 import dev.kosmx.playerAnim.api.layered.ModifierLayer;
 import dev.kosmx.playerAnim.api.layered.modifier.AbstractFadeModifier;
@@ -125,6 +129,74 @@ public class WizardNpcRenderer extends HumanoidMobRenderer<WizardNpc, PlayerMode
         }
         KeyframeAnimation keyframes = PlayerAnimationRegistry.getAnimation(anim.get());
         return keyframes == null ? null : new KeyframeAnimationPlayer(keyframes);
+    }
+
+    /**
+     * Renders the wizard's two-line name tag: the name (with its configured color) at full size,
+     * and the {@code < Team >} line beneath it at 0.6x scale. Vanilla name tags render a literal
+     * {@code \n} as a missing-glyph box, so the lines are drawn separately instead.
+     */
+    @Override
+    protected void renderNameTag(WizardNpc entity, Component displayName, PoseStack poseStack,
+                                 MultiBufferSource buffer, int packedLight)
+    {
+        String full = displayName.getString();
+        int split = full.indexOf('\n');
+        String nameLine = split >= 0 ? full.substring(0, split) : full;
+        String teamLine = split >= 0 ? full.substring(split + 1) : null;
+        if (nameLine.isEmpty() && teamLine == null)
+        {
+            return;
+        }
+        if (this.entityRenderDispatcher.distanceToSqr(entity) > 4096.0)
+        {
+            return;
+        }
+
+        Font font = this.getFont();
+        float opacity = Minecraft.getInstance().options.getBackgroundOpacity(0.25F);
+        int backgroundColor = (int) (opacity * 255.0F) << 24;
+        int nameColor = colorOf(displayName.getStyle().getColor(), 0xFFFFFFFF);
+        int teamColor = teamColorOf(displayName);
+        boolean outline = !entity.isDiscrete();
+
+        poseStack.pushPose();
+        poseStack.translate(0.0D, entity.getBbHeight() + 0.5D, 0.0D);
+        poseStack.mulPose(this.entityRenderDispatcher.cameraOrientation());
+        poseStack.scale(-0.025F, -0.025F, 0.025F);
+        Matrix4f matrix = poseStack.last().pose();
+
+        font.drawInBatch(nameLine, -font.width(nameLine) / 2.0F, 0.0F, nameColor, outline,
+                matrix, buffer, Font.DisplayMode.NORMAL, packedLight, backgroundColor);
+
+        if (teamLine != null)
+        {
+            poseStack.pushPose();
+            poseStack.scale(0.6F, 0.6F, 1.0F);
+            Matrix4f teamMatrix = poseStack.last().pose();
+            font.drawInBatch(teamLine, -font.width(teamLine) / 2.0F, 18.0F, teamColor, outline,
+                    teamMatrix, buffer, Font.DisplayMode.NORMAL, packedLight, backgroundColor);
+            poseStack.popPose();
+        }
+        poseStack.popPose();
+    }
+
+    private static int colorOf(TextColor color, int fallback)
+    {
+        return color == null ? fallback : color.getValue();
+    }
+
+    private static int teamColorOf(Component displayName)
+    {
+        for (Component sibling : displayName.getSiblings())
+        {
+            TextColor color = sibling.getStyle().getColor();
+            if (color != null)
+            {
+                return color.getValue();
+            }
+        }
+        return 0xFFAAAAAA;
     }
 
     @Override
