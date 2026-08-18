@@ -179,6 +179,9 @@ public class RaidManager
         }
         raid.waveTotal = total;
         Vec3 origin = spawnOrigin(raid);
+        // One rally point for the whole wave, so the enemies arrive grouped together instead of
+        // scattered around the spawn-distance ring.
+        Vec3 rally = raidSpawnPos(raid, origin, raid.def.spawnDistance);
         int spawned = 0;
         for (int i = 0; i < total; i++)
         {
@@ -188,7 +191,7 @@ public class RaidManager
                 break;
             }
             pick.remaining--;
-            if (spawnEnemy(raid, pick.preset, origin))
+            if (spawnEnemy(raid, pick.preset, rally))
             {
                 spawned++;
             }
@@ -233,9 +236,9 @@ public class RaidManager
         return null;
     }
 
-    private static boolean spawnEnemy(ActiveRaid raid, PresetDefinition preset, Vec3 origin)
+    private static boolean spawnEnemy(ActiveRaid raid, PresetDefinition preset, Vec3 rally)
     {
-        Vec3 pos = raidSpawnPos(raid, origin, raid.def.spawnDistance);
+        Vec3 pos = clusterPos(raid, rally, raid.def.groupRadius);
         PathfinderMob mob = SpawnHelper.spawnTaggedMob(raid.level, WIZARD_NPC, preset, pos);
         if (mob == null)
         {
@@ -244,6 +247,17 @@ public class RaidManager
         raid.waveEnemies.add(mob.getUUID());
         targetRandomPlayer(raid.level, mob);
         return true;
+    }
+
+    /**
+     * A position within {@code radius} blocks of {@code rally} in a random direction (floored at
+     * 1 block so the wave's enemies do not stack exactly on the rally point).
+     */
+    private static Vec3 clusterPos(ActiveRaid raid, Vec3 rally, double radius)
+    {
+        double angle = raid.level.random.nextDouble() * Math.PI * 2.0;
+        double dist = raid.level.random.nextDouble() * Math.max(1.0, radius);
+        return rally.add(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
     }
 
     /**

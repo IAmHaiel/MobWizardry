@@ -857,6 +857,7 @@ Details: [The boss block](#the-boss-block), [Phases](#phases),
 | `boss` | string | the boss-enabled preset used for the final wave (empty = none) |
 | `spawnDistance` | number | how far (in blocks) from a random player's position wave enemies spawn, so you get a moment to prepare. Clamped to ≥ 8. Default `32`. |
 | `bossSpawnDistance` | number | how far (in blocks) from a random player's position the final boss spawns. Clamped to ≥ 8. Default `48`. |
+| `groupRadius` | number | how tightly a wave's enemies cluster around their single rally point (blocks), so a whole wave arrives in one group. Clamped to 1–16. Default `4`. |
 
 Details and semantics (including "Why is there a weight?"): [Raid / horde](#raid--horde-300).
 
@@ -1040,7 +1041,8 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
       ],
       "boss": "wizard_boss",
       "spawnDistance": 32.0,
-      "bossSpawnDistance": 48.0
+      "bossSpawnDistance": 48.0,
+      "groupRadius": 4.0
     }
   }
 }
@@ -1061,6 +1063,7 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
 | `boss` | The **boss-enabled preset** used for the final wave (e.g. `wizard_boss`). If empty — or not a boss-enabled preset — the raid ends with a player victory right after the last wave. |
 | `spawnDistance` | Blocks from a random player's position where wave enemies spawn (85-115% jitter, floored at 8), so you get a moment to prepare. Default `32`. |
 | `bossSpawnDistance` | Blocks from a random player's position where the final boss spawns. Default `48`. |
+| `groupRadius` | Each wave picks ONE rally point `spawnDistance` away and spawns all of its enemies within this many blocks of it, so the wave arrives grouped together instead of scattered around the ring. Default `4`. |
 
 Every raid enemy and the boss spawn **targeting a random attackable player** (falling back to
 their normal AI when no player is attackable).
@@ -1148,7 +1151,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
 7. For a **raid** (a `raids` entry in `raids.json`):
    - `/mobwizardry raid list` shows it, `/mobwizardry raid start <raid>` starts it — the start message appears, the pillager horn + lightning crash play and the `YOU ARE INVADED` subtitle shows, and the purple raid bar shows `Raid Name — Wave 1/M`,
-   - wave enemies spawn roughly `spawnDistance` blocks from you (not on top of you) and head straight for a random attackable player,
+   - wave enemies spawn roughly `spawnDistance` blocks from you, grouped within `groupRadius` blocks of one rally point, and head straight for a random attackable player,
    - kill every enemy in a wave — the bar fills and the next wave (or the boss) spawns,
    - after the last wave the configured boss appears roughly `bossSpawnDistance` blocks away — lightning, name, its own boss bar — and targets a random player; killing it ends the raid with the victory message,
    - if all players die the raid ends with the defeat message.

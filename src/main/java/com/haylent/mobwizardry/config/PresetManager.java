@@ -259,6 +259,11 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] Raid '{}' bossSpawnDistance {} is too small - clamped to 8", name, raid.bossSpawnDistance);
             raid.bossSpawnDistance = 8.0;
         }
+        if (raid.groupRadius < 1.0 || raid.groupRadius > 16.0)
+        {
+            LOGGER.warn("[MobWizardry] Raid '{}' groupRadius {} is out of range - clamped to 4", name, raid.groupRadius);
+            raid.groupRadius = 4.0;
+        }
         if (raid.waves == null)
         {
             raid.waves = new ArrayList<>();
@@ -1359,7 +1364,8 @@ public class PresetManager
                       ],
                       "boss": "wizard_boss",
                       "spawnDistance": 32.0,
-                      "bossSpawnDistance": 48.0
+                      "bossSpawnDistance": 48.0,
+                      "groupRadius": 4.0
                     }
                   }
                 }

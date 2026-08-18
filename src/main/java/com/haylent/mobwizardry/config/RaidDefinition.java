@@ -31,6 +31,13 @@ public class RaidDefinition
     public double bossSpawnDistance = 48.0;
 
     /**
+     * How tightly a wave's enemies cluster around their single rally point (blocks). The rally
+     * point sits {@code spawnDistance} from a random player, so a whole wave arrives in one
+     * group instead of being scattered around the ring. Values are clamped to 1..16.
+     */
+    public double groupRadius = 4.0;
+
+    /**
      * One wave of the raid. Its enemies are spawned weighted-random-capped: the wave spawns
      * {@code sum(counts)} mobs, each pick weighted by the enemy's {@code weight} among presets
      * that have not yet reached their {@code count}.
