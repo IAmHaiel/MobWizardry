@@ -857,6 +857,7 @@ public class PresetManager
                 return;
             }
             WizardDisplay.setNames(names);
+            LOGGER.info("[MobWizardry] Loaded {} wizard names from names.json", names.size());
             if (!legacyNames.isEmpty())
             {
                 LOGGER.warn("[MobWizardry] presets.json '_wizardDisplay.names' is ignored - random names now come from config/mobwizardry/names.json");
