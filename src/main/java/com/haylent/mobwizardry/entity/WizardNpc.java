@@ -1,5 +1,6 @@
 package com.haylent.mobwizardry.entity;
 
+import com.haylent.mobwizardry.config.MobWizardryTeams;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -110,5 +111,15 @@ public class WizardNpc extends PathfinderMob
     public boolean isPersistenceRequired()
     {
         return true;
+    }
+
+    /**
+     * Enemy-faction wizards are removed when the world's difficulty is Peaceful, exactly like
+     * vanilla hostile mobs ({@code Monster} overrides this to true). Friendly wizards persist.
+     */
+    @Override
+    protected boolean shouldDespawnInPeaceful()
+    {
+        return "enemy".equals(MobWizardryTeams.factionOf(this));
     }
 }
