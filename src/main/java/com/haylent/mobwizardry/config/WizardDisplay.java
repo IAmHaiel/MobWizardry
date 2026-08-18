@@ -9,11 +9,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Wizard name-tag display settings and helpers, read from the {@code _wizardDisplay} block of
- * {@code presets.json}. A wizard's name tag shows its name (a random name from the {@code names}
- * pool for normal wizards, or the configured boss name for bosses) with a {@code < Team >} line
- * below it; both lines use configurable colors. Vanilla name tags render all lines at one fixed
- * size, so the team line is a dimmer second line rather than a smaller font.
+ * Wizard name-tag display settings and helpers: the name/team colors come from the
+ * {@code _wizardDisplay} block of {@code presets.json}, and the random-name pool comes from
+ * {@code config/mobwizardry/names.json}. A wizard's name tag shows its name (a random name from
+ * the pool for normal wizards, or the configured boss name for bosses) with a {@code < Team >}
+ * line below it; both lines use configurable colors. Vanilla name tags render all lines at one
+ * fixed size, so the team line is a dimmer second line rather than a smaller font.
  */
 public class WizardDisplay
 {
@@ -50,15 +51,46 @@ public class WizardDisplay
     }
 
     /**
+     * Replaces the random-name pool (from {@code names.json}). Blank entries are dropped; a null
+     * list clears the pool.
+     */
+    public static void setNames(List<String> names)
+    {
+        if (names == null)
+        {
+            settings.names = new ArrayList<>();
+            return;
+        }
+        List<String> cleaned = new ArrayList<>();
+        for (String name : names)
+        {
+            if (name != null && !name.isBlank())
+            {
+                cleaned.add(name.trim());
+            }
+        }
+        settings.names = cleaned;
+    }
+
+    /**
+     * The current random-name pool.
+     */
+    public static List<String> getNames()
+    {
+        return settings.names == null ? List.of() : settings.names;
+    }
+
+    /**
      * A random name from the pool, or null when the pool is empty (no name tag then).
      */
     public static String randomName(RandomSource random)
     {
-        if (settings.names == null || settings.names.isEmpty())
+        List<String> names = getNames();
+        if (names.isEmpty())
         {
             return null;
         }
-        return settings.names.get(random.nextInt(settings.names.size()));
+        return names.get(random.nextInt(names.size()));
     }
 
     /**
@@ -107,14 +139,14 @@ public class WizardDisplay
     }
 
     /**
-     * The {@code _wizardDisplay} settings: name/team colors and the random-name pool.
+     * The {@code _wizardDisplay} settings: name/team colors. The random-name pool lives in
+     * {@code config/mobwizardry/names.json} (the {@code names} field here only exists so old
+     * configs that still carry it can be read for the migration path).
      */
     public static class Settings
     {
         public String nameColor = "white";
         public String teamColor = "gray";
-        public List<String> names = new ArrayList<>(List.of(
-                "Vodyaniski", "Alech", "Mordecai", "Seraphine", "Kael",
-                "Ilyana", "Draven", "Elysia", "Rowan", "Zephyr"));
+        public List<String> names = new ArrayList<>();
     }
 }

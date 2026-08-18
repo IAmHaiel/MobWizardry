@@ -92,7 +92,9 @@ public class PresetManager
         RAIDS.clear();
         Path configDir = FMLPaths.CONFIGDIR.get().resolve(MobWizardryMod.MODID);
 
-        loadPresetsFile(configDir);
+        List<String> legacyNames = new ArrayList<>();
+        loadPresetsFile(configDir, legacyNames);
+        loadNamesFile(configDir, legacyNames);
         loadBossesFile(configDir);
 
         for (Map.Entry<String, PresetDefinition> entry : PRESETS.entrySet())
@@ -304,7 +306,7 @@ public class PresetManager
                 name, raid.name, raid.waves.size(), raid.boss.isBlank() ? "none" : raid.boss);
     }
 
-    private static void loadPresetsFile(Path configDir)
+    private static void loadPresetsFile(Path configDir, List<String> legacyNamesOut)
     {
         Path configPath = configDir.resolve("presets.json");
         try
@@ -338,8 +340,18 @@ public class PresetManager
                         else if ("_wizardDisplay".equals(presetName))
                         {
                             WizardDisplay.Settings parsed = GSON.fromJson(entry.getValue(), WizardDisplay.Settings.class);
-                            validateWizardDisplay(parsed);
+                            validateWizardDisplayColors(parsed);
                             WizardDisplay.setSettings(parsed);
+                            if (parsed.names != null)
+                            {
+                                for (String name : parsed.names)
+                                {
+                                    if (name != null && !name.isBlank() && !legacyNamesOut.contains(name.trim()))
+                                    {
+                                        legacyNamesOut.add(name.trim());
+                                    }
+                                }
+                            }
                         }
                         continue;
                     }
@@ -790,7 +802,7 @@ public class PresetManager
         };
     }
 
-    private static void validateWizardDisplay(WizardDisplay.Settings settings)
+    private static void validateWizardDisplayColors(WizardDisplay.Settings settings)
     {
         if (settings == null)
         {
@@ -807,15 +819,94 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] _wizardDisplay has an invalid teamColor '{}' - using 'gray'", settings.teamColor);
             settings.teamColor = "gray";
         }
-        if (settings.names == null)
+    }
+
+    /**
+     * Loads the random wizard-name pool from {@code names.json} (a JSON array of strings). A
+     * legacy {@code _wizardDisplay.names} list in presets.json is kept when names.json is missing
+     * (the default file is still written for the user to edit) or ignored with a warning when a
+     * valid names.json exists. An empty pool leaves the current pool untouched and is warned
+     * about once.
+     */
+    private static void loadNamesFile(Path configDir, List<String> legacyNames)
+    {
+        Path configPath = configDir.resolve("names.json");
+        try
         {
-            settings.names = new ArrayList<>();
+            Files.createDirectories(configDir);
+            if (!Files.exists(configPath))
+            {
+                Files.writeString(configPath, defaultNamesJson());
+                LOGGER.warn("[MobWizardry] No names.json found - wrote default config to {}", configPath);
+                if (!legacyNames.isEmpty())
+                {
+                    WizardDisplay.setNames(legacyNames);
+                    LOGGER.warn("[MobWizardry] Your presets.json '_wizardDisplay.names' is kept as the name pool - edit config/mobwizardry/names.json to change it");
+                    return;
+                }
+            }
+
+            List<String> names = readNames(configPath);
+            if (names == null)
+            {
+                return;
+            }
+            if (names.isEmpty())
+            {
+                LOGGER.warn("[MobWizardry] names.json has no valid names - summoned wizards (non-boss) will have no name tag");
+                return;
+            }
+            WizardDisplay.setNames(names);
+            if (!legacyNames.isEmpty())
+            {
+                LOGGER.warn("[MobWizardry] presets.json '_wizardDisplay.names' is ignored - random names now come from config/mobwizardry/names.json");
+            }
         }
-        settings.names.removeIf(name -> name == null || name.isBlank());
-        if (settings.names.isEmpty())
+        catch (IOException e)
         {
-            LOGGER.warn("[MobWizardry] _wizardDisplay has no names - summoned wizards (non-boss) will have no name tag");
+            LOGGER.error("[MobWizardry] Could not read names.json - keeping the current name pool", e);
         }
+    }
+
+    private static List<String> readNames(Path path)
+    {
+        try (Reader reader = Files.newBufferedReader(path))
+        {
+            JsonElement root = JsonParser.parseReader(reader);
+            if (root == null || !root.isJsonArray())
+            {
+                LOGGER.error("[MobWizardry] names.json is empty or invalid - keeping the current name pool");
+                return null;
+            }
+            List<String> names = new ArrayList<>();
+            for (JsonElement element : root.getAsJsonArray())
+            {
+                if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString())
+                {
+                    String name = element.getAsString().trim();
+                    if (!name.isEmpty())
+                    {
+                        names.add(name);
+                    }
+                }
+            }
+            return names;
+        }
+        catch (JsonSyntaxException | IOException e)
+        {
+            LOGGER.error("[MobWizardry] Failed to parse names.json - keeping the current name pool", e);
+            return null;
+        }
+    }
+
+    private static String defaultNamesJson()
+    {
+        return """
+                [
+                  "Vodyaniski", "Alech", "Mordecai", "Seraphine", "Kael",
+                  "Ilyana", "Draven", "Elysia", "Rowan", "Zephyr"
+                ]
+                """;
     }
 
     private static boolean isValidNameColor(String nameColor)
@@ -926,11 +1017,7 @@ public class PresetManager
                 {
                   "_wizardDisplay": {
                     "nameColor": "white",
-                    "teamColor": "gray",
-                    "names": [
-                      "Vodyaniski", "Alech", "Mordecai", "Seraphine", "Kael",
-                      "Ilyana", "Draven", "Elysia", "Rowan", "Zephyr"
-                    ]
+                    "teamColor": "gray"
                   },
                   "wizard": {
                     "requiredTag": "wizard",
