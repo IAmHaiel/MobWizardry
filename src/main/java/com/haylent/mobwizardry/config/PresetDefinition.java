@@ -162,6 +162,13 @@ public class PresetDefinition
             public double spawnChance = 0.5;
             public boolean despawnOnTimeChange = true;
             public int spawnGlowSeconds = 60;
+
+            /**
+             * How many extra visual-only lightning bolts (besides the main strike) flash around
+             * the boss on arrival, so the sky thunders even in clear weather. 0 disables.
+             * Clamped to 0..30.
+             */
+            public int skyFlashBolts = 4;
         }
     }
 

@@ -38,6 +38,12 @@ public class RaidDefinition
     public double groupRadius = 4.0;
 
     /**
+     * How many visual-only lightning bolts flash around the raid origin when the raid starts,
+     * so the sky thunders even in clear weather. 0 disables. Clamped to 0..30.
+     */
+    public int skyFlashBolts = 4;
+
+    /**
      * One wave of the raid. Its enemies are spawned weighted-random-capped: the wave spawns
      * {@code sum(counts)} mobs, each pick weighted by the enemy's {@code weight} among presets
      * that have not yet reached their {@code count}.

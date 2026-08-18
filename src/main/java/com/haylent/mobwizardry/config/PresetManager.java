@@ -264,6 +264,11 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] Raid '{}' groupRadius {} is out of range - clamped to 4", name, raid.groupRadius);
             raid.groupRadius = 4.0;
         }
+        if (raid.skyFlashBolts < 0 || raid.skyFlashBolts > 30)
+        {
+            LOGGER.warn("[MobWizardry] Raid '{}' has a skyFlashBolts ({}) out of range 0..30 - using 4", name, raid.skyFlashBolts);
+            raid.skyFlashBolts = 4;
+        }
         if (raid.waves == null)
         {
             raid.waves = new ArrayList<>();
@@ -688,6 +693,11 @@ public class PresetManager
         {
             LOGGER.warn("[MobWizardry] Boss '{}' has a spawnChance ({}) out of range 0..1 - using 0.5", name, boss.spawnSettings.spawnChance);
             boss.spawnSettings.spawnChance = 0.5;
+        }
+        if (boss.spawnSettings.skyFlashBolts < 0 || boss.spawnSettings.skyFlashBolts > 30)
+        {
+            LOGGER.warn("[MobWizardry] Boss '{}' has a skyFlashBolts ({}) out of range 0..30 - using 4", name, boss.spawnSettings.skyFlashBolts);
+            boss.spawnSettings.skyFlashBolts = 4;
         }
         double min = boss.spawnSettings.minDistanceFromPlayer;
         double max = boss.spawnSettings.maxDistanceFromPlayer;
@@ -1257,7 +1267,8 @@ public class PresetManager
                         "maxDistanceFromPlayer": 48,
                         "spawnChance": 0.5,
                         "despawnOnTimeChange": true,
-                        "spawnGlowSeconds": 60
+                        "spawnGlowSeconds": 60,
+                        "skyFlashBolts": 4
                       },
                       "daySpawnWeight": 5,
                       "nightSpawnWeight": 20,
@@ -1371,7 +1382,8 @@ public class PresetManager
                       "boss": "wizard_boss",
                       "spawnDistance": 32.0,
                       "bossSpawnDistance": 48.0,
-                      "groupRadius": 4.0
+                      "groupRadius": 4.0,
+                      "skyFlashBolts": 4
                     }
                   }
                 }

@@ -638,7 +638,8 @@ through its `spawnSettings` block — there is no global setting:
   "maxDistanceFromPlayer": 48,
   "spawnChance": 0.5,
   "despawnOnTimeChange": true,
-  "spawnGlowSeconds": 60
+  "spawnGlowSeconds": 60,
+  "skyFlashBolts": 4
 }
 ```
 
@@ -649,6 +650,7 @@ through its `spawnSettings` block — there is no global setting:
 | `maxActiveBosses` | how many of *this* boss may be alive at once before it stops rolling. |
 | `minDistanceFromPlayer` / `maxDistanceFromPlayer` | this boss spawns at a safe spot between these distances from a random online player. |
 | `spawnChance` | the chance (0–1) that an eligible attempt actually spawns the boss: `1` = every attempt, `0.5` = on average every other attempt, `0.1` = rare, `0` = never. Effective frequency is roughly `spawnAttemptIntervalSeconds / spawnChance` (e.g. 1200 / 0.5 = a boss roughly every 40 minutes). |
+| `skyFlashBolts` | how many extra visual-only lightning bolts (besides the main strike) flash around the boss when it arrives, so the sky thunders even in clear weather. `0` disables. Default `4`, clamped 0–30. |
 | `despawnOnTimeChange` | `true` (default) = a boss that **naturally** spawned disappears when the day/night phase flips (a night-spawned boss vanishes at day, a day-spawned boss vanishes at night). Bosses summoned with `/mobwizardry summon`/`boss` are never affected. |
 | `spawnGlowSeconds` | how long the boss glows after arriving so players can see it (default 60; `0` disables the glow). |
 
@@ -821,6 +823,7 @@ spell categories in the [spells](#beginners-guide-to-the-settings) bullet.
 | `spawnSettings.spawnChance` | number | chance (0–1) an eligible attempt actually spawns (`0` = never, `1` = every attempt) |
 | `spawnSettings.despawnOnTimeChange` | bool | naturally-spawned boss vanishes when day/night flips |
 | `spawnSettings.spawnGlowSeconds` | int | arrival glow duration (0 = off) |
+| `spawnSettings.skyFlashBolts` | int | extra visual-only lightning bolts flashing around the boss on arrival (0 = off, default 4) |
 | `daySpawnWeight` | number | natural-spawn weight during the day (`0` = never by day) |
 | `nightSpawnWeight` | number | natural-spawn weight at night (`0` = never by night) |
 | `phases` | list | the health-based phases |
@@ -862,7 +865,8 @@ Details: [The boss block](#the-boss-block), [Phases](#phases),
 | `boss` | string | the boss-enabled preset used for the final wave (empty = none) |
 | `spawnDistance` | number | how far (in blocks) from a random player's position wave enemies spawn, so you get a moment to prepare. Clamped to ≥ 8. Default `32`. |
 | `bossSpawnDistance` | number | how far (in blocks) from a random player's position the final boss spawns. Clamped to ≥ 8. Default `48`. |
-| `groupRadius` | number | how tightly a wave's enemies cluster around their single rally point (blocks), so a whole wave arrives in one group. Clamped to 1–16. Default `4`. |
+| `groupRadius` | number | how tightly a wave's enemies cluster around one rally point. Clamped to 1–16. Default `4`. |
+| `skyFlashBolts` | int | visual-only lightning bolts flashing around the raid origin at raid start (0 = off, default 4) |
 
 Details and semantics (including "Why is there a weight?"): [Raid / horde](#raid--horde-300).
 
@@ -1047,7 +1051,8 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
       "boss": "wizard_boss",
       "spawnDistance": 32.0,
       "bossSpawnDistance": 48.0,
-      "groupRadius": 4.0
+      "groupRadius": 4.0,
+      "skyFlashBolts": 4
     }
   }
 }
@@ -1069,6 +1074,7 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
 | `spawnDistance` | Blocks from a random player's position where wave enemies spawn (85-115% jitter, floored at 8), so you get a moment to prepare. Default `32`. |
 | `bossSpawnDistance` | Blocks from a random player's position where the final boss spawns. Default `48`. |
 | `groupRadius` | Each wave picks ONE rally point `spawnDistance` away and spawns all of its enemies within this many blocks of it, so the wave arrives grouped together instead of scattered around the ring. Default `4`. |
+| `skyFlashBolts` | Visual-only lightning bolts that flash around the raid origin when the raid starts (`0` = off, default `4`). Every raid enemy and the boss also spawn **targeting a random attackable player** (falling back to their normal AI when no player is attackable). |
 
 Every raid enemy and the boss spawn **targeting a random attackable player** (falling back to
 their normal AI when no player is attackable).

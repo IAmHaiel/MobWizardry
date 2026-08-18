@@ -107,7 +107,7 @@ public class BossManager
         {
             activatePhase(mob, preset, preset.boss.phases.get(0));
         }
-        strikeLightning(mob);
+        strikeLightning(mob, preset);
         broadcastArrival(mob, preset);
         LOGGER.info("[MobWizardry] Bossified {} ({}) at {}", preset.boss.name,
                 mob.getType().getDescriptionId(), mob.blockPosition());
@@ -246,6 +246,75 @@ public class BossManager
     {
         tickPhases();
         tickSpawns(server);
+        tickSkyStorms(server);
+    }
+
+    private static final List<SkyStorm> SKY_STORMS = new ArrayList<>();
+
+    private record SkyStorm(ServerLevel level, Vec3 center, int remaining, int intervalTicks, int nextSpawnTick)
+    {
+    }
+
+    /**
+     * Starts a short thunderstorm of visual-only lightning bolts around {@code center}: one bolt
+     * every {@code intervalTicks} ticks until {@code boltCount} have been struck. Each bolt
+     * flashes the sky and plays thunder on nearby clients regardless of the world's weather.
+     * A count of 0 or less does nothing.
+     */
+    public static void arrivalStorm(ServerLevel level, Vec3 center, int boltCount, int intervalTicks)
+    {
+        if (boltCount <= 0 || intervalTicks < 1)
+        {
+            return;
+        }
+        SKY_STORMS.add(new SkyStorm(level, center, boltCount, intervalTicks,
+                level.getServer().getTickCount() + 1));
+    }
+
+    private static void tickSkyStorms(MinecraftServer server)
+    {
+        if (SKY_STORMS.isEmpty())
+        {
+            return;
+        }
+        int tick = server.getTickCount();
+        for (Iterator<SkyStorm> it = SKY_STORMS.iterator(); it.hasNext();)
+        {
+            SkyStorm storm = it.next();
+            if (storm.level().isClientSide() || storm.level().getServer() == null)
+            {
+                it.remove();
+                continue;
+            }
+            if (tick < storm.nextSpawnTick())
+            {
+                continue;
+            }
+            strikeStormBolt(storm.level(), storm.center());
+            if (storm.remaining() <= 1)
+            {
+                it.remove();
+            }
+            else
+            {
+                it.set(new SkyStorm(storm.level(), storm.center(), storm.remaining() - 1,
+                        storm.intervalTicks(), tick + storm.intervalTicks()));
+            }
+        }
+    }
+
+    private static void strikeStormBolt(ServerLevel level, Vec3 center)
+    {
+        double angle = level.random.nextDouble() * Math.PI * 2.0;
+        double dist = 6.0 + level.random.nextDouble() * 8.0;
+        LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
+        if (bolt == null)
+        {
+            return;
+        }
+        bolt.moveTo(center.x + Math.cos(angle) * dist, center.y, center.z + Math.sin(angle) * dist);
+        bolt.setVisualOnly(true);
+        level.addFreshEntity(bolt);
     }
 
     private static void tickPhases()
@@ -524,7 +593,7 @@ public class BossManager
         }
     }
 
-    private static void strikeLightning(PathfinderMob mob)
+    private static void strikeLightning(PathfinderMob mob, PresetDefinition preset)
     {
         if (!(mob.level() instanceof ServerLevel level) || level.getServer() == null)
         {
@@ -547,6 +616,12 @@ public class BossManager
             bolt.setVisualOnly(true);
             level.addFreshEntity(bolt);
         }));
+        // A brief thunderstorm of extra visual bolts around the boss so the sky flashes.
+        int stormBolts = preset.boss.spawnSettings.skyFlashBolts;
+        if (stormBolts > 0)
+        {
+            arrivalStorm(level, mob.position(), stormBolts, 6);
+        }
     }
 
     private static void broadcastArrival(PathfinderMob mob, PresetDefinition preset)

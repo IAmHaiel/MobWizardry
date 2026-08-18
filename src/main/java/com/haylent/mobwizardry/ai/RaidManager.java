@@ -91,6 +91,8 @@ public class RaidManager
             player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
             player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 70, 20));
         }
+        // Visual thunderstorm over the raid origin so the sky flashes even in clear weather.
+        BossManager.arrivalStorm(raid.level, raid.startPos, raid.def.skyFlashBolts, 6);
     }
 
     /**
