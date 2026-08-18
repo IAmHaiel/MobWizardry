@@ -243,7 +243,7 @@ public class RaidManager
         return null;
     }
 
-    private static void spawnEnemy(ActiveRaid raid, PresetDefinition preset, Vec3 rally)
+    private static boolean spawnEnemy(ActiveRaid raid, PresetDefinition preset, Vec3 rally)
     {
         Vec3 pos = clusterPos(raid, rally, raid.def.groupRadius);
         PathfinderMob mob = SpawnHelper.spawnTaggedMob(raid.level, WIZARD_NPC, preset, pos);
