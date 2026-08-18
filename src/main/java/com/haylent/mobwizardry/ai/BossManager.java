@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -518,18 +519,27 @@ public class BossManager
 
     private static void strikeLightning(PathfinderMob mob)
     {
-        if (!(mob.level() instanceof ServerLevel level))
+        if (!(mob.level() instanceof ServerLevel level) || level.getServer() == null)
         {
             return;
         }
-        LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
-        if (bolt == null)
-        {
-            return;
-        }
-        bolt.moveTo(mob.getX(), mob.getY(), mob.getZ());
-        bolt.setVisualOnly(true);
-        level.addFreshEntity(bolt);
+        // Defer to the next server tick so the boss is fully added and tracked before the bolt
+        // spawns (its spawn packet then reaches every nearby client), and strike at head level so
+        // the bolt is visible even in caves instead of being buried at the mob's feet.
+        level.getServer().tell(new TickTask(level.getServer().getTickCount(), () -> {
+            if (!mob.isAlive() || mob.isRemoved())
+            {
+                return;
+            }
+            LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
+            if (bolt == null)
+            {
+                return;
+            }
+            bolt.moveTo(mob.getX(), mob.getY() + mob.getBbHeight(), mob.getZ());
+            bolt.setVisualOnly(true);
+            level.addFreshEntity(bolt);
+        }));
     }
 
     private static void broadcastArrival(PathfinderMob mob, PresetDefinition preset)
