@@ -64,10 +64,6 @@ public class MobWizardryMod
         {
             BossManager.tickServer(event.getServer());
             RaidManager.tickServer(event.getServer());
-            if (event.getServer().getTickCount() >= 60)
-            {
-                event.getServer().halt(false);
-            }
         }
     }
 }
