@@ -19,11 +19,13 @@ import io.redspace.ironsspellbooks.api.registry.SpellRegistry;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import io.redspace.ironsspellbooks.api.util.AnimationHolder;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
+import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
 import net.minecraft.client.renderer.entity.layers.ItemInHandLayer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.ResourceLocation;
@@ -54,9 +56,14 @@ public class WizardNpcRenderer extends HumanoidMobRenderer<WizardNpc, PlayerMode
     public WizardNpcRenderer(EntityRendererProvider.Context context)
     {
         super(context, new PlayerModel<>(context.bakeLayer(ModelLayers.PLAYER), false), 0.5F);
-        // No armor layer: the default preset equips Iron's Spells armor, which has no vanilla
-        // armor-overlay texture - a vanilla HumanoidArmorLayer would throw FileNotFoundException
-        // on the render thread every frame. Armor items still apply their server-side effects.
+        // Vanilla armor overlay layer (player-shaped armor models) so equipped vanilla armor
+        // items render like on a player/zombie. Armor from other mods with custom models (e.g.
+        // Iron's Spells' wandering_magician set) has no vanilla overlay texture and is warned
+        // about at config load; those items still apply their server-side effects.
+        this.addLayer(new HumanoidArmorLayer<>(this,
+                new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR)),
+                new HumanoidModel<>(context.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR)),
+                context.getModelManager()));
         this.addLayer(new ItemInHandLayer<>(this, context.getItemInHandRenderer()));
     }
 
