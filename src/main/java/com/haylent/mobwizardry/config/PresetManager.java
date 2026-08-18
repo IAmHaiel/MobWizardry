@@ -249,6 +249,16 @@ public class PresetManager
         {
             raid.name = name;
         }
+        if (raid.spawnDistance < 8.0)
+        {
+            LOGGER.warn("[MobWizardry] Raid '{}' spawnDistance {} is too small - clamped to 8", name, raid.spawnDistance);
+            raid.spawnDistance = 8.0;
+        }
+        if (raid.bossSpawnDistance < 8.0)
+        {
+            LOGGER.warn("[MobWizardry] Raid '{}' bossSpawnDistance {} is too small - clamped to 8", name, raid.bossSpawnDistance);
+            raid.bossSpawnDistance = 8.0;
+        }
         if (raid.waves == null)
         {
             raid.waves = new ArrayList<>();
@@ -1347,7 +1357,9 @@ public class PresetManager
                           ]
                         }
                       ],
-                      "boss": "wizard_boss"
+                      "boss": "wizard_boss",
+                      "spawnDistance": 32.0,
+                      "bossSpawnDistance": 48.0
                     }
                   }
                 }

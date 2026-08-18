@@ -19,6 +19,18 @@ public class RaidDefinition
     public String boss = "";
 
     /**
+     * How far (in blocks) from a random player's position wave enemies spawn, so the player gets
+     * a moment to prepare. Values below 8 are clamped to 8.
+     */
+    public double spawnDistance = 32.0;
+
+    /**
+     * How far (in blocks) from a random player's position the final boss spawns. Values below 8
+     * are clamped to 8.
+     */
+    public double bossSpawnDistance = 48.0;
+
+    /**
      * One wave of the raid. Its enemies are spawned weighted-random-capped: the wave spawns
      * {@code sum(counts)} mobs, each pick weighted by the enemy's {@code weight} among presets
      * that have not yet reached their {@code count}.

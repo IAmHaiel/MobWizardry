@@ -235,15 +235,40 @@ public class RaidManager
 
     private static boolean spawnEnemy(ActiveRaid raid, PresetDefinition preset, Vec3 origin)
     {
-        Vec3 pos = origin.add(raid.level.random.nextDouble() * 12.0 - 6.0, 0,
-                raid.level.random.nextDouble() * 12.0 - 6.0);
+        Vec3 pos = raidSpawnPos(raid, origin, raid.def.spawnDistance);
         PathfinderMob mob = SpawnHelper.spawnTaggedMob(raid.level, WIZARD_NPC, preset, pos);
         if (mob == null)
         {
             return false;
         }
         raid.waveEnemies.add(mob.getUUID());
+        targetRandomPlayer(raid.level, mob);
         return true;
+    }
+
+    /**
+     * A position {@code distance} blocks from {@code origin} in a random direction (with
+     * 85-115% jitter), floored at 8 blocks so the raid never spawns on top of the player.
+     */
+    private static Vec3 raidSpawnPos(ActiveRaid raid, Vec3 origin, double distance)
+    {
+        double angle = raid.level.random.nextDouble() * Math.PI * 2.0;
+        double dist = Math.max(8.0, distance) * (0.85 + raid.level.random.nextDouble() * 0.3);
+        return new Vec3(origin.x + Math.cos(angle) * dist, origin.y, origin.z + Math.sin(angle) * dist);
+    }
+
+    /**
+     * Points the mob at a random attackable online player so a fresh raid enemy/boss goes
+     * straight for someone; with no attackable player the mob falls back to its normal AI.
+     */
+    private static void targetRandomPlayer(ServerLevel level, PathfinderMob mob)
+    {
+        List<ServerPlayer> attackable = level.players().stream().filter(mob::canAttack).toList();
+        if (attackable.isEmpty())
+        {
+            return;
+        }
+        mob.setTarget(attackable.get(level.random.nextInt(attackable.size())));
     }
 
     private static void startBossPhase(ActiveRaid raid)
@@ -261,7 +286,9 @@ public class RaidManager
             endRaid(raid, true);
             return;
         }
-        PathfinderMob boss = BossManager.spawnBoss(raid.level, bossPreset, spawnOrigin(raid), false);
+        Vec3 origin = spawnOrigin(raid);
+        Vec3 pos = raidSpawnPos(raid, origin, raid.def.bossSpawnDistance);
+        PathfinderMob boss = BossManager.spawnBoss(raid.level, bossPreset, pos, false);
         if (boss == null)
         {
             endRaid(raid, true);
