@@ -866,7 +866,8 @@ Details: [The boss block](#the-boss-block), [Phases](#phases),
 | `spawnDistance` | number | how far (in blocks) from a random player's position wave enemies spawn, so you get a moment to prepare. Clamped to ≥ 8. Default `32`. |
 | `bossSpawnDistance` | number | how far (in blocks) from a random player's position the final boss spawns. Clamped to ≥ 8. Default `48`. |
 | `groupRadius` | number | how tightly a wave's enemies cluster around one rally point. Clamped to 1–16. Default `4`. |
-| `skyFlashBolts` | int | visual-only lightning bolts flashing around the raid origin at raid start (0 = off, default 4) |
+| `skyFlashBolts` | int | visual-only lightning bolts flashing around the wave rally point at each wave's spawn (0 = off, default 4) |
+| `waveGlowSeconds` | int | how many seconds each wave's enemies glow after spawning (0 = off, default 20) |
 
 Details and semantics (including "Why is there a weight?"): [Raid / horde](#raid--horde-300).
 
@@ -1052,7 +1053,8 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
       "spawnDistance": 32.0,
       "bossSpawnDistance": 48.0,
       "groupRadius": 4.0,
-      "skyFlashBolts": 4
+      "skyFlashBolts": 4,
+      "waveGlowSeconds": 20
     }
   }
 }
@@ -1074,7 +1076,8 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
 | `spawnDistance` | Blocks from a random player's position where wave enemies spawn (85-115% jitter, floored at 8), so you get a moment to prepare. Default `32`. |
 | `bossSpawnDistance` | Blocks from a random player's position where the final boss spawns. Default `48`. |
 | `groupRadius` | Each wave picks ONE rally point `spawnDistance` away and spawns all of its enemies within this many blocks of it, so the wave arrives grouped together instead of scattered around the ring. Default `4`. |
-| `skyFlashBolts` | Visual-only lightning bolts that flash around the raid origin when the raid starts (`0` = off, default `4`). Every raid enemy and the boss also spawn **targeting a random attackable player** (falling back to their normal AI when no player is attackable). |
+| `skyFlashBolts` | Visual-only lightning bolts that flash around the wave rally point when a wave spawns (`0` = off, default `4`). Every raid enemy and the boss also spawn **targeting a random attackable player** (falling back to their normal AI when no player is attackable). |
+| `waveGlowSeconds` | How long each wave's enemies glow after spawning so you can spot the horde (default `20`; `0` = off). |
 
 Every raid enemy and the boss spawn **targeting a random attackable player** (falling back to
 their normal AI when no player is attackable).
@@ -1161,11 +1164,12 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets); while a combo runs it casts nothing else, and after it finishes defense/movement/support/escape trigger like a normal wizard until the next combo,
    - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
 7. For a **raid** (a `raids` entry in `raids.json`):
-   - `/mobwizardry raid list` shows it, `/mobwizardry raid start <raid>` starts it — the start message appears, the pillager horn + lightning crash play and the `YOU ARE INVADED` subtitle shows, and the purple raid bar shows `Raid Name — Wave 1/M`,
-   - wave enemies spawn roughly `spawnDistance` blocks from you, grouped within `groupRadius` blocks of one rally point, and head straight for a random attackable player,
+   - `/mobwizardry raid list` shows it, `/mobwizardry raid start <raid>` starts it — the start message appears, the pillager horn + lightning crash play and the `YOU ARE INVADED` subtitle shows, and the purple raid bar shows `Raid Name — Wave 1/M` at 100%,
+   - each wave spawns grouped at its rally point (`spawnDistance` away, within `groupRadius`) under a lightning storm, its enemies glow for `waveGlowSeconds`, and they head straight for a random attackable player,
+   - the raid bar **drains from 100% toward 0%** as you defeat the wave's enemies; when a wave is cleared a lightning storm + thunder plays and the bar **animates back up to 100%** for the next wave,
    - kill every enemy in a wave — the bar fills and the next wave (or the boss) spawns,
-   - after the last wave the configured boss appears roughly `bossSpawnDistance` blocks away — lightning, name, its own boss bar — and targets a random player; killing it ends the raid with the victory message,
-   - if all players die the raid ends with the defeat message.
+   - after the last wave the configured boss appears roughly `bossSpawnDistance` blocks away — lightning, name, its own boss bar — and targets a random player; killing it ends the raid with the victory message and a victory chime,
+   - if all players die the raid ends with the defeat message and a failure sound.
 8. Tweak `presets.json` / `bosses.json` / `raids.json` / `names.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
 ## Notes

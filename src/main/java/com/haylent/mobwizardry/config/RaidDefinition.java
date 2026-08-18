@@ -44,6 +44,12 @@ public class RaidDefinition
     public int skyFlashBolts = 4;
 
     /**
+     * How many seconds each wave's enemies glow after spawning (so the horde is easy to spot).
+     * 0 disables. Clamped to 0..120.
+     */
+    public int waveGlowSeconds = 20;
+
+    /**
      * One wave of the raid. Its enemies are spawned weighted-random-capped: the wave spawns
      * {@code sum(counts)} mobs, each pick weighted by the enemy's {@code weight} among presets
      * that have not yet reached their {@code count}.

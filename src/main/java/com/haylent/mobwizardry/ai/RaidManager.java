@@ -5,6 +5,7 @@ import com.haylent.mobwizardry.config.PresetManager;
 import com.haylent.mobwizardry.config.RaidDefinition;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
@@ -13,9 +14,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.phys.Vec3;
@@ -91,8 +95,6 @@ public class RaidManager
             player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
             player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 70, 20));
         }
-        // Visual thunderstorm over the raid origin so the sky flashes even in clear weather.
-        BossManager.arrivalStorm(raid.level, raid.startPos, raid.def.skyFlashBolts, 6);
     }
 
     /**
@@ -149,6 +151,7 @@ public class RaidManager
         if (raid.waveEnemies.isEmpty())
         {
             raid.waveIndex++;
+            playWaveClearedEffect(raid);
             if (raid.waveIndex >= raid.def.waves.size())
             {
                 startBossPhase(raid);
@@ -184,6 +187,8 @@ public class RaidManager
         // One rally point for the whole wave, so the enemies arrive grouped together instead of
         // scattered around the spawn-distance ring.
         Vec3 rally = raidSpawnPos(raid, origin, raid.def.spawnDistance);
+        // Visual thunderstorm over the rally point where this wave's group spawns.
+        BossManager.arrivalStorm(raid.level, rally, raid.def.skyFlashBolts, 6);
         int spawned = 0;
         for (int i = 0; i < total; i++)
         {
@@ -238,7 +243,7 @@ public class RaidManager
         return null;
     }
 
-    private static boolean spawnEnemy(ActiveRaid raid, PresetDefinition preset, Vec3 rally)
+    private static void spawnEnemy(ActiveRaid raid, PresetDefinition preset, Vec3 rally)
     {
         Vec3 pos = clusterPos(raid, rally, raid.def.groupRadius);
         PathfinderMob mob = SpawnHelper.spawnTaggedMob(raid.level, WIZARD_NPC, preset, pos);
@@ -247,8 +252,26 @@ public class RaidManager
             return false;
         }
         raid.waveEnemies.add(mob.getUUID());
+        if (raid.def.waveGlowSeconds > 0)
+        {
+            mob.addEffect(new MobEffectInstance(MobEffects.GLOWING, raid.def.waveGlowSeconds * 20));
+        }
         targetRandomPlayer(raid.level, mob);
         return true;
+    }
+
+    /**
+     * Celebration of a cleared wave: a lightning storm and thunder sound over the players'
+     * position before the next wave (or the boss) begins.
+     */
+    private static void playWaveClearedEffect(ActiveRaid raid)
+    {
+        Vec3 pos = spawnOrigin(raid);
+        BossManager.arrivalStorm(raid.level, pos, raid.def.skyFlashBolts, 4);
+        for (ServerPlayer player : raid.level.players())
+        {
+            player.playNotifySound(SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.WEATHER, 2.0f, 1.0f);
+        }
     }
 
     /**
@@ -321,13 +344,23 @@ public class RaidManager
         {
             broadcast(raid.level, raid.def.victoryMessage, ChatFormatting.GOLD);
             LOGGER.info("[MobWizardry] Raid '{}' ended in victory", raid.def.name);
+            playEndSound(raid, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE);
         }
         else
         {
             broadcast(raid.level, raid.def.defeatMessage, ChatFormatting.RED);
             LOGGER.info("[MobWizardry] Raid '{}' ended in defeat", raid.def.name);
+            playEndSound(raid, SoundEvents.UI_TOAST_ERROR);
         }
         cancelRaid(raid);
+    }
+
+    private static void playEndSound(ActiveRaid raid, Holder<SoundEvent> sound)
+    {
+        for (ServerPlayer player : raid.level.players())
+        {
+            player.playNotifySound(sound, SoundSource.MASTER, 2.0f, 1.0f);
+        }
     }
 
     private static void cancelRaid(ActiveRaid raid)
@@ -343,9 +376,10 @@ public class RaidManager
     private static void updateWaveBar(ActiveRaid raid)
     {
         ServerBossEvent bar = raid.bar;
-        int killed = Math.max(0, raid.waveTotal - raid.waveEnemies.size());
-        float progress = raid.waveTotal <= 0 ? 0.0f
-                : Math.max(0.0f, Math.min(1.0f, (float) killed / raid.waveTotal));
+        // Full bar that drains to empty as the horde is defeated; the client animates the rise
+        // back to 100% when the next wave (or the boss) sets it full again.
+        float progress = raid.waveTotal <= 0 ? 1.0f
+                : Math.max(0.0f, Math.min(1.0f, (float) raid.waveEnemies.size() / raid.waveTotal));
         bar.setName(Component.literal(raid.def.name + " - Wave " + (raid.waveIndex + 1) + "/" + raid.def.waves.size()));
         bar.setProgress(progress);
         bar.setVisible(true);

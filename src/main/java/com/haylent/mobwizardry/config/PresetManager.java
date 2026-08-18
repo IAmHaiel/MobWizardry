@@ -269,6 +269,11 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] Raid '{}' has a skyFlashBolts ({}) out of range 0..30 - using 4", name, raid.skyFlashBolts);
             raid.skyFlashBolts = 4;
         }
+        if (raid.waveGlowSeconds < 0 || raid.waveGlowSeconds > 120)
+        {
+            LOGGER.warn("[MobWizardry] Raid '{}' has a waveGlowSeconds ({}) out of range 0..120 - using 20", name, raid.waveGlowSeconds);
+            raid.waveGlowSeconds = 20;
+        }
         if (raid.waves == null)
         {
             raid.waves = new ArrayList<>();
@@ -1383,7 +1388,8 @@ public class PresetManager
                       "spawnDistance": 32.0,
                       "bossSpawnDistance": 48.0,
                       "groupRadius": 4.0,
-                      "skyFlashBolts": 4
+                      "skyFlashBolts": 4,
+                      "waveGlowSeconds": 20
                     }
                   }
                 }
