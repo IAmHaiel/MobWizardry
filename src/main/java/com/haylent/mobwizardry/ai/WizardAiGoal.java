@@ -3,6 +3,7 @@ package com.haylent.mobwizardry.ai;
 import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
+import com.haylent.mobwizardry.config.WizardDisplay;
 import com.haylent.mobwizardry.entity.WizardNpc;
 import io.redspace.ironsspellbooks.api.entity.IMagicEntity;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
@@ -209,6 +210,10 @@ public class WizardAiGoal extends Goal
         {
             npc.setSkin(preset.skin.trim());
         }
+        if (!preset.boss.enabled)
+        {
+            WizardDisplay.applyRandomName(mob, preset.team);
+        }
         BossManager.sync(mob, preset);
     }
 
@@ -305,6 +310,10 @@ public class WizardAiGoal extends Goal
         if (mob instanceof WizardNpc npc && preset.skin != null && !preset.skin.isBlank())
         {
             npc.setSkin(preset.skin.trim());
+        }
+        if (!preset.boss.enabled)
+        {
+            WizardDisplay.applyRandomName(mob, preset.team);
         }
         BossManager.sync(mob, preset);
         LOGGER.info("[MobWizardry] Re-applied preset '{}' to {} at {}",

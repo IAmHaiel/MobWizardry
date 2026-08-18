@@ -333,6 +333,12 @@ public class PresetManager
                         {
                             LOGGER.warn("[MobWizardry] '_spawnSettings' in presets.json is ignored - it moved to config/mobwizardry/bosses.json");
                         }
+                        else if ("_wizardDisplay".equals(presetName))
+                        {
+                            WizardDisplay.Settings parsed = GSON.fromJson(entry.getValue(), WizardDisplay.Settings.class);
+                            validateWizardDisplay(parsed);
+                            WizardDisplay.setSettings(parsed);
+                        }
                         continue;
                     }
                     PresetDefinition preset = GSON.fromJson(entry.getValue(), PresetDefinition.class);
@@ -782,6 +788,34 @@ public class PresetManager
         };
     }
 
+    private static void validateWizardDisplay(WizardDisplay.Settings settings)
+    {
+        if (settings == null)
+        {
+            WizardDisplay.setSettings(new WizardDisplay.Settings());
+            return;
+        }
+        if (!isValidNameColor(settings.nameColor))
+        {
+            LOGGER.warn("[MobWizardry] _wizardDisplay has an invalid nameColor '{}' - using 'white'", settings.nameColor);
+            settings.nameColor = "white";
+        }
+        if (!isValidNameColor(settings.teamColor))
+        {
+            LOGGER.warn("[MobWizardry] _wizardDisplay has an invalid teamColor '{}' - using 'gray'", settings.teamColor);
+            settings.teamColor = "gray";
+        }
+        if (settings.names == null)
+        {
+            settings.names = new ArrayList<>();
+        }
+        settings.names.removeIf(name -> name == null || name.isBlank());
+        if (settings.names.isEmpty())
+        {
+            LOGGER.warn("[MobWizardry] _wizardDisplay has no names - summoned wizards (non-boss) will have no name tag");
+        }
+    }
+
     private static boolean isValidNameColor(String nameColor)
     {
         return PresetDefinition.parseNameColor(nameColor) != null;
@@ -861,6 +895,14 @@ public class PresetManager
     {
         return """
                 {
+                  "_wizardDisplay": {
+                    "nameColor": "white",
+                    "teamColor": "gray",
+                    "names": [
+                      "Vodyaniski", "Alech", "Mordecai", "Seraphine", "Kael",
+                      "Ilyana", "Draven", "Elysia", "Rowan", "Zephyr"
+                    ]
+                  },
                   "wizard": {
                     "requiredTag": "wizard",
                     "wizardType": "ranged",

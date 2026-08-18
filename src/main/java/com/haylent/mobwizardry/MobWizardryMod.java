@@ -14,6 +14,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
 
@@ -28,9 +29,18 @@ public class MobWizardryMod
         ModEntities.ENTITY_TYPES.register(FMLJavaModLoadingContext.get().getModEventBus());
         ModEntities.ITEMS.register(FMLJavaModLoadingContext.get().getModEventBus());
         ModEntities.CREATIVE_TABS.register(FMLJavaModLoadingContext.get().getModEventBus());
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onCommonSetup);
 
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new MobWizardryEvents());
+    }
+
+    private void onCommonSetup(FMLCommonSetupEvent event)
+    {
+        // Load + validate the configs at mod-load time so errors surface early; the server-start
+        // reload below re-reads them fresh for the actual session.
+        WizardSkins.createSkinDirectory();
+        PresetManager.reload();
     }
 
     @SubscribeEvent
@@ -54,6 +64,10 @@ public class MobWizardryMod
         {
             BossManager.tickServer(event.getServer());
             RaidManager.tickServer(event.getServer());
+            if (event.getServer().getTickCount() >= 60)
+            {
+                event.getServer().halt(false);
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ package com.haylent.mobwizardry.ai;
 
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
+import com.haylent.mobwizardry.config.WizardDisplay;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -205,11 +206,12 @@ public class BossManager
     }
 
     /**
-     * Re-applies the boss's configured name tag (in case the config changed on reload).
+     * Re-applies the boss's configured name tag (in case the config changed on reload), with the
+     * boss's team line beneath it.
      */
     private static void refreshName(PathfinderMob mob, PresetDefinition preset)
     {
-        mob.setCustomName(PresetDefinition.bossNameComponent(preset.boss));
+        mob.setCustomName(WizardDisplay.displayName(PresetDefinition.bossNameComponent(preset.boss), preset.team));
         mob.setCustomNameVisible(true);
     }
 
