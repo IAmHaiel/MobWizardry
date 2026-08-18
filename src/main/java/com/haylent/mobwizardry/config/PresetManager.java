@@ -10,6 +10,8 @@ import com.haylent.mobwizardry.MobWizardryMod;
 import io.redspace.ironsspellbooks.api.spells.AbstractSpell;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ArmorItem;
+import net.minecraft.world.item.Item;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
@@ -835,8 +837,35 @@ public class PresetManager
                 LOGGER.error("[MobWizardry] Preset '{}' equipment slot '{}' references unknown item '{}' - removed", presetName, entry.getKey(), entry.getValue());
                 return true;
             }
+            warnOnNonVanillaArmor(presetName, entry.getKey(), rl);
             return false;
         });
+    }
+
+    /**
+     * Warns when an equipped armor item uses a custom armor material: the vanilla armor layer
+     * builds {@code textures/models/armor/<material>_layer_1.png} in the minecraft namespace, so
+     * such items never render on wizard NPCs (the item's effects still apply). Vanilla materials
+     * (leather/chain/iron/gold/diamond/turtle/netherite) have overlay textures and render fine.
+     */
+    private static void warnOnNonVanillaArmor(String presetName, String slotName, ResourceLocation itemId)
+    {
+        Item item = ForgeRegistries.ITEMS.getValue(itemId);
+        if (!(item instanceof ArmorItem armorItem))
+        {
+            return;
+        }
+        String material = armorItem.getMaterial().getName();
+        boolean vanilla = switch (material)
+        {
+            case "leather", "chain", "iron", "gold", "diamond", "turtle", "netherite" -> true;
+            default -> false;
+        };
+        if (!vanilla)
+        {
+            LOGGER.warn("[MobWizardry] Preset '{}' equips '{}' (armor material '{}') in {} - it has no vanilla overlay texture and will not render on wizard NPCs (its effects still apply); use a vanilla armor item for visible gear",
+                    presetName, itemId, material, slotName);
+        }
     }
 
     private static void validateAttributes(String presetName, PresetDefinition preset)
@@ -916,10 +945,10 @@ public class PresetManager
                     "movementDistanceOffset": 5.0,
                     "equipment": {
                       "mainhand": "irons_spellbooks:blood_staff",
-                      "head": "irons_spellbooks:wandering_magician_helmet",
-                      "chest": "irons_spellbooks:wandering_magician_chestplate",
-                      "legs": "irons_spellbooks:wandering_magician_leggings",
-                      "feet": "irons_spellbooks:wandering_magician_boots"
+                      "head": "minecraft:iron_helmet",
+                      "chest": "minecraft:iron_chestplate",
+                      "legs": "minecraft:iron_leggings",
+                      "feet": "minecraft:iron_boots"
                     },
                     "attributes": {
                       "irons_spellbooks:max_mana": 100,
@@ -958,10 +987,10 @@ public class PresetManager
                     "movementDistanceOffset": 5.0,
                     "equipment": {
                       "mainhand": "irons_spellbooks:blood_staff",
-                      "head": "irons_spellbooks:wandering_magician_helmet",
-                      "chest": "irons_spellbooks:wandering_magician_chestplate",
-                      "legs": "irons_spellbooks:wandering_magician_leggings",
-                      "feet": "irons_spellbooks:wandering_magician_boots"
+                      "head": "minecraft:iron_helmet",
+                      "chest": "minecraft:iron_chestplate",
+                      "legs": "minecraft:iron_leggings",
+                      "feet": "minecraft:iron_boots"
                     },
                     "attributes": {
                       "irons_spellbooks:max_mana": 60,
@@ -991,10 +1020,10 @@ public class PresetManager
                     "movementDistanceOffset": 5.0,
                     "equipment": {
                       "mainhand": "irons_spellbooks:blood_staff",
-                      "head": "irons_spellbooks:wandering_magician_helmet",
-                      "chest": "irons_spellbooks:wandering_magician_chestplate",
-                      "legs": "irons_spellbooks:wandering_magician_leggings",
-                      "feet": "irons_spellbooks:wandering_magician_boots"
+                      "head": "minecraft:iron_helmet",
+                      "chest": "minecraft:iron_chestplate",
+                      "legs": "minecraft:iron_leggings",
+                      "feet": "minecraft:iron_boots"
                     },
                     "attributes": {
                       "irons_spellbooks:max_mana": 100,
