@@ -5,7 +5,6 @@ import com.haylent.mobwizardry.config.PresetManager;
 import com.haylent.mobwizardry.config.RaidDefinition;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.Holder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
@@ -344,18 +343,17 @@ public class RaidManager
         {
             broadcast(raid.level, raid.def.victoryMessage, ChatFormatting.GOLD);
             LOGGER.info("[MobWizardry] Raid '{}' ended in victory", raid.def.name);
-            playEndSound(raid, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE);
-        }
+            playEndSound(raid, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE);        }
         else
         {
             broadcast(raid.level, raid.def.defeatMessage, ChatFormatting.RED);
             LOGGER.info("[MobWizardry] Raid '{}' ended in defeat", raid.def.name);
-            playEndSound(raid, SoundEvents.UI_TOAST_ERROR);
+            playEndSound(raid, SoundEvents.ANVIL_LAND);
         }
         cancelRaid(raid);
     }
 
-    private static void playEndSound(ActiveRaid raid, Holder<SoundEvent> sound)
+    private static void playEndSound(ActiveRaid raid, SoundEvent sound)
     {
         for (ServerPlayer player : raid.level.players())
         {
