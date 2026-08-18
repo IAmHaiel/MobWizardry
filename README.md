@@ -197,11 +197,7 @@ change the values to taste.
 {
   "_wizardDisplay": {
     "nameColor": "white",
-    "teamColor": "gray",
-    "names": [
-      "Vodyaniski", "Alech", "Mordecai", "Seraphine", "Kael",
-      "Ilyana", "Draven", "Elysia", "Rowan", "Zephyr"
-    ]
+    "teamColor": "gray"
   },
   "wizard": {
     "requiredTag": "wizard",
@@ -213,10 +209,10 @@ change the values to taste.
     "movementFarDistance": 0,
     "equipment": {
       "mainhand": "irons_spellbooks:blood_staff",
-      "head": "irons_spellbooks:wandering_magician_helmet",
-      "chest": "irons_spellbooks:wandering_magician_chestplate",
-      "legs": "irons_spellbooks:wandering_magician_leggings",
-      "feet": "irons_spellbooks:wandering_magician_boots"
+      "head": "minecraft:iron_helmet",
+      "chest": "minecraft:iron_chestplate",
+      "legs": "minecraft:iron_leggings",
+      "feet": "minecraft:iron_boots"
     },
     "attributes": {
       "irons_spellbooks:max_mana": 100,
@@ -252,10 +248,10 @@ change the values to taste.
     "movementFarDistance": 0,
     "equipment": {
       "mainhand": "irons_spellbooks:blood_staff",
-      "head": "irons_spellbooks:wandering_magician_helmet",
-      "chest": "irons_spellbooks:wandering_magician_chestplate",
-      "legs": "irons_spellbooks:wandering_magician_leggings",
-      "feet": "irons_spellbooks:wandering_magician_boots"
+      "head": "minecraft:iron_helmet",
+      "chest": "minecraft:iron_chestplate",
+      "legs": "minecraft:iron_leggings",
+      "feet": "minecraft:iron_boots"
     },
     "attributes": {
       "irons_spellbooks:max_mana": 60,
@@ -282,10 +278,10 @@ change the values to taste.
     "movementFarDistance": 20.0,
     "equipment": {
       "mainhand": "irons_spellbooks:blood_staff",
-      "head": "irons_spellbooks:wandering_magician_helmet",
-      "chest": "irons_spellbooks:wandering_magician_chestplate",
-      "legs": "irons_spellbooks:wandering_magician_leggings",
-      "feet": "irons_spellbooks:wandering_magician_boots"
+      "head": "minecraft:iron_helmet",
+      "chest": "minecraft:iron_chestplate",
+      "legs": "minecraft:iron_leggings",
+      "feet": "minecraft:iron_boots"
     },
     "attributes": {
       "irons_spellbooks:max_mana": 100,
@@ -389,7 +385,7 @@ change the values to taste.
 }
 ```
 
-### Wizard name tags (`_wizardDisplay`)
+### Wizard name tags (`_wizardDisplay` + `names.json`)
 
 Every wizard wears a name tag showing its **name** with its **team** beneath it — e.g.:
 
@@ -398,18 +394,15 @@ Vodyaniski
 < Undead >
 ```
 
-Normal wizards get a **random name** from a configurable pool; bosses keep their configured boss
-name. The team line is the preset's `team` with the first letter capitalized (`undead` → `Undead`).
-Both lines' colors are set by the `_wizardDisplay` block at the top of `presets.json`:
+Normal wizards get a **random name** from `config/mobwizardry/names.json`; bosses keep their
+configured boss name. The team line is the preset's `team` with the first letter capitalized
+(`undead` → `Undead`). The name-tag colors are set by the `_wizardDisplay` block at the top of
+`presets.json`:
 
 ```json
 "_wizardDisplay": {
   "nameColor": "white",
-  "teamColor": "gray",
-  "names": [
-    "Vodyaniski", "Alech", "Mordecai", "Seraphine", "Kael",
-    "Ilyana", "Draven", "Elysia", "Rowan", "Zephyr"
-  ]
+  "teamColor": "gray"
 }
 ```
 
@@ -417,10 +410,37 @@ Both lines' colors are set by the `_wizardDisplay` block at the top of `presets.
 |---|---|
 | `nameColor` | color of the name line (named or hex, e.g. `white`, `gold`, `#FF5555`). Default `white`. |
 | `teamColor` | color of the `< Team >` line. Default `gray`. |
-| `names` | the random-name pool for normal (non-boss) wizards; empty = normal wizards get no name tag. |
 
-A wizard with no team shows just its name. (Vanilla name tags render all lines at one fixed
-size, so the team line is a dimmer second line rather than a smaller font.)
+**Random names live in their own file** — `config/mobwizardry/names.json` (written with the
+default pool on first launch). It is a plain JSON array of strings:
+
+```json
+[
+  "Vodyaniski", "Alech", "Mordecai", "Seraphine", "Kael",
+  "Ilyana", "Draven", "Elysia", "Rowan", "Zephyr"
+]
+```
+
+Edit it without touching `presets.json`; `/mobwizardry reload` re-reads it. An empty list means
+normal wizards get no name tag. (A legacy `_wizardDisplay.names` in an old `presets.json` is
+still honored — with a warning — until `names.json` exists.)
+
+A wizard with no team shows just its name. The tag is drawn with the team line at 0.6x scale
+under the name, and — like vanilla name tags — renders through terrain unless the wizard is
+sneaking.
+
+### Armor on wizard NPCs
+
+Wizard NPCs render equipped **vanilla** armor (leather/chain/iron/gold/diamond/turtle/netherite)
+through the vanilla armor layer. Armor items whose material has no vanilla overlay texture (e.g.
+Iron's Spells' `wandering_magician` set, which uses its own custom models) still apply their
+server-side effects but do **not** appear on the model — the mod warns about these at config
+load. Use vanilla armor items for visible gear.
+
+### Peaceful difficulty
+
+Setting the world to Peaceful removes **enemy-faction** wizards exactly like vanilla hostile
+mobs. **Friendly** wizards (and bosses) are not removed — they persist.
 
 ### Using spells from addon mods
 
@@ -751,7 +771,7 @@ points to the section that explains it in detail.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `_wizardDisplay` | object | name-tag display settings (see [Wizard name tags](#wizard-name-tags-_wizarddisplay)) — `nameColor`, `teamColor`, `names` |
+| `_wizardDisplay` | object | name-tag display settings (see [Wizard name tags](#wizard-name-tags-_wizarddisplay-and-namesjson)) — `nameColor`, `teamColor` (the random-name pool lives in `names.json`) |
 | `requiredTag` | string | the tag that activates this preset on a mob |
 | `wizardType` | string | `ranged` or `close` (see [Wizard types](#wizard-types)) |
 | `team` | string | same-team wizards never fight each other (optional) |
@@ -1108,17 +1128,21 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - **escape** spells cast when it is critically low and recently attacked (`ranged` only),
    - a **`close`** wizard advances, casts point-blank, keeps a ~5-block standoff, and never retreats,
    - cooldowns match the spell's own configured values.
-5. For a **boss** preset (a `boss` entry in `bosses.json`):
+   - the mob **renders its armor** (vanilla armor items appear on the model; custom-material armor like Iron's Spells' `wandering_magician` gear does not — a load warning is logged for it),
+   - its **name tag** shows the random name with the `< Team >` line at 0.6x scale beneath it, visible through walls unless it is sneaking.
+5. For **Peaceful** behavior: `/difficulty peaceful` — every **enemy-faction** wizard disappears
+   within a couple of seconds, while **friendly** wizards (faction `friendly`) stay put. `/difficulty easy` brings them back on the next summon.
+6. For a **boss** preset (a `boss` entry in `bosses.json`):
    - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, shows the colored name tag and a red boss bar, glows for `spawnGlowSeconds`, and targets a random online player (idle if none),
    - deal damage until it crosses a phase's `healthPercent` — the phase message appears, its spell kit swaps (e.g. phase 2 gains the spells you listed there), its phase `effects` are applied (and persist into later phases), and the boss bar fill drops,
    - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets); while a combo runs it casts nothing else, and after it finishes defense/movement/support/escape trigger like a normal wizard until the next combo,
    - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
-6. For a **raid** (a `raids` entry in `raids.json`):
+7. For a **raid** (a `raids` entry in `raids.json`):
    - `/mobwizardry raid list` shows it, `/mobwizardry raid start <raid>` starts it — the start message appears, the pillager horn + lightning crash play and the `YOU ARE INVADED` subtitle shows, and the purple raid bar shows `Raid Name — Wave 1/M`,
    - kill every enemy in a wave — the bar fills and the next wave (or the boss) spawns,
    - after the last wave the configured boss appears (lightning, name, its own boss bar); killing it ends the raid with the victory message,
    - if all players die the raid ends with the defeat message.
-7. Tweak `presets.json` / `bosses.json` / `raids.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
+8. Tweak `presets.json` / `bosses.json` / `raids.json` / `names.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
 ## Notes
 
