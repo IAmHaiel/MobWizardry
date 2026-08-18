@@ -632,10 +632,11 @@ through its `spawnSettings` block — there is no global setting:
 ```json
 "spawnSettings": {
   "enabled": true,
-  "spawnAttemptIntervalSeconds": 300,
+  "spawnAttemptIntervalSeconds": 1200,
   "maxActiveBosses": 3,
   "minDistanceFromPlayer": 24,
   "maxDistanceFromPlayer": 48,
+  "spawnChance": 0.5,
   "despawnOnTimeChange": true,
   "spawnGlowSeconds": 60
 }
@@ -644,17 +645,19 @@ through its `spawnSettings` block — there is no global setting:
 | Field | Meaning |
 |---|---|
 | `enabled` | `false` = this boss never naturally spawns (summon/wizardify still work). |
-| `spawnAttemptIntervalSeconds` | the **time between natural-spawn attempts** for this boss (300 = one attempt every 5 minutes). The chance itself is the day/night weighted roll — this is just how often the roll happens. (Old name: `attemptIntervalSeconds`, still works.) |
+| `spawnAttemptIntervalSeconds` | the **time between natural-spawn attempts** for this boss (1200 = one attempt every 20 minutes). The chance itself is the day/night weighted roll — this is just how often the roll happens. (Old name: `attemptIntervalSeconds`, still works.) |
 | `maxActiveBosses` | how many of *this* boss may be alive at once before it stops rolling. |
 | `minDistanceFromPlayer` / `maxDistanceFromPlayer` | this boss spawns at a safe spot between these distances from a random online player. |
+| `spawnChance` | the chance (0–1) that an eligible attempt actually spawns the boss: `1` = every attempt, `0.5` = on average every other attempt, `0.1` = rare, `0` = never. Effective frequency is roughly `spawnAttemptIntervalSeconds / spawnChance` (e.g. 1200 / 0.5 = a boss roughly every 40 minutes). |
 | `despawnOnTimeChange` | `true` (default) = a boss that **naturally** spawned disappears when the day/night phase flips (a night-spawned boss vanishes at day, a day-spawned boss vanishes at night). Bosses summoned with `/mobwizardry summon`/`boss` are never affected. |
 | `spawnGlowSeconds` | how long the boss glows after arriving so players can see it (default 60; `0` disables the glow). |
 
 Each boss schedules its own spawn attempts: every tick, a boss whose `enabled` is true, whose
 day/night weight for the current time is above `0`, whose live count is below its own
-`maxActiveBosses` and whose interval has elapsed joins a weighted pool; one winner is spawned
-using that boss's own distances. A boss with `daySpawnWeight` and `nightSpawnWeight` both at `0`
-(or `spawnSettings.enabled` false) never naturally spawns.
+`maxActiveBosses` and whose interval has elapsed joins a weighted pool; one winner is rolled
+against its `spawnChance` and spawned (a failed roll reschedules the next attempt) using that
+boss's own distances. A boss with `daySpawnWeight` and `nightSpawnWeight` both at `0`,
+`spawnChance` at `0`, or `spawnSettings.enabled` false never naturally spawns.
 
 ### On arrival
 
@@ -685,10 +688,11 @@ default `bosses.json` the mod writes on first launch. To fight one:
       "spawnEntity": "mobwizardry:wizard",
       "spawnSettings": {
         "enabled": true,
-        "spawnAttemptIntervalSeconds": 300,
+        "spawnAttemptIntervalSeconds": 1200,
         "maxActiveBosses": 3,
         "minDistanceFromPlayer": 24,
         "maxDistanceFromPlayer": 48,
+        "spawnChance": 0.5,
         "despawnOnTimeChange": true,
         "spawnGlowSeconds": 60
       },
@@ -814,6 +818,7 @@ spell categories in the [spells](#beginners-guide-to-the-settings) bullet.
 | `spawnSettings.maxActiveBosses` | int | how many of this boss may be alive at once |
 | `spawnSettings.minDistanceFromPlayer` | number | min spawn distance from a player |
 | `spawnSettings.maxDistanceFromPlayer` | number | max spawn distance from a player |
+| `spawnSettings.spawnChance` | number | chance (0–1) an eligible attempt actually spawns (`0` = never, `1` = every attempt) |
 | `spawnSettings.despawnOnTimeChange` | bool | naturally-spawned boss vanishes when day/night flips |
 | `spawnSettings.spawnGlowSeconds` | int | arrival glow duration (0 = off) |
 | `daySpawnWeight` | number | natural-spawn weight during the day (`0` = never by day) |
@@ -929,7 +934,7 @@ this turns that wizard into a boss):
       "spawnEntity": "mobwizardry:wizard",
       "spawnSettings": {
         "enabled": true,
-        "spawnAttemptIntervalSeconds": 300,
+        "spawnAttemptIntervalSeconds": 1200,
         "maxActiveBosses": 2,
         "minDistanceFromPlayer": 24,
         "maxDistanceFromPlayer": 48,

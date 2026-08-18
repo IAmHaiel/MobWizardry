@@ -684,6 +684,11 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] Boss '{}' has a negative maxActiveBosses ({}) - using 0", name, boss.spawnSettings.maxActiveBosses);
             boss.spawnSettings.maxActiveBosses = 0;
         }
+        if (boss.spawnSettings.spawnChance < 0.0 || boss.spawnSettings.spawnChance > 1.0)
+        {
+            LOGGER.warn("[MobWizardry] Boss '{}' has a spawnChance ({}) out of range 0..1 - using 0.5", name, boss.spawnSettings.spawnChance);
+            boss.spawnSettings.spawnChance = 0.5;
+        }
         double min = boss.spawnSettings.minDistanceFromPlayer;
         double max = boss.spawnSettings.maxDistanceFromPlayer;
         double minClamped = Math.max(1.0, min);
@@ -1246,10 +1251,11 @@ public class PresetManager
                       "spawnEntity": "mobwizardry:wizard",
                       "spawnSettings": {
                         "enabled": true,
-                        "spawnAttemptIntervalSeconds": 300,
+                        "spawnAttemptIntervalSeconds": 1200,
                         "maxActiveBosses": 3,
                         "minDistanceFromPlayer": 24,
                         "maxDistanceFromPlayer": 48,
+                        "spawnChance": 0.5,
                         "despawnOnTimeChange": true,
                         "spawnGlowSeconds": 60
                       },

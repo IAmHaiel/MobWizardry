@@ -344,6 +344,13 @@ public class BossManager
         }
         PresetDefinition preset = picked.preset();
         PresetDefinition.Boss.SpawnSettings spawn = preset.boss.spawnSettings;
+        // Rarity roll: only spawnChance of the time does an eligible attempt actually spawn;
+        // a failed roll reschedules the next attempt without spawning anything.
+        if (spawn.spawnChance < 1.0 && level.random.nextDouble() >= spawn.spawnChance)
+        {
+            NEXT_SPAWN_TICK.put(picked.key(), tick + Math.max(20, spawn.spawnAttemptIntervalSeconds * 20));
+            return;
+        }
         double angle = level.random.nextDouble() * Math.PI * 2.0;
         double minDist = Math.max(8.0, spawn.minDistanceFromPlayer);
         double maxDist = Math.max(minDist + 1.0, spawn.maxDistanceFromPlayer);
@@ -367,7 +374,7 @@ public class BossManager
             return false;
         }
         PresetDefinition.Boss.SpawnSettings spawn = boss.spawnSettings;
-        if (spawn == null || !spawn.enabled)
+        if (spawn == null || !spawn.enabled || spawn.spawnChance <= 0)
         {
             return false;
         }

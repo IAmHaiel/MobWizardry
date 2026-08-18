@@ -149,10 +149,17 @@ public class PresetDefinition
             @Deprecated
             public int attemptIntervalSeconds = 0;
             public boolean enabled = true;
-            public int spawnAttemptIntervalSeconds = 300;
+            public int spawnAttemptIntervalSeconds = 1200;
             public int maxActiveBosses = 3;
             public double minDistanceFromPlayer = 24;
             public double maxDistanceFromPlayer = 48;
+
+            /**
+             * The chance (0..1) that a boss actually spawns each time its spawn timer elapses
+             * and it is picked. 0 = never, 1 = every attempt; lower = rarer. Effective frequency
+             * is roughly {@code spawnAttemptIntervalSeconds / spawnChance}.
+             */
+            public double spawnChance = 0.5;
             public boolean despawnOnTimeChange = true;
             public int spawnGlowSeconds = 60;
         }
