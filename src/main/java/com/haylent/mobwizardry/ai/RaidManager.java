@@ -84,6 +84,7 @@ public class RaidManager
             cancelRaid(active);
         }
         ActiveRaid raid = new ActiveRaid(def, level, pos);
+        raid.remainingTicks = def.timeLimitSeconds > 0 ? def.timeLimitSeconds * 20 : 0;
         active = raid;
         broadcast(level, def.startMessage, ChatFormatting.RED);
         playRaidStartEffects(raid);
@@ -136,12 +137,17 @@ public class RaidManager
         ActiveRaid raid = active;
         ServerLevel level = raid.level;
 
-        // Lose: the raid level has players and all of them are dead.
-        List<ServerPlayer> players = level.players();
-        if (!players.isEmpty() && players.stream().allMatch(p -> !p.isAlive() || p.isRemoved()))
+        // Lose: the raid's time limit expired - the players failed to clear every wave and the
+        // boss in time, so they are defeated (killed, no rewards). With timeLimitSeconds = 0
+        // there is no time limit and the raid only ends by victory or a manual stop.
+        if (raid.remainingTicks > 0)
         {
-            endRaid(raid, false);
-            return;
+            raid.remainingTicks--;
+            if (raid.remainingTicks <= 0)
+            {
+                endRaid(raid, false);
+                return;
+            }
         }
 
         if (raid.bossPhase)
@@ -461,7 +467,7 @@ public class RaidManager
         // back to 100% when the next wave (or the boss) sets it full again.
         float progress = raid.waveTotal <= 0 ? 1.0f
                 : Math.max(0.0f, Math.min(1.0f, (float) raid.waveEnemies.size() / raid.waveTotal));
-        bar.setName(Component.literal(raid.def.name + " - Wave " + (raid.waveIndex + 1) + "/" + raid.def.waves.size()));
+        bar.setName(Component.literal(raidBarName(raid) + " - Wave " + (raid.waveIndex + 1) + "/" + raid.def.waves.size()));
         bar.setProgress(progress);
         bar.setVisible(true);
         reconcilePlayers(raid);
@@ -475,10 +481,23 @@ public class RaidManager
         {
             progress = Math.max(0.0f, Math.min(1.0f, mob.getHealth() / mob.getMaxHealth()));
         }
-        bar.setName(Component.literal(raid.def.name + " - Boss"));
+        bar.setName(Component.literal(raidBarName(raid) + " - Boss"));
         bar.setProgress(progress);
         bar.setVisible(true);
         reconcilePlayers(raid);
+    }
+
+    /**
+     * The raid's display name, with the remaining time (mm:ss) appended when a time limit is set.
+     */
+    private static String raidBarName(ActiveRaid raid)
+    {
+        if (raid.remainingTicks <= 0)
+        {
+            return raid.def.name;
+        }
+        int totalSeconds = raid.remainingTicks / 20;
+        return raid.def.name + " - " + (totalSeconds / 60) + ":" + String.format("%02d", totalSeconds % 60);
     }
 
     private static void reconcilePlayers(ActiveRaid raid)
@@ -539,6 +558,7 @@ public class RaidManager
         int waveTotal = 0;
         boolean bossPhase = false;
         UUID bossUuid = null;
+        int remainingTicks = 0;
 
         ActiveRaid(RaidDefinition def, ServerLevel level, Vec3 startPos)
         {

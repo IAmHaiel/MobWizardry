@@ -274,6 +274,11 @@ public class PresetManager
             LOGGER.warn("[MobWizardry] Raid '{}' has a waveGlowSeconds ({}) out of range 0..120 - using 20", name, raid.waveGlowSeconds);
             raid.waveGlowSeconds = 20;
         }
+        if (raid.timeLimitSeconds < 0)
+        {
+            LOGGER.warn("[MobWizardry] Raid '{}' has a negative timeLimitSeconds ({}) - using 0 (no time limit)", name, raid.timeLimitSeconds);
+            raid.timeLimitSeconds = 0;
+        }
         if (raid.waves == null)
         {
             raid.waves = new ArrayList<>();
@@ -328,8 +333,8 @@ public class PresetManager
             }
         }
         validateRewards("Raid '" + name + "'", raid.rewards);
-        LOGGER.info("[MobWizardry] Loaded raid '{}' (name={}, waves={}, boss={})",
-                name, raid.name, raid.waves.size(), raid.boss.isBlank() ? "none" : raid.boss);
+        LOGGER.info("[MobWizardry] Loaded raid '{}' (name={}, waves={}, boss={}, timeLimit={}s)",
+                name, raid.name, raid.waves.size(), raid.boss.isBlank() ? "none" : raid.boss, raid.timeLimitSeconds);
     }
 
     private static void loadPresetsFile(Path configDir, List<String> legacyNamesOut)
@@ -1454,6 +1459,7 @@ public class PresetManager
                       "groupRadius": 4.0,
                       "skyFlashBolts": 4,
                       "waveGlowSeconds": 20,
+                      "timeLimitSeconds": 600,
                       "rewards": {
                         "message": "The Wizard Horde has been repelled! Rewards granted to all survivors.",
                         "commands": [

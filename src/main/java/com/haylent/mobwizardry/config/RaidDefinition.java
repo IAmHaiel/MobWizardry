@@ -55,6 +55,13 @@ public class RaidDefinition
     public int waveGlowSeconds = 20;
 
     /**
+     * The raid's time limit in seconds. The players must clear every wave and the boss before
+     * this runs out; when it does the raid is lost - the players are killed and get no rewards.
+     * 0 = no time limit (the raid never loses by time). Default 600 (10 minutes).
+     */
+    public int timeLimitSeconds = 600;
+
+    /**
      * One wave of the raid. Its enemies are spawned weighted-random-capped: the wave spawns
      * {@code sum(counts)} mobs, each pick weighted by the enemy's {@code weight} among presets
      * that have not yet reached their {@code count}.
