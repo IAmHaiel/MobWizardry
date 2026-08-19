@@ -571,8 +571,8 @@ in red).
       {
         "pauseAfterComboExecution": 50,
         "steps": [
-          { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
-          { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 2, "castAfterTicks": 45 }
+          { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+          { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 2, "waitAfterCast": 80 }
         ]
       }
     ],
@@ -610,11 +610,12 @@ spells skipped, levels clamped) and are re-applied on `/mobwizardry reload`.
 
 Think of a combo as one **prepared attack routine**: a boss's **attack spells ARE its combos** —
 bosses don't define `attack` spells at all (see Phases above). While fighting, it **randomly
-picks one combo**, casts the steps **in order**, then **pauses** — and after the pause it
-**randomly picks another combo** (the next pick is completely independent, so it may even be the
-same combo again). While a combo is actually running the boss casts **only** the combo's steps;
-its normal defense/movement/support/escape spells stay silent until the combo finishes, then
-behave like any other wizard until the next combo starts.
+picks one combo**, casts the steps **in order** — each step casts, then **waits** its
+`waitAfterCast` (e.g. 2 seconds) before the next step fires — then **pauses**, and after the
+pause it **randomly picks another combo** (the next pick is completely independent, so it may
+even be the same combo again). While a combo is actually running the boss casts **only** the
+combo's steps; its normal defense/movement/support/escape spells stay silent until the combo
+finishes, then behave like any other wizard until the next combo starts.
 
 The pick is always from the **current pool**: the boss-level `combos` plus every phase's combos
 up to the one the boss is in (3.8.0). Phases only ever **add** to the pool — phase 2's combos
@@ -625,10 +626,10 @@ join phase 1's instead of replacing them, so later phases keep the earlier routi
   {
     "pauseAfterComboExecution": 40,
     "steps": [
-      { "category": "attack",  "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 30 },
-      { "category": "attack",  "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
-      { "category": "attack",  "spell": "irons_spellbooks:fireball",      "level": 1, "castAfterTicks": 60 },
-      { "category": "escape",  "spell": "irons_spellbooks:blood_step",    "level": 1, "castAfterTicks": 120 }
+      { "category": "attack",  "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+      { "category": "attack",  "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+      { "category": "attack",  "spell": "irons_spellbooks:fireball",      "level": 1, "waitAfterCast": 80 },
+      { "category": "escape",  "spell": "irons_spellbooks:blood_step",    "level": 1, "waitAfterCast": 40 }
     ]
   }
 ]
@@ -641,7 +642,7 @@ join phase 1's instead of replacing them, so later phases keep the earlier routi
 | `step.category` | informational — `attack`/`defense`/`support`/`movement`/`escape`. |
 | `step.spell` | the spell to cast (same id format as preset spells). |
 | `step.level` | cast level (clamped to the spell's max). |
-| `step.castAfterTicks` | when this step fires, in ticks after the combo started; if the boss is still finishing an earlier cast, it casts as soon as it is free. |
+| `step.waitAfterCast` | how long the boss waits **after casting this step** before the next step fires — e.g. `40` = 2 seconds, `80` = 4 seconds. The first step casts right away when the combo starts; the last step's wait is part of the combo, and only then does `pauseAfterComboExecution` apply. `0` = cast the next step as soon as the boss is free. (Old name: `castAfterTicks` — it counted from the combo start; it still loads and is converted to a wait, but the timing has changed, so check old configs.) |
 
 Steps with unknown spells are skipped at load; a combo with no usable steps ends immediately and
 the next combo follows.
@@ -770,18 +771,18 @@ default `bosses.json` the mod writes on first launch. To fight one:
         {
           "pauseAfterComboExecution": 40,
           "steps": [
-            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
-            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 25 },
-            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 50 },
-            { "category": "movement", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 80 }
+            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "waitAfterCast": 80 },
+            { "category": "movement", "spell": "irons_spellbooks:blood_step", "level": 1, "waitAfterCast": 40 }
           ]
         },
         {
           "pauseAfterComboExecution": 60,
           "steps": [
-            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 20 },
-            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 40 },
-            { "category": "escape", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 120 }
+            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "waitAfterCast": 40 },
+            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 80 },
+            { "category": "escape", "spell": "irons_spellbooks:blood_step", "level": 1, "waitAfterCast": 40 }
           ]
         }
       ]
@@ -864,7 +865,7 @@ spell categories in the [spells](#beginners-guide-to-the-settings) bullet.
 | step `category` | string | `attack`/`defense`/`support`/`movement`/`escape` |
 | step `spell` | string | the spell id |
 | step `level` | int | cast level |
-| step `castAfterTicks` | int | ticks after the combo starts before this step fires |
+| step `waitAfterCast` | int | ticks the boss waits after casting this step before the next step fires (20 = 1 second; 0 = no wait). Legacy `castAfterTicks` converts to this with a warning |
 
 Details: [The boss block](#the-boss-block), [Phases](#phases),
 [Combo presets](#combo-presets-230), [Natural spawning](#natural-spawning-per-boss-spawnsettings),
@@ -993,8 +994,8 @@ this turns that wizard into a boss):
             {
               "pauseAfterComboExecution": 50,
               "steps": [
-                { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
-                { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 2, "castAfterTicks": 45 }
+                { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+                { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 2, "waitAfterCast": 80 }
               ]
             }
           ],
@@ -1024,17 +1025,17 @@ this turns that wizard into a boss):
         {
           "pauseAfterComboExecution": 40,
           "steps": [
-            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
-            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 25 },
-            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 50 },
-            { "category": "escape", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 120 }
+            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "waitAfterCast": 80 },
+            { "category": "escape", "spell": "irons_spellbooks:blood_step", "level": 1, "waitAfterCast": 40 }
           ]
         },
         {
           "pauseAfterComboExecution": 60,
           "steps": [
-            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 20 },
-            { "category": "movement", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 40 }
+            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "waitAfterCast": 40 },
+            { "category": "movement", "spell": "irons_spellbooks:blood_step", "level": 1, "waitAfterCast": 80 }
           ]
         }
       ]
@@ -1195,7 +1196,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
 6. For a **boss** preset (a `boss` entry in `bosses.json`):
    - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, shows the colored name tag and a red boss bar, glows for `spawnGlowSeconds`, and targets a random online player (idle if none),
    - deal damage until it crosses a phase's `healthPercent` — the phase message appears, its spell kit swaps (e.g. phase 2 gains the spells you listed there), its phase `effects` are applied (and persist into later phases), and the boss bar fill drops,
-   - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets); while a combo runs it casts nothing else, and after it finishes defense/movement/support/escape trigger like a normal wizard until the next combo — and when it enters a phase whose `combos` are defined, those join the pool (phase 2's combos are pickable alongside phase 1's from then on),
+   - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order, each waiting its `waitAfterCast` before the next fires); while a combo runs it casts nothing else, and after it finishes defense/movement/support/escape trigger like a normal wizard until the next combo — and when it enters a phase whose `combos` are defined, those join the pool (phase 2's combos are pickable alongside phase 1's from then on),
    - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
 7. For a **raid** (a `raids` entry in `raids.json`):
    - `/mobwizardry raid list` shows it, `/mobwizardry raid start <raid>` starts it — the start message appears, the pillager horn + lightning crash play and the `YOU ARE INVADED` subtitle shows, and the purple raid bar shows `Raid Name — Wave 1/M` at 100%,
