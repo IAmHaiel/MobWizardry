@@ -377,6 +377,8 @@ public class RaidManager
      */
     private static void killPlayersOnDefeat(ActiveRaid raid)
     {
+        Registry<DamageType> types = raid.level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
+        Holder<DamageType> type = types.getHolder(RAID_DEFEAT_KEY).orElse(null);
         int killed = 0;
         for (ServerPlayer player : raid.level.players())
         {
@@ -384,8 +386,6 @@ public class RaidManager
             {
                 continue;
             }
-            Registry<DamageType> types = raid.level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
-            Holder<DamageType> type = types.getHolder(RAID_DEFEAT_KEY).orElse(null);
             if (type != null)
             {
                 player.hurt(new DamageSource(type), Float.MAX_VALUE);
