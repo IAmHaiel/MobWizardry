@@ -5,10 +5,15 @@ import com.haylent.mobwizardry.config.PresetManager;
 import com.haylent.mobwizardry.config.RaidDefinition;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
@@ -17,6 +22,8 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -41,6 +48,13 @@ public class RaidManager
     private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final String WIZARD_NPC = "mobwizardry:wizard";
+
+    /**
+     * The damage type the raid kills its defeated players with. The datapack entry is tagged
+     * {@code minecraft:bypasses_invulnerability}, so the kill is literal (no totem saves).
+     */
+    private static final ResourceKey<DamageType> RAID_DEFEAT_KEY =
+            ResourceKey.create(Registries.DAMAGE_TYPE, new ResourceLocation("mobwizardry", "raid_defeat"));
 
     private static ActiveRaid active;
 
@@ -346,11 +360,48 @@ public class RaidManager
             playEndSound(raid, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE);        }
         else
         {
+            killPlayersOnDefeat(raid);
             broadcast(raid.level, raid.def.defeatMessage, ChatFormatting.RED);
             LOGGER.info("[MobWizardry] Raid '{}' ended in defeat", raid.def.name);
             playEndSound(raid, SoundEvents.ANVIL_LAND);
         }
         cancelRaid(raid);
+    }
+
+    /**
+     * The raid defeats its players literally: every alive player in the raid's dimension takes a
+     * lethal hit from the raid's own damage type (which bypasses invulnerability, so totems of
+     * undying cannot save them) and dies with the "defeated by the raid" death message. Players
+     * already dead are unaffected; if the datapack damage type is missing, the player is killed
+     * with {@code kill()} instead.
+     */
+    private static void killPlayersOnDefeat(ActiveRaid raid)
+    {
+        int killed = 0;
+        for (ServerPlayer player : raid.level.players())
+        {
+            if (!player.isAlive() || player.isRemoved())
+            {
+                continue;
+            }
+            Registry<DamageType> types = raid.level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
+            Holder<DamageType> type = types.getHolder(RAID_DEFEAT_KEY).orElse(null);
+            if (type != null)
+            {
+                player.hurt(new DamageSource(type), Float.MAX_VALUE);
+            }
+            else
+            {
+                LOGGER.warn("[MobWizardry] Raid defeat damage type '{}' is not loaded - killing player {} with kill()",
+                        RAID_DEFEAT_KEY.location(), player.getName().getString());
+                player.kill();
+            }
+            killed++;
+        }
+        if (killed > 0)
+        {
+            LOGGER.info("[MobWizardry] The raid defeated the players - killed {} player(s)", killed);
+        }
     }
 
     private static void playEndSound(ActiveRaid raid, SoundEvent sound)
