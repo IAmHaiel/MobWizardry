@@ -1,20 +1,17 @@
 package com.haylent.mobwizardry.event;
 
-import com.haylent.mobwizardry.ai.RaidManager;
 import com.haylent.mobwizardry.ai.WizardAiGoal;
 import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.haylent.mobwizardry.entity.WizardNpc;
 import com.haylent.mobwizardry.entity.WizardSkins;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class MobWizardryEvents
@@ -115,28 +112,5 @@ public class MobWizardryEvents
         {
             event.setCanceled(true);
         }
-    }
-
-    /**
-     * A player killed by a raid mob (a wave wizard or the raid boss) disappears: the corpse is
-     * removed a tick later, while the death screen still shows normally. Canceled deaths are
-     * unaffected (the victim is still alive then).
-     */
-    @SubscribeEvent
-    public void onLivingDeath(LivingDeathEvent event)
-    {
-        if (event.getEntity().level().isClientSide())
-        {
-            return;
-        }
-        if (!(event.getEntity() instanceof ServerPlayer player))
-        {
-            return;
-        }
-        if (!RaidManager.isRaidEntity(event.getSource().getEntity()))
-        {
-            return;
-        }
-        RaidManager.disappearPlayer(player);
     }
 }
