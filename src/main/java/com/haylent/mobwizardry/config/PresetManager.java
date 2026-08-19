@@ -650,8 +650,13 @@ public class PresetManager
             {
                 phase.spells = new PresetDefinition.Spells();
             }
+            if (phase.combos == null)
+            {
+                phase.combos = new ArrayList<>();
+            }
             validatePhaseEffects(name, phase);
             String phaseLabel = "boss phase " + phase.number;
+            validateComboList("Boss '" + name + "' " + phaseLabel, phase.combos);
             validateSpellList(name, phaseLabel + " attack", phase.spells.attack, castInterval);
             validateSpellList(name, phaseLabel + " defense", phase.spells.defense, castInterval);
             validateSpellList(name, phaseLabel + " movement", phase.spells.movement, castInterval);
@@ -730,30 +735,39 @@ public class PresetManager
         if (boss.combos == null)
         {
             boss.combos = new ArrayList<>();
-            return;
         }
-        boss.combos.removeIf(combo -> combo == null);
-        if (boss.combos.isEmpty())
+        validateComboList("Boss '" + name + "'", boss.combos);
+    }
+
+    /**
+     * Validates one combo list (the boss-level list or a phase's list): migrates the legacy
+     * pause-after-combo field names, clamps the pause/level/offsets, and warns about empty
+     * combos and unknown spells.
+     */
+    private static void validateComboList(String label, List<PresetDefinition.Combo> combos)
+    {
+        combos.removeIf(combo -> combo == null);
+        if (combos.isEmpty())
         {
             return;
         }
-        for (PresetDefinition.Combo combo : boss.combos)
+        for (PresetDefinition.Combo combo : combos)
         {
             if (combo.pauseAfterComboExecution == 0 && combo.tickBeforeComboExecution != 0)
             {
-                LOGGER.warn("[MobWizardry] Boss '{}' combo uses the old 'tickBeforeComboExecution' field - renamed to 'pauseAfterComboExecution' (the pause after the combo runs, before the next random combo)", name);
+                LOGGER.warn("[MobWizardry] {} combo uses the old 'tickBeforeComboExecution' field - renamed to 'pauseAfterComboExecution' (the pause after the combo runs, before the next random combo)", label);
                 combo.pauseAfterComboExecution = combo.tickBeforeComboExecution;
                 combo.tickBeforeComboExecution = 0;
             }
             if (combo.pauseAfterComboExecution == 0 && combo.castInterval != 0)
             {
-                LOGGER.warn("[MobWizardry] Boss '{}' combo uses the old 'castInterval' field - renamed to 'pauseAfterComboExecution' (the pause after the combo runs, before the next random combo)", name);
+                LOGGER.warn("[MobWizardry] {} combo uses the old 'castInterval' field - renamed to 'pauseAfterComboExecution' (the pause after the combo runs, before the next random combo)", label);
                 combo.pauseAfterComboExecution = combo.castInterval;
                 combo.castInterval = 0;
             }
             if (combo.pauseAfterComboExecution < 0)
             {
-                LOGGER.warn("[MobWizardry] Boss '{}' has a combo with a negative pauseAfterComboExecution ({}) - using 0 (preset castInterval)", name, combo.pauseAfterComboExecution);
+                LOGGER.warn("[MobWizardry] {} has a combo with a negative pauseAfterComboExecution ({}) - using 0 (preset castInterval)", label, combo.pauseAfterComboExecution);
                 combo.pauseAfterComboExecution = 0;
             }
             if (combo.steps == null)
@@ -763,19 +777,19 @@ public class PresetManager
             combo.steps.removeIf(step -> step == null);
             if (combo.steps.isEmpty())
             {
-                LOGGER.warn("[MobWizardry] Boss '{}' has a combo with no steps - it is skipped when selected", name);
+                LOGGER.warn("[MobWizardry] {} has a combo with no steps - it is skipped when selected", label);
                 continue;
             }
             for (PresetDefinition.ComboStep step : combo.steps)
             {
                 if (!isValidComboCategory(step.category))
                 {
-                    LOGGER.warn("[MobWizardry] Boss '{}' combo step '{}' has an invalid category '{}' - using 'attack'", name, step.spell, step.category);
+                    LOGGER.warn("[MobWizardry] {} combo step '{}' has an invalid category '{}' - using 'attack'", label, step.spell, step.category);
                     step.category = "attack";
                 }
                 if (step.spell == null || step.spell.isBlank() || step.resolveSpell() == null)
                 {
-                    LOGGER.warn("[MobWizardry] Boss '{}' has a combo step with an unknown spell '{}' - the step is skipped", name, step.spell);
+                    LOGGER.warn("[MobWizardry] {} has a combo step with an unknown spell '{}' - the step is skipped", label, step.spell);
                 }
                 if (step.level < 1)
                 {
@@ -784,12 +798,12 @@ public class PresetManager
                 AbstractSpell resolved = step.resolveSpell();
                 if (resolved != null && step.level > resolved.getMaxLevel())
                 {
-                    LOGGER.warn("[MobWizardry] Boss '{}' combo step '{}' has level {} above the spell's max ({}) - clamping", name, step.spell, step.level, resolved.getMaxLevel());
+                    LOGGER.warn("[MobWizardry] {} combo step '{}' has level {} above the spell's max ({}) - clamping", label, step.spell, step.level, resolved.getMaxLevel());
                     step.level = resolved.getMaxLevel();
                 }
                 if (step.castAfterTicks < 0)
                 {
-                    LOGGER.warn("[MobWizardry] Boss '{}' combo step '{}' has a negative castAfterTicks ({}) - using 0", name, step.spell, step.castAfterTicks);
+                    LOGGER.warn("[MobWizardry] {} combo step '{}' has a negative castAfterTicks ({}) - using 0", label, step.spell, step.castAfterTicks);
                     step.castAfterTicks = 0;
                 }
             }
@@ -1295,6 +1309,15 @@ public class PresetManager
                           "message": "Fool! Now you face my true power!",
                           "effects": [
                             { "id": "minecraft:resistance", "amplifier": 1, "duration": -1 }
+                          ],
+                          "combos": [
+                            {
+                              "pauseAfterComboExecution": 50,
+                              "steps": [
+                                { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
+                                { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 2, "castAfterTicks": 45 }
+                              ]
+                            }
                           ],
                           "spells": {
                             "defense": [

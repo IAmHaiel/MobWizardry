@@ -32,6 +32,7 @@ public class WizardAiGoal extends Goal
     private final PathfinderMob mob;
     private final PresetDefinition preset;
     private final MobWizardryAttackGoal inner;
+    private BossComboExecutor comboExecutor;
 
     public WizardAiGoal(PathfinderMob mob, PresetDefinition preset)
     {
@@ -46,11 +47,8 @@ public class WizardAiGoal extends Goal
         goal.setEmergencyHealSpells(kit.emergencyHeals);
         goal.setEscapeSpells(kit.escape);
         goal.setMovementDistances(preset.movementStartDistance, preset.movementFarDistance, preset.movementDistanceOffset, preset.movementTooCloseDistance);
-        if (preset.boss != null && !preset.boss.combos.isEmpty())
-        {
-            goal.setComboExecutor(new BossComboExecutor(mob, preset.boss.name, preset.boss.combos, preset.castInterval));
-        }
         this.inner = goal;
+        updateComboPool(BossManager.currentPhase(mob));
         setFlags(inner.getFlags());
     }
 
@@ -121,9 +119,44 @@ public class WizardAiGoal extends Goal
                 .setSpellQuality(kit.minQuality, kit.maxQuality);
         inner.setEmergencyHealSpells(kit.emergencyHeals);
         inner.setEscapeSpells(kit.escape);
-        LOGGER.info("[MobWizardry] Boss phase {} kit applied to {} at {} (attack={}, defense={}, movement={}, support={}, escape={})",
+        updateComboPool(phase.number);
+        LOGGER.info("[MobWizardry] Boss phase {} kit applied to {} at {} (attack={}, defense={}, movement={}, support={}, escape={}, combos={})",
                 phase.number, mob.getType().getDescriptionId(), mob.blockPosition(),
-                kit.attack.size(), kit.defense.size(), kit.movement.size(), kit.support.size(), kit.escape.size());
+                kit.attack.size(), kit.defense.size(), kit.movement.size(), kit.support.size(), kit.escape.size(),
+                comboExecutor != null ? comboExecutor.poolSize() : 0);
+    }
+
+    /**
+     * Recomputes the boss's combo pool for the given phase: the boss-level combos plus every
+     * phase's combos up to and including the active one (phases only ever add). The executor is
+     * attached when the pool is non-empty and detached when it is empty (a boss without combos
+     * casts like a normal wizard, as before). Re-applying the same pool is a no-op.
+     */
+    private void updateComboPool(int phaseNumber)
+    {
+        if (preset.boss == null)
+        {
+            return;
+        }
+        List<PresetDefinition.Combo> pool = preset.boss.activeCombos(phaseNumber);
+        if (pool.isEmpty())
+        {
+            if (comboExecutor != null)
+            {
+                comboExecutor = null;
+                inner.setComboExecutor(null);
+            }
+            return;
+        }
+        if (comboExecutor == null)
+        {
+            comboExecutor = new BossComboExecutor(mob, preset.boss.name, pool, preset.castInterval);
+            inner.setComboExecutor(comboExecutor);
+        }
+        else
+        {
+            comboExecutor.setCombos(pool);
+        }
     }
 
     /**

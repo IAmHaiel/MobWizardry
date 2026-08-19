@@ -18,6 +18,10 @@ import java.util.List;
  * normal goal logic, and both sides respect {@code isCasting()} so a combo step waits for any
  * cast already in flight. The goal's {@code getAttackWeight()} returns -1000 while an executor
  * is attached, so the weighted pick never casts a random attack spell.
+ *
+ * <p>The combo pool is mutable: {@link #setCombos} swaps it when the boss enters a phase whose
+ * combos are added on top of the earlier ones (the pool only ever grows). A swap never corrupts
+ * a combo that is currently running - an out-of-range running combo is simply ended.
  */
 public class BossComboExecutor
 {
@@ -25,9 +29,9 @@ public class BossComboExecutor
 
     private final PathfinderMob mob;
     private final String bossName;
-    private final List<PresetDefinition.Combo> combos;
     private final int defaultInterval;
 
+    private List<PresetDefinition.Combo> combos;
     private int currentComboIndex = -1;
     private int comboStartTick = 0;
     private int nextStepIndex = 0;
@@ -37,8 +41,21 @@ public class BossComboExecutor
     {
         this.mob = mob;
         this.bossName = bossName;
-        this.combos = combos;
+        this.combos = combos != null ? combos : List.of();
         this.defaultInterval = Math.max(1, defaultInterval);
+    }
+
+    /**
+     * Swaps the combo pool (called when a phase adds its combos). A running combo whose index
+     * falls outside the new pool is ended immediately; otherwise it finishes normally.
+     */
+    public void setCombos(List<PresetDefinition.Combo> newCombos)
+    {
+        this.combos = newCombos != null ? newCombos : List.of();
+        if (currentComboIndex >= this.combos.size())
+        {
+            currentComboIndex = -1;
+        }
     }
 
     /**
@@ -48,6 +65,10 @@ public class BossComboExecutor
      */
     public void tick(MobWizardryAttackGoal goal)
     {
+        if (combos.isEmpty())
+        {
+            return;
+        }
         if (goal.isCastingSpell())
         {
             return;
@@ -87,6 +108,22 @@ public class BossComboExecutor
             currentComboIndex = -1;
             LOGGER.info("[MobWizardry] Boss '{}' finished a combo, next combo in {} ticks", bossName, interval);
         }
+    }
+
+    /**
+     * How many runnable combos (with at least one step) are currently in the pool.
+     */
+    public int poolSize()
+    {
+        int count = 0;
+        for (PresetDefinition.Combo combo : combos)
+        {
+            if (combo != null && !combo.steps.isEmpty())
+            {
+                count++;
+            }
+        }
+        return count;
     }
 
     /**
