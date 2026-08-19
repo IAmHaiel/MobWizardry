@@ -866,6 +866,7 @@ spell categories in the [spells](#beginners-guide-to-the-settings) bullet.
 | step `spell` | string | the spell id |
 | step `level` | int | cast level |
 | step `waitAfterCast` | int | ticks the boss waits after casting this step before the next step fires (20 = 1 second; 0 = no wait). Legacy `castAfterTicks` converts to this with a warning |
+| `rewards` | object | rewards granted to every player in the boss's dimension when the boss is defeated (message + per-player commands with `%player%`) |
 
 Details: [The boss block](#the-boss-block), [Phases](#phases),
 [Combo presets](#combo-presets-230), [Natural spawning](#natural-spawning-per-boss-spawnsettings),
@@ -892,6 +893,7 @@ Details: [The boss block](#the-boss-block), [Phases](#phases),
 | `groupRadius` | number | how tightly a wave's enemies cluster around one rally point. Clamped to 1–16. Default `4`. |
 | `skyFlashBolts` | int | visual-only lightning bolts flashing around the wave rally point at each wave's spawn (0 = off, default 4) |
 | `waveGlowSeconds` | int | how many seconds each wave's enemies glow after spawning (0 = off, default 20) |
+| `rewards` | object | rewards granted to every player in the raid's dimension when the raid is won (message + per-player commands with `%player%`; nothing on defeat) |
 
 Details and semantics (including "Why is there a weight?"): [Raid / horde](#raid--horde-300).
 
@@ -1116,9 +1118,31 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
 | `groupRadius` | Each wave picks ONE rally point `spawnDistance` away and spawns all of its enemies within this many blocks of it, so the wave arrives grouped together instead of scattered around the ring. Default `4`. |
 | `skyFlashBolts` | Visual-only lightning bolts that flash around the wave rally point when a wave spawns (`0` = off, default `4`). Every raid enemy and the boss also spawn **targeting a random attackable player** (falling back to their normal AI when no player is attackable). |
 | `waveGlowSeconds` | How long each wave's enemies glow after spawning so you can spot the horde (default `20`; `0` = off). |
+| `rewards` | What every player in the raid's dimension receives when the raid is **won** (see Rewards below). Nothing is granted on defeat. |
 
 Every raid enemy and the boss spawn **targeting a random attackable player** (falling back to
 their normal AI when no player is attackable).
+
+### Rewards (4.0.0)
+
+Both raids and boss definitions can grant rewards when the players win. A `rewards` block has an
+optional `message` (broadcast in gold) and a `commands` list, run **once per player** in the
+winning dimension with `%player%` replaced by that player's name. Commands run as the server, so
+anything a command can do works (items, XP, effects, loot):
+
+```json
+"rewards": {
+  "message": "The Wizard Horde has been repelled! Rewards granted to all survivors.",
+  "commands": [
+    "give %player% minecraft:diamond 4",
+    "give %player% minecraft:experience_bottle 8"
+  ]
+}
+```
+
+Raid rewards are granted by the raid's `rewards` when the raid is won; boss rewards are granted
+by the boss's `rewards` when a bossified boss is defeated. A raid boss dying inside its own raid
+grants only the raid's rewards (no double-granting from the boss block).
 
 **Why is there a `weight`?** `count` always fills **exactly** — a wave always spawns
 `sum(counts)` enemies with each preset at its `count` (4 `wizard` + 2 `wizard_close` in the
