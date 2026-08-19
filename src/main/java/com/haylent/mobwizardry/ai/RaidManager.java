@@ -15,6 +15,7 @@ import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -369,11 +370,52 @@ public class RaidManager
     }
 
     /**
-     * The raid defeats its players literally: every alive player in the raid's dimension takes a
-     * lethal hit from the raid's own damage type (which bypasses invulnerability, so totems of
-     * undying cannot save them) and dies with the "defeated by the raid" death message. Players
-     * already dead are unaffected; if the datapack damage type is missing, the player is killed
-     * with {@code kill()} instead.
+     * Whether the entity is part of the currently active raid: a wave enemy or the raid boss.
+     * Works for melee hits, spells and projectiles alike, because the attacker (the raid mob)
+     * is what {@code DamageSource.getEntity()} reports.
+     */
+    public static boolean isRaidEntity(Entity entity)
+    {
+        if (active == null || entity == null)
+        {
+            return false;
+        }
+        if (entity.getUUID().equals(active.bossUuid))
+        {
+            return true;
+        }
+        return active.waveEnemies.contains(entity.getUUID());
+    }
+
+    /**
+     * Makes the raid's victims literally disappear: the dead player's body is discarded on the
+     * next server tick (after the death processing and the death-screen packet complete). A
+     * player who is still alive, already removed, or respawned before the deferred task runs is
+     * left alone - and vanilla respawn is unaffected (the old body is removed there anyway).
+     */
+    public static void disappearPlayer(ServerPlayer player)
+    {
+        if (player == null || player.isRemoved() || player.isAlive())
+        {
+            return;
+        }
+        if (player.level() instanceof ServerLevel level && level.getServer() != null)
+        {
+            MinecraftServer server = level.getServer();
+            server.tell(new TickTask(server.getTickCount() + 1, () -> {
+                if (!player.isRemoved() && !player.isAlive())
+                {
+                    player.discard();
+                }
+            }));
+        }
+    }
+
+    /**
+     * The raid defeats its players literally: every player in the raid's dimension is killed by
+     * the raid (its own damage type bypasses invulnerability, so totems of undying cannot save
+     * them) and the corpses disappear. Players already dead are not killed again - their bodies
+     * disappear all the same.
      */
     private static void killPlayersOnDefeat(ActiveRaid raid)
     {
@@ -382,21 +424,25 @@ public class RaidManager
         int killed = 0;
         for (ServerPlayer player : raid.level.players())
         {
-            if (!player.isAlive() || player.isRemoved())
+            if (player.isRemoved())
             {
                 continue;
             }
-            if (type != null)
+            if (player.isAlive())
             {
-                player.hurt(new DamageSource(type), Float.MAX_VALUE);
+                if (type != null)
+                {
+                    player.hurt(new DamageSource(type), Float.MAX_VALUE);
+                }
+                else
+                {
+                    LOGGER.warn("[MobWizardry] Raid defeat damage type '{}' is not loaded - killing player {} with kill()",
+                            RAID_DEFEAT_KEY.location(), player.getName().getString());
+                    player.kill();
+                }
+                killed++;
             }
-            else
-            {
-                LOGGER.warn("[MobWizardry] Raid defeat damage type '{}' is not loaded - killing player {} with kill()",
-                        RAID_DEFEAT_KEY.location(), player.getName().getString());
-                player.kill();
-            }
-            killed++;
+            disappearPlayer(player);
         }
         if (killed > 0)
         {
