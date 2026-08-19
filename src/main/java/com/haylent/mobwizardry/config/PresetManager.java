@@ -801,10 +801,16 @@ public class PresetManager
                     LOGGER.warn("[MobWizardry] {} combo step '{}' has level {} above the spell's max ({}) - clamping", label, step.spell, step.level, resolved.getMaxLevel());
                     step.level = resolved.getMaxLevel();
                 }
-                if (step.castAfterTicks < 0)
+                if (step.waitAfterCast == 0 && step.castAfterTicks != 0)
                 {
-                    LOGGER.warn("[MobWizardry] {} combo step '{}' has a negative castAfterTicks ({}) - using 0", label, step.spell, step.castAfterTicks);
+                    LOGGER.warn("[MobWizardry] {} combo step '{}' uses the old 'castAfterTicks' field - renamed to 'waitAfterCast' (the wait AFTER casting this step before the next step fires; the old field counted from the combo start)", label, step.spell);
+                    step.waitAfterCast = step.castAfterTicks;
                     step.castAfterTicks = 0;
+                }
+                if (step.waitAfterCast < 0)
+                {
+                    LOGGER.warn("[MobWizardry] {} combo step '{}' has a negative waitAfterCast ({}) - using 0 (no wait)", label, step.spell, step.waitAfterCast);
+                    step.waitAfterCast = 0;
                 }
             }
         }
@@ -1314,8 +1320,8 @@ public class PresetManager
                             {
                               "pauseAfterComboExecution": 50,
                               "steps": [
-                                { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
-                                { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 2, "castAfterTicks": 45 }
+                                { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+                                { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 2, "waitAfterCast": 80 }
                               ]
                             }
                           ],
@@ -1361,18 +1367,18 @@ public class PresetManager
                         {
                           "pauseAfterComboExecution": 40,
                           "steps": [
-                            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
-                            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 25 },
-                            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 50 },
-                            { "category": "movement", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 80 }
+                            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+                            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 40 },
+                            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "waitAfterCast": 80 },
+                            { "category": "movement", "spell": "irons_spellbooks:blood_step", "level": 1, "waitAfterCast": 40 }
                           ]
                         },
                         {
                           "pauseAfterComboExecution": 60,
                           "steps": [
-                            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "castAfterTicks": 20 },
-                            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 40 },
-                            { "category": "escape", "spell": "irons_spellbooks:blood_step", "level": 1, "castAfterTicks": 120 }
+                            { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 1, "waitAfterCast": 40 },
+                            { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "waitAfterCast": 80 },
+                            { "category": "escape", "spell": "irons_spellbooks:blood_step", "level": 1, "waitAfterCast": 40 }
                           ]
                         }
                       ]

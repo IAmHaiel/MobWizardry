@@ -255,16 +255,24 @@ public class PresetDefinition
     }
 
     /**
-     * One combo step: cast {@code spell} at level {@code level} after {@code castAfterTicks}
-     * ticks from the combo start. {@code category} is informational (attack/defense/support/
-     * movement/escape) - every step is cast the same way.
+     * One combo step: cast {@code spell} at level {@code level}, then wait
+     * {@code waitAfterCast} ticks before the next step of the combo fires (20 ticks = 1 second;
+     * 0 = cast the next step as soon as the boss is free). The first step casts immediately when
+     * the combo starts. {@code category} is informational (attack/defense/support/movement/
+     * escape) - every step is cast the same way.
      */
     public static class ComboStep
     {
+        /**
+         * Legacy name for {@code waitAfterCast} (pre-3.8.1, "ticks after the combo start").
+         * Migrated on load with a warning.
+         */
+        @Deprecated
+        public int castAfterTicks = 0;
         public String category = "attack";
         public String spell = "";
         public int level = 1;
-        public int castAfterTicks = 0;
+        public int waitAfterCast = 0;
 
         /**
          * Resolves this step's spell from the registry, or null if the id is invalid/unknown.
