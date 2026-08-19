@@ -1159,6 +1159,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
 | `/mobwizardry unwizardify <preset> [radius] [pos]` | Removes the tag from all wizards in range — their AI deactivates on the next tick. |
 | `/mobwizardry reload` | Re-reads and re-validates `presets.json` and `bosses.json` without restarting. |
 | `/mobwizardry list [page]` | Lists loaded presets in a readable, colored format — 5 per page, with clickable previous/next arrows. |
+| `/mobwizardry version` | Shows the installed MobWizardry version. |
 
 ### Examples
 
@@ -1177,6 +1178,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
 /mobwizardry reload
 /mobwizardry list
 /mobwizardry list 2
+/mobwizardry version
 ```
 
 ## Testing your preset in-game
