@@ -138,6 +138,13 @@ public class PresetDefinition
         public List<Combo> combos = new ArrayList<>();
 
         /**
+         * What every player receives when this boss is defeated (message + per-player commands).
+         * Raid bosses use the raid's rewards instead - a boss dying while its raid is still
+         * active grants nothing here (avoids double-granting on a raid win).
+         */
+        public Rewards rewards = new Rewards();
+
+        /**
          * The boss's combo pool at the given phase: the boss-level {@code combos} plus every
          * phase's {@code combos} whose number is at most {@code phaseNumber}. Phases only ever
          * add to the pool (never replace), so entering a phase unlocks its combos on top of the

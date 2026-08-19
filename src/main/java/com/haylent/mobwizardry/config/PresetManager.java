@@ -327,6 +327,7 @@ public class PresetManager
                 raid.boss = "";
             }
         }
+        validateRewards("Raid '" + name + "'", raid.rewards);
         LOGGER.info("[MobWizardry] Loaded raid '{}' (name={}, waves={}, boss={})",
                 name, raid.name, raid.waves.size(), raid.boss.isBlank() ? "none" : raid.boss);
     }
@@ -624,6 +625,7 @@ public class PresetManager
         }
         validateSpawnSettings(name, boss);
         validateCombos(name, boss);
+        validateRewards("Boss '" + name + "'", boss.rewards);
         if (boss.phases == null)
         {
             boss.phases = new ArrayList<>();
@@ -737,6 +739,32 @@ public class PresetManager
             boss.combos = new ArrayList<>();
         }
         validateComboList("Boss '" + name + "'", boss.combos);
+    }
+
+    /**
+     * Validates one rewards block (a raid's or a boss's): null commands become empty and blank
+     * command lines are dropped with a warning; a null message becomes empty. One validator for
+     * both owners.
+     */
+    private static void validateRewards(String label, Rewards rewards)
+    {
+        if (rewards == null)
+        {
+            return;
+        }
+        if (rewards.message == null)
+        {
+            rewards.message = "";
+        }
+        if (rewards.commands == null)
+        {
+            rewards.commands = new ArrayList<>();
+        }
+        boolean removed = rewards.commands.removeIf(command -> command == null || command.isBlank());
+        if (removed)
+        {
+            LOGGER.warn("[MobWizardry] {} has a blank reward command - it was skipped", label);
+        }
     }
 
     /**
@@ -1381,7 +1409,14 @@ public class PresetManager
                             { "category": "escape", "spell": "irons_spellbooks:blood_step", "level": 1, "waitAfterCast": 40 }
                           ]
                         }
-                      ]
+                      ],
+                      "rewards": {
+                        "message": "Aetheron, the Crimson Archon, has fallen! Rewards granted to all present.",
+                        "commands": [
+                          "give %player% minecraft:diamond 2",
+                          "xp 20 level %player%"
+                        ]
+                      }
                     }
                   }
                 }
@@ -1418,7 +1453,14 @@ public class PresetManager
                       "bossSpawnDistance": 48.0,
                       "groupRadius": 4.0,
                       "skyFlashBolts": 4,
-                      "waveGlowSeconds": 20
+                      "waveGlowSeconds": 20,
+                      "rewards": {
+                        "message": "The Wizard Horde has been repelled! Rewards granted to all survivors.",
+                        "commands": [
+                          "give %player% minecraft:diamond 4",
+                          "give %player% minecraft:experience_bottle 8"
+                        ]
+                      }
                     }
                   }
                 }

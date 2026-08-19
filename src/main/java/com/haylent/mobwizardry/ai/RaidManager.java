@@ -355,6 +355,7 @@ public class RaidManager
     {
         if (victory)
         {
+            RewardManager.grantRewards(raid.level, raid.def.rewards);
             broadcast(raid.level, raid.def.victoryMessage, ChatFormatting.GOLD);
             LOGGER.info("[MobWizardry] Raid '{}' ended in victory", raid.def.name);
             playEndSound(raid, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE);        }

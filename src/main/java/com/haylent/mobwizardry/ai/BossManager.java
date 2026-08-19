@@ -164,7 +164,7 @@ public class BossManager
         }
     }
 
-    private static boolean isBossified(PathfinderMob mob)
+    public static boolean isBossified(PathfinderMob mob)
     {
         return mob.getPersistentData().getBoolean(BOSSIFIED_KEY);
     }

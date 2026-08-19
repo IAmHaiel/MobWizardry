@@ -19,6 +19,11 @@ public class RaidDefinition
     public String boss = "";
 
     /**
+     * What every player receives when the raid is won (message + per-player commands).
+     */
+    public Rewards rewards = new Rewards();
+
+    /**
      * How far (in blocks) from a random player's position wave enemies spawn, so the player gets
      * a moment to prepare. Values below 8 are clamped to 8.
      */

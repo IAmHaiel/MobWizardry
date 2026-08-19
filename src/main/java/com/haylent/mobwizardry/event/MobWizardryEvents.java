@@ -1,17 +1,22 @@
 package com.haylent.mobwizardry.event;
 
+import com.haylent.mobwizardry.ai.BossManager;
+import com.haylent.mobwizardry.ai.RaidManager;
+import com.haylent.mobwizardry.ai.RewardManager;
 import com.haylent.mobwizardry.ai.WizardAiGoal;
 import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.haylent.mobwizardry.entity.WizardNpc;
 import com.haylent.mobwizardry.entity.WizardSkins;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class MobWizardryEvents
@@ -111,6 +116,41 @@ public class MobWizardryEvents
         if (MobWizardryTeams.areAllies(attacker, event.getEntity()))
         {
             event.setCanceled(true);
+        }
+    }
+
+    /**
+     * Grants a bossified boss's configured rewards when it is defeated, unless it died inside an
+     * active raid (a raid win already grants the raid's rewards and the raid boss is one of them
+     * - no double-granting).
+     */
+    @SubscribeEvent
+    public void onLivingDeath(LivingDeathEvent event)
+    {
+        if (event.getEntity().level().isClientSide())
+        {
+            return;
+        }
+        if (!(event.getEntity() instanceof PathfinderMob mob))
+        {
+            return;
+        }
+        if (!BossManager.isBossified(mob) || RaidManager.isRaidActive())
+        {
+            return;
+        }
+        for (String tag : mob.getTags())
+        {
+            PresetDefinition preset = PresetManager.getPresetByTag(tag);
+            if (preset != null && preset.boss != null
+                    && preset.boss.enabled && preset.boss.rewards.hasContent())
+            {
+                if (mob.level() instanceof ServerLevel level)
+                {
+                    RewardManager.grantRewards(level, preset.boss.rewards);
+                }
+                break;
+            }
         }
     }
 }
