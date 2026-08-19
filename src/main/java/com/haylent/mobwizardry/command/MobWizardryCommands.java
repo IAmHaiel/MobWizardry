@@ -37,6 +37,7 @@ import net.minecraft.world.item.Equipable;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
 
@@ -113,6 +114,8 @@ public class MobWizardryCommands
                                 .executes(ctx -> list(ctx, IntegerArgumentType.getInteger(ctx, "page")))))
                 .then(Commands.literal("help")
                         .executes(MobWizardryCommands::help))
+                .then(Commands.literal("version")
+                        .executes(MobWizardryCommands::version))
         );
     }
 
@@ -378,6 +381,7 @@ public class MobWizardryCommands
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "unwizardify <preset> [radius] [pos]", "Remove wizard status from nearby mobs - removes the preset tag and strips wizard equipment.");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "reload", "Reload presets.json and bosses.json from the config folder.");
         MobWizardryCommandOutput.helpLine(ctx.getSource(), "list [page]", "List all loaded presets and their spell setups.");
+        MobWizardryCommandOutput.helpLine(ctx.getSource(), "version", "Show the installed MobWizardry version.");
         return 1;
     }
 
@@ -395,5 +399,18 @@ public class MobWizardryCommands
     {
         MobWizardryCommandOutput.sendPresetsPage(ctx.getSource(), PresetManager.getPresets(), page);
         return PresetManager.getPresets().size();
+    }
+
+    /**
+     * Shows the installed mod version, read from the loaded mod container (the same value baked
+     * into mods.toml / gradle.properties) so it always matches the running jar.
+     */
+    private static int version(CommandContext<CommandSourceStack> ctx)
+    {
+        String version = ModList.get().getModContainerById("mobwizardry")
+                .map(container -> container.getModInfo().getVersion().toString())
+                .orElse("unknown");
+        ctx.getSource().sendSuccess(() -> Component.literal("MobWizardry version " + version), false);
+        return 1;
     }
 }
