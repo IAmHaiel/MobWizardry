@@ -486,10 +486,7 @@ A new entity, **`mobwizardry:wizard`**, that looks like a player and uses the sa
 - **Skins** — the NPC renders with a player-shaped model. Skin files are 64x64 PNGs placed in
   `config/mobwizardry/wizard-skins/` (created on first launch; each `.png` file's name is a
   skin). Each spawned NPC picks a random skin; a preset's `"skin": "name"` field forces
-  a specific one. On a **dedicated server** the skins are loaded server-side and **pushed to
-  every client automatically** when they join (and re-pushed on `/mobwizardry reload`), so the
-  skins render even though the files only exist on the server. Missing files fall back to the
-  vanilla Steve texture.
+  a specific one. Missing files fall back to the vanilla Steve texture.
 - **Faction** — the preset's `faction` field decides behavior:
   - `enemy` — hunts friendly-faction wizards, players, villagers and iron golems like a hostile mob.
   - `friendly` — never attacks on its own; it only fights back when hurt (and still casts).
