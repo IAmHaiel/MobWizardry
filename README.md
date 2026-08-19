@@ -893,6 +893,7 @@ Details: [The boss block](#the-boss-block), [Phases](#phases),
 | `groupRadius` | number | how tightly a wave's enemies cluster around one rally point. Clamped to 1–16. Default `4`. |
 | `skyFlashBolts` | int | visual-only lightning bolts flashing around the wave rally point at each wave's spawn (0 = off, default 4) |
 | `waveGlowSeconds` | int | how many seconds each wave's enemies glow after spawning (0 = off, default 20) |
+| `timeLimitSeconds` | int | the raid's time limit in seconds; the players must clear every wave and the boss before it expires or the raid defeats them. `0` = no time limit. Default `600`. |
 | `rewards` | object | rewards granted to every player in the raid's dimension when the raid is won (message + per-player commands with `%player%`; nothing on defeat) |
 
 Details and semantics (including "Why is there a weight?"): [Raid / horde](#raid--horde-300).
@@ -1050,19 +1051,19 @@ this turns that wizard into a boss):
 
 A **raid** is a configurable horde of enemy wizards that fights the players in waves and ends
 with a **boss fight** (the existing boss system). Players win by killing **every enemy in every
-wave and the boss**; the raid is lost when **all players in the raid's dimension are dead** —
-and when the raid defeats the players, it **kills them literally**: every player still alive in
-the raid's dimension is slain by the raid itself (death message "was defeated by the raid",
-totems of undying cannot save you). Whenever a raid ends — victory, defeat, or a manual stop —
-every **surviving raid mob vanishes**: the wave wizards and the boss are removed from the world
-with no drops and no death animation, as if they never existed, so nothing is left behind when
-the players respawn. Raids are defined in `config/mobwizardry/raids.json`
-and run with `/mobwizardry raid start <raid>`.
+wave and the boss**; the raid is lost when the **time limit expires** — the players must clear
+Wave 1 through the raid boss before it runs out, and when it does the raid **kills them
+literally**: every player in the raid's dimension is slain by the raid itself (death message
+"was defeated by the raid", totems of undying cannot save you) and no rewards are granted. Whenever
+a raid ends — victory, defeat, or a manual stop — every **surviving raid mob vanishes**:
+the wave wizards and the boss are removed from the world with no drops and no death animation, as
+if they never existed, so nothing is left behind when the players respawn. Raids are defined in
+`config/mobwizardry/raids.json` and run with `/mobwizardry raid start <raid>`.
 
 While a raid runs, everyone in its dimension sees a **purple raid bar**:
-- during a wave it shows `Raid Name — Wave N/M` with the fill = how many of that wave's enemies
-  you've killed,
-- during the boss phase it switches to `Raid Name — Boss` with the boss's health.
+- during a wave it shows `Raid Name — Wave N/M — mm:ss` (the `mm:ss` countdown when a time limit
+  is set) with the fill = how many of that wave's enemies you've killed,
+- during the boss phase it switches to `Raid Name — Boss — mm:ss` with the boss's health.
 
 ### `raids.json` example — full file
 
@@ -1094,7 +1095,8 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
       "bossSpawnDistance": 48.0,
       "groupRadius": 4.0,
       "skyFlashBolts": 4,
-      "waveGlowSeconds": 20
+      "waveGlowSeconds": 20,
+      "timeLimitSeconds": 600
     }
   }
 }
@@ -1105,7 +1107,8 @@ While a raid runs, everyone in its dimension sees a **purple raid bar**:
 | `name` | The raid's display name, shown on the raid bar (and in `/mobwizardry raid list`). Falls back to the raid's key if empty. |
 | `startMessage` | Chat message broadcast to everyone when the raid starts (e.g. `"The Wizard Horde has arrived!"`). Empty = no message. |
 | `victoryMessage` | Chat message when the players win (all waves and the boss defeated). Empty = silent. |
-| `defeatMessage` | Chat message when the enemy wins (all players in the raid's dimension die). Empty = silent. |
+| `defeatMessage` | Chat message when the raid is lost (the time limit expires). Empty = silent. |
+| `timeLimitSeconds` | Seconds the players have to clear every wave and the boss; when it runs out the raid is lost — every player in the raid's dimension is killed by the raid (totem-proof) and no rewards are granted. `0` = no time limit. Default `600`. |
 | `waves` | The enemy waves, run in order. Once all of a wave's enemies are dead, the next wave — or the boss — begins. |
 | `waves[].number` | The wave's number (1, 2, 3...). Shown on the raid bar as `Wave N/M`. |
 | `waves[].enemies` | The enemy groups of this wave. A wave spawns **`sum(counts)`** enemies in total. |
@@ -1233,7 +1236,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - the raid bar **drains from 100% toward 0%** as you defeat the wave's enemies; when a wave is cleared a lightning storm + thunder plays and the bar **animates back up to 100%** for the next wave,
    - kill every enemy in a wave — the bar fills and the next wave (or the boss) spawns,
    - after the last wave the configured boss appears roughly `bossSpawnDistance` blocks away — lightning, name, its own boss bar — and targets a random player; killing it ends the raid with the victory message and a victory chime,
-   - if all players die the raid ends in defeat: every player still alive in the raid's dimension is killed by the raid (they see "was defeated by the raid"), then the defeat message and a failure sound play — and when the raid ends (win, lose, or `/mobwizardry raid stop`) every **surviving raid mob vanishes** from the world (wave wizards and the boss — no drops, no death animation, as if they never existed).
+   - if the **time limit runs out** the raid ends in defeat: every player in the raid's dimension is killed by the raid (they see "was defeated by the raid"), then the defeat message and a failure sound play and **no rewards are granted** — and whenever the raid ends (win, lose, or `/mobwizardry raid stop`) every **surviving raid mob vanishes** from the world (wave wizards and the boss — no drops, no death animation, as if they never existed).
 8. Tweak `presets.json` / `bosses.json` / `raids.json` / `names.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
 ## Notes
