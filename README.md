@@ -1051,8 +1051,10 @@ with a **boss fight** (the existing boss system). Players win by killing **every
 wave and the boss**; the raid is lost when **all players in the raid's dimension are dead** —
 and when the raid defeats the players, it **kills them literally**: every player still alive in
 the raid's dimension is slain by the raid itself (death message "was defeated by the raid",
-totems of undying cannot save you). Raids are defined in `config/mobwizardry/raids.json` and run
-with `/mobwizardry raid start <raid>`.
+totems of undying cannot save you), and every player killed by the raid — wave wizards, the
+boss, or the defeat itself — **disappears** (the body is removed, while the death screen still
+shows normally). Raids are defined in `config/mobwizardry/raids.json`
+and run with `/mobwizardry raid start <raid>`.
 
 While a raid runs, everyone in its dimension sees a **purple raid bar**:
 - during a wave it shows `Raid Name — Wave N/M` with the fill = how many of that wave's enemies
@@ -1204,7 +1206,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - the raid bar **drains from 100% toward 0%** as you defeat the wave's enemies; when a wave is cleared a lightning storm + thunder plays and the bar **animates back up to 100%** for the next wave,
    - kill every enemy in a wave — the bar fills and the next wave (or the boss) spawns,
    - after the last wave the configured boss appears roughly `bossSpawnDistance` blocks away — lightning, name, its own boss bar — and targets a random player; killing it ends the raid with the victory message and a victory chime,
-   - if all players die the raid ends in defeat: every player still alive in the raid's dimension is killed by the raid (they see "was defeated by the raid"), then the defeat message and a failure sound play.
+   - if all players die the raid ends in defeat: every player still alive in the raid's dimension is killed by the raid (they see "was defeated by the raid"), then the defeat message and a failure sound play — and any player killed by the raid (wave wizards, the boss, or the defeat itself) **disappears** (body removed, death screen normal).
 8. Tweak `presets.json` / `bosses.json` / `raids.json` / `names.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
 ## Notes
