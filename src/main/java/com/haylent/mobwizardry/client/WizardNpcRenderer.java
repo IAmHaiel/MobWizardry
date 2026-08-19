@@ -135,6 +135,11 @@ public class WizardNpcRenderer extends HumanoidMobRenderer<WizardNpc, PlayerMode
         {
             return DEFAULT_TEXTURE;
         }
+        ResourceLocation received = WizardSkinTextures.get(skin);
+        if (received != null)
+        {
+            return received;
+        }
         return skinCache.computeIfAbsent(skin, this::loadSkinTexture);
     }
 

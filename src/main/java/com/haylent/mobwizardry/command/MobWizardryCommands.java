@@ -8,6 +8,7 @@ import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.haylent.mobwizardry.config.RaidDefinition;
+import com.haylent.mobwizardry.entity.WizardSkinSync;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -388,6 +389,8 @@ public class MobWizardryCommands
     private static int reload(CommandContext<CommandSourceStack> ctx)
     {
         PresetManager.reload();
+        WizardSkinSync.refresh();
+        WizardSkinSync.sendToAll(ctx.getSource().getServer());
         int count = PresetManager.getPresets().size();
         int reapplied = WizardAiGoal.reapplyAll(ctx.getSource().getServer());
         final int re = reapplied;

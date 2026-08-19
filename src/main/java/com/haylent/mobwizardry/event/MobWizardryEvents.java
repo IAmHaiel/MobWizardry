@@ -5,13 +5,16 @@ import com.haylent.mobwizardry.config.MobWizardryTeams;
 import com.haylent.mobwizardry.config.PresetDefinition;
 import com.haylent.mobwizardry.config.PresetManager;
 import com.haylent.mobwizardry.entity.WizardNpc;
+import com.haylent.mobwizardry.entity.WizardSkinSync;
 import com.haylent.mobwizardry.entity.WizardSkins;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingChangeTargetEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class MobWizardryEvents
@@ -111,6 +114,19 @@ public class MobWizardryEvents
         if (MobWizardryTeams.areAllies(attacker, event.getEntity()))
         {
             event.setCanceled(true);
+        }
+    }
+
+    /**
+     * When a player joins the server, the server pushes the wizard skins it loaded (if any) so
+     * the client can render wizard NPCs with the correct skins.
+     */
+    @SubscribeEvent
+    public void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event)
+    {
+        if (event.getEntity() instanceof ServerPlayer player)
+        {
+            WizardSkinSync.sendToPlayer(player);
         }
     }
 }
