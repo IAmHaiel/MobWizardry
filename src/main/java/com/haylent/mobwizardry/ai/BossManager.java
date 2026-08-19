@@ -169,6 +169,15 @@ public class BossManager
         return mob.getPersistentData().getBoolean(BOSSIFIED_KEY);
     }
 
+    /**
+     * The boss phase number currently recorded on the mob (0 = no phase entered yet). Used by
+     * {@code WizardAiGoal} to restore the right combo pool when a boss's goal is re-created.
+     */
+    public static int currentPhase(PathfinderMob mob)
+    {
+        return mob.getPersistentData().getInt(PHASE_KEY);
+    }
+
     private static void track(PathfinderMob mob, PresetDefinition preset)
     {
         BOSSES.put(mob.getUUID(), new ActiveBoss(mob, preset));

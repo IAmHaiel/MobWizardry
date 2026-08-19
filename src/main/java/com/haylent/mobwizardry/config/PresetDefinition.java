@@ -138,6 +138,25 @@ public class PresetDefinition
         public List<Combo> combos = new ArrayList<>();
 
         /**
+         * The boss's combo pool at the given phase: the boss-level {@code combos} plus every
+         * phase's {@code combos} whose number is at most {@code phaseNumber}. Phases only ever
+         * add to the pool (never replace), so entering a phase unlocks its combos on top of the
+         * earlier ones.
+         */
+        public List<Combo> activeCombos(int phaseNumber)
+        {
+            List<Combo> pool = new ArrayList<>(combos);
+            for (BossPhase phase : phases)
+            {
+                if (phase != null && phase.combos != null && phase.number <= phaseNumber)
+                {
+                    pool.addAll(phase.combos);
+                }
+            }
+            return pool;
+        }
+
+        /**
          * Per-boss natural-spawn controls. Each boss schedules its own spawn attempts, has its
          * own concurrent cap and spawns at its own distance from a player. Also controls the
          * arrival behavior: whether the boss glows on arrival and whether a naturally-spawned
@@ -175,9 +194,10 @@ public class PresetDefinition
     /**
      * One boss phase. The boss enters it once its health ratio drops to
      * {@code healthPercent} or below, at which point the phase's spell kit replaces the boss's
-     * current kit, its {@link #effects} are applied (and persist across all later phases), and
-     * the phase message is broadcast. Phases are sorted by {@code healthPercent} descending at
-     * load, so phase 1 (usually 100) is the boss's starting kit.
+     * current kit, its {@link #effects} are applied (and persist across all later phases), its
+     * {@link #combos} are added to the boss's combo pool, and the phase message is broadcast.
+     * Phases are sorted by {@code healthPercent} descending at load, so phase 1 (usually 100) is
+     * the boss's starting kit.
      */
     public static class BossPhase
     {
@@ -186,6 +206,7 @@ public class PresetDefinition
         public String message = "";
         public Spells spells = new Spells();
         public List<PhaseEffect> effects = new ArrayList<>();
+        public List<Combo> combos = new ArrayList<>();
     }
 
     /**
