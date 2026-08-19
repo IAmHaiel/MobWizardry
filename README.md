@@ -542,11 +542,13 @@ presets.json keeps working but is warned to migrate; the bosses.json entry wins 
 
 A phase has a **number**, a **healthPercent** (the health ratio, as a percentage, at or below
 which the boss enters the phase — a true ratio of the boss's actual max health, so 50% of a
-500-health boss triggers at 250), an optional **message**, a **spells** kit, and optional
-**effects**. **Boss spells only use the defense, movement, support and escape categories —
-attack comes entirely from `combos`** (any attack list on a boss is ignored with a warning).
+500-health boss triggers at 250), an optional **message**, a **spells** kit, optional
+**effects**, and optional **combos** (see below). **Boss spells only use the defense, movement,
+support and escape categories — attack comes entirely from `combos`** (any attack list on a boss
+is ignored with a warning).
 When the boss's health drops to a phase's threshold, the kit is swapped in, the phase's effects
-are applied, and `[NAME] message` is broadcast (the name in red).
+are applied, its combos are added to the combo pool, and `[NAME] message` is broadcast (the name
+in red).
 
 ```json
 "phases": [
@@ -564,6 +566,15 @@ are applied, and `[NAME] message` is broadcast (the name in red).
     "message": "Fool! Now you face my true power!",
     "effects": [
       { "id": "minecraft:resistance", "amplifier": 1, "duration": -1 }
+    ],
+    "combos": [
+      {
+        "pauseAfterComboExecution": 50,
+        "steps": [
+          { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
+          { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 2, "castAfterTicks": 45 }
+        ]
+      }
     ],
     "spells": {
       "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
@@ -588,6 +599,13 @@ later phases** (they accumulate: a phase 3 boss keeps phase 2's resistance *and*
 speed). Unknown effect ids are skipped with a warning; effects are re-applied on `/mobwizardry
 reload` so config changes take effect.
 
+**Phase combos (3.8.0):** a phase can define its own `combos[]` (same structure as the boss-level
+list). Entering a phase **adds** its combos to the boss's combo pool — the pool at any moment is
+the boss-level `combos` plus every phase's combos up to the current one, and it never shrinks. So
+a boss with combos 1 + 2 from phase 1 that defines combo 3 in phase 2 can pick among combos 1, 2
+**and** 3 from phase 2 on. Like the boss-level list, phase combos validate the same way (unknown
+spells skipped, levels clamped) and are re-applied on `/mobwizardry reload`.
+
 ### Combo presets (2.3.0)
 
 Think of a combo as one **prepared attack routine**: a boss's **attack spells ARE its combos** —
@@ -597,6 +615,10 @@ picks one combo**, casts the steps **in order**, then **pauses** — and after t
 same combo again). While a combo is actually running the boss casts **only** the combo's steps;
 its normal defense/movement/support/escape spells stay silent until the combo finishes, then
 behave like any other wizard until the next combo starts.
+
+The pick is always from the **current pool**: the boss-level `combos` plus every phase's combos
+up to the one the boss is in (3.8.0). Phases only ever **add** to the pool — phase 2's combos
+join phase 1's instead of replacing them, so later phases keep the earlier routines too.
 
 ```json
 "combos": [
@@ -834,6 +856,7 @@ spell categories in the [spells](#beginners-guide-to-the-settings) bullet.
 | effect `id` | string | the effect id (e.g. `minecraft:resistance`) |
 | effect `amplifier` | int | effect level minus one (0 = level I) |
 | effect `duration` | int | ticks; `-1` = infinite (persists across all phases) |
+| phase `combos` | list | combos **added** to the combo pool when the phase is entered (same structure as `combos`; they join, never replace) |
 | phase `spells` | object | defense / movement / support / escape (bosses have no attack) |
 | `combos` | list | the scripted attack sequences (a boss's attack) |
 | combo `pauseAfterComboExecution` | int | pause after this combo before the next random pick |
@@ -966,6 +989,15 @@ this turns that wizard into a boss):
             { "id": "minecraft:resistance", "amplifier": 1, "duration": -1 },
             { "id": "minecraft:strength", "amplifier": 1, "duration": -1 }
           ],
+          "combos": [
+            {
+              "pauseAfterComboExecution": 50,
+              "steps": [
+                { "category": "attack", "spell": "irons_spellbooks:magic_missile", "level": 1, "castAfterTicks": 10 },
+                { "category": "attack", "spell": "irons_spellbooks:fireball", "level": 2, "castAfterTicks": 45 }
+              ]
+            }
+          ],
           "spells": {
             "defense": [ { "id": "irons_spellbooks:shield", "level": 1 } ],
             "movement": [ { "id": "irons_spellbooks:blood_step", "level": 1 } ],
@@ -1015,9 +1047,11 @@ this turns that wizard into a boss):
 
 A **raid** is a configurable horde of enemy wizards that fights the players in waves and ends
 with a **boss fight** (the existing boss system). Players win by killing **every enemy in every
-wave and the boss**; the raid is lost when **all players in the raid's dimension are dead**.
-Raids are defined in `config/mobwizardry/raids.json` and run with
-`/mobwizardry raid start <raid>`.
+wave and the boss**; the raid is lost when **all players in the raid's dimension are dead** —
+and when the raid defeats the players, it **kills them literally**: every player still alive in
+the raid's dimension is slain by the raid itself (death message "was defeated by the raid",
+totems of undying cannot save you). Raids are defined in `config/mobwizardry/raids.json` and run
+with `/mobwizardry raid start <raid>`.
 
 While a raid runs, everyone in its dimension sees a **purple raid bar**:
 - during a wave it shows `Raid Name — Wave N/M` with the fill = how many of that wave's enemies
@@ -1161,7 +1195,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
 6. For a **boss** preset (a `boss` entry in `bosses.json`):
    - summoning it (`/mobwizardry boss <preset> <mobType>`) strikes lightning, prints `NAME has arrived.` in chat, shows the colored name tag and a red boss bar, glows for `spawnGlowSeconds`, and targets a random online player (idle if none),
    - deal damage until it crosses a phase's `healthPercent` — the phase message appears, its spell kit swaps (e.g. phase 2 gains the spells you listed there), its phase `effects` are applied (and persist into later phases), and the boss bar fill drops,
-   - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets); while a combo runs it casts nothing else, and after it finishes defense/movement/support/escape trigger like a normal wizard until the next combo,
+   - with `combos`, its attack spells come only from the randomly-selected combo sequence (steps cast in order at their tick offsets); while a combo runs it casts nothing else, and after it finishes defense/movement/support/escape trigger like a normal wizard until the next combo — and when it enters a phase whose `combos` are defined, those join the pool (phase 2's combos are pickable alongside phase 1's from then on),
    - with its `spawnSettings.enabled` true and a `daySpawnWeight`/`nightSpawnWeight` above 0, it should also appear near players over time (more often at night if the night weight is higher); with `despawnOnTimeChange` true it disappears when the time of day flips.
 7. For a **raid** (a `raids` entry in `raids.json`):
    - `/mobwizardry raid list` shows it, `/mobwizardry raid start <raid>` starts it — the start message appears, the pillager horn + lightning crash play and the `YOU ARE INVADED` subtitle shows, and the purple raid bar shows `Raid Name — Wave 1/M` at 100%,
@@ -1169,7 +1203,7 @@ Requires permission level 2. (`help` and `list` are available to everyone.)
    - the raid bar **drains from 100% toward 0%** as you defeat the wave's enemies; when a wave is cleared a lightning storm + thunder plays and the bar **animates back up to 100%** for the next wave,
    - kill every enemy in a wave — the bar fills and the next wave (or the boss) spawns,
    - after the last wave the configured boss appears roughly `bossSpawnDistance` blocks away — lightning, name, its own boss bar — and targets a random player; killing it ends the raid with the victory message and a victory chime,
-   - if all players die the raid ends with the defeat message and a failure sound.
+   - if all players die the raid ends in defeat: every player still alive in the raid's dimension is killed by the raid (they see "was defeated by the raid"), then the defeat message and a failure sound play.
 8. Tweak `presets.json` / `bosses.json` / `raids.json` / `names.json` and run `/mobwizardry reload` — no server restart needed. Code changes (if any) require rebuilding the jar and restarting.
 
 ## Notes
